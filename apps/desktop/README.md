@@ -346,9 +346,10 @@ npx bb-app@nightly
 
 Stable and nightly desktop bundles can coexist. Electron-owned preferences,
 window state, and process supervision use separate application data
-directories; the embedded bb runtime still uses the normal `~/.bb` data and
-default server port unless the corresponding environment variables are
-overridden.
+directories. On either channel, a packaged build defaults the embedded runtime to
+`~/.foundry` and Foundry's ports unless the corresponding environment variables
+are set, so the two channels share that data and those ports. See
+[foundry-desktop-release.md](../../docs/foundry-desktop-release.md#running-beside-bb).
 
 Nightly builds set `BB_DESKTOP_RELEASE_CHANNEL=nightly` at build time. The value
 is baked into the Electron main/preload bundles and selects the nightly product

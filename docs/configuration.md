@@ -2,7 +2,9 @@
 
 The packaged `npx bb-app` flow stores persistent package settings under
 `~/.bb/config.json`, provider environment values under `~/.bb/env.json`, and
-client SSH target mappings under `~/.bb/client.json`.
+client SSH target mappings under `~/.bb/client.json`. A packaged Foundry desktop
+app keeps the same files under `~/.foundry`; see
+[foundry-desktop-release.md](foundry-desktop-release.md#running-beside-bb).
 
 Use `bb-app config` for non-secret bb settings and `bb-app env` for provider
 credentials and provider-specific environment:

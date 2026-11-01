@@ -12,8 +12,9 @@ or hand off to another agent.
 > Foundry is maintained by Kyle Myers and is not affiliated with or endorsed by
 > the bb project. It forked from `get-bb/bb` at commit
 > [`916d684ac`](https://github.com/get-bb/bb/commit/916d684ac23d0b0de82c09cfc7553a50287d2188)
-> (2026-10-30). The fork has not changed the product yet, so it still looks and
-> behaves like bb.
+> (2026-10-30). So far the fork changes how packaged desktop builds identify and
+> update themselves, as described in [What Still Says bb](#what-still-says-bb).
+> Otherwise it still looks and behaves like bb.
 
 <p align="center">
   <img alt="The bb desktop app, which Foundry inherits, showing a code review thread, dispatch panel, and task board" src="assets/app-screenshot.png" width="800">
@@ -53,13 +54,22 @@ To drive that instance from the command line, run `pnpm bb --help`.
 
 ## What Still Says bb
 
-The rename covers this repository's top-level documentation, not its code. These
-names are unchanged, so commands and paths throughout the docs still use them:
+The rename covers this repository's top-level documentation and the identity of
+packaged desktop builds. These names are otherwise unchanged, so commands and
+paths throughout the docs still use them:
 
-- the `bb` CLI and the name shown in the app
+- the `bb` CLI and the name shown in the app's pages
 - the `bb-app`, `@bb/*`, and `@get-bb/*` packages
 - `BB_*` environment variables
 - the `~/.bb` and `~/.bb-dev` data directories and `.bb/` workspace files
+
+A desktop app packaged from this repository is the exception, so it can run
+beside an installed bb. It is named Foundry, uses the app ID
+`io.github.kylemyers001.foundry`, and checks this repository's GitHub releases
+for updates. Unless they are already set, it defaults `BB_DATA_DIR` to
+`~/.foundry`, `BB_SERVER_PORT` to `38986`, `BB_HOST_DAEMON_PORT` to `38987`, and
+`BB_TELEMETRY` to `false`. It still uses bb's icon. `pnpm start` and the
+development loop are unaffected.
 
 Most guides under `docs/` and the package READMEs were written for bb and still
 call the product bb. They describe Foundry's behavior unless they cover bb's own
@@ -67,18 +77,24 @@ releases or hosted services.
 
 Some defaults still lead to services and releases from the bb project:
 
-- Desktop builds look for updates in `get-bb/bb` GitHub releases.
 - bb connect, the remote access service, defaults to `https://getbb.app`.
 - Settings → Mobile links to bb's iOS TestFlight and its Android APK in
   `get-bb/bb` releases.
 - Settings → Community links to bb's Discord, which is for bb rather than Foundry.
-- Telemetry goes to the PostHog project inherited from bb.
+- In a packaged desktop app, Settings → Updates compares the running version
+  with the `bb-app` package on npm, so it can list a bb version as available. It
+  offers no command to install it.
+- Telemetry from `pnpm start` goes to the PostHog project inherited from bb.
 
 ### Telemetry
 
-Foundry inherits bb's telemetry unchanged. Production runs, including `pnpm start`,
-send anonymous usage telemetry (app starts, thread creation counts, user message
-counts, and plugin installs) to the default PostHog project inherited from bb.
+Source runs inherit bb's telemetry unchanged. Production runs from source,
+including `pnpm start`, send anonymous usage telemetry (app starts, thread
+creation counts, user message counts, and plugin installs) to the default PostHog
+project inherited from bb. A desktop app packaged from this repository sends none
+unless you set `BB_TELEMETRY=true`, because its `false` default also overrides the
+setting in Settings → General.
+
 Each event carries the app version, how the app was installed (desktop, npm, or
 source checkout), and the OS release, CPU architecture, and Node version. Source
 checkouts report whether `origin` points to `github.com/get-bb/bb`, another
