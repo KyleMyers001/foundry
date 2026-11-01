@@ -8,6 +8,11 @@
 
 # bb
 
+> [!NOTE]
+> This README is inherited from bb. Foundry does not publish this package, so
+> `npx bb-app` installs upstream bb, not Foundry. To run Foundry, follow the
+> [main README](https://github.com/KyleMyers001/foundry#run-foundry).
+
 [![npm version](https://img.shields.io/npm/v/bb-app.svg)](https://www.npmjs.com/package/bb-app)
 
 bb is an agentic IDE that builds itself. It can control, customize, and automate
@@ -282,12 +287,12 @@ server to reload; if bb is stopped, the values apply on the next start.
 
 For all config keys, precedence, startup flags, and source-development `.env`
 behavior, see the
-[configuration docs](https://github.com/get-bb/bb/blob/main/docs/configuration.md).
+[configuration docs](https://github.com/KyleMyers001/foundry/blob/main/docs/configuration.md).
 
 ## Further Reading
 
-- [Main README](https://github.com/get-bb/bb#readme)
-- [Platform support](https://github.com/get-bb/bb/blob/main/docs/platform-support.md)
+- [Main README](https://github.com/KyleMyers001/foundry#readme)
+- [Platform support](https://github.com/KyleMyers001/foundry/blob/main/docs/platform-support.md)
 - [Configuration](https://github.com/get-bb/bb/blob/main/docs/configuration.md)
-- [Using bb on multiple devices](https://github.com/get-bb/bb/blob/main/docs/multiple-devices.md)
-- [Worktree setup and teardown scripts](https://github.com/get-bb/bb/blob/main/docs/worktrees.md)
+- [Using bb on multiple devices](https://github.com/KyleMyers001/foundry/blob/main/docs/multiple-devices.md)
+- [Worktree setup and teardown scripts](https://github.com/KyleMyers001/foundry/blob/main/docs/worktrees.md)
