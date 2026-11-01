@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AgentStep, type OnboardingAgent } from "./OnboardingViews";
+import {
+  AgentStep,
+  OnboardingLayout,
+  type OnboardingAgent,
+} from "./OnboardingViews";
 import type { AgentSetupState } from "./onboarding-model";
 
 function agent(id: string, state: AgentSetupState): OnboardingAgent {
@@ -21,6 +25,27 @@ function renderAgents(agents: OnboardingAgent[]) {
 }
 
 afterEach(cleanup);
+
+it("shows the full-color Foundry mark during onboarding", () => {
+  render(
+    <OnboardingLayout
+      step="agent"
+      title="Set up your agents"
+      description="Choose an agent to get started."
+      primaryLabel="Continue"
+      onPrimary={() => {}}
+      onSelectStep={() => {}}
+      onSkipAll={() => {}}
+    >
+      <div>Setup content</div>
+    </OnboardingLayout>,
+  );
+
+  const logo = screen.getByRole("img", { name: "Foundry" });
+  expect(logo.getAttribute("src")).toBe("/foundry-mark.png");
+  expect(logo.className).not.toMatch(/invert|brightness-0/);
+  expect(screen.queryByRole("img", { name: "bb" })).toBeNull();
+});
 
 describe("AgentStep", () => {
   it("offers the install log only on the agent whose install failed", () => {
