@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { applyFoundryRuntimeDefaults } from "../src/foundry-runtime-defaults.js";
 import { createDesktopReleaseInfo } from "../src/desktop-update-provider.js";
@@ -9,7 +10,7 @@ describe("foundry runtime defaults", () => {
     applyFoundryRuntimeDefaults({ env, homeDir: "/Users/test" });
 
     expect(env).toEqual({
-      BB_DATA_DIR: "/Users/test/.foundry",
+      BB_DATA_DIR: join("/Users/test", ".foundry"),
       BB_HOST_DAEMON_PORT: "38987",
       BB_SERVER_PORT: "38986",
       BB_TELEMETRY: "false",
