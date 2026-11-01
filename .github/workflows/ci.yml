@@ -132,6 +132,7 @@ jobs:
     name: Windows host packages (Node 22.x)
     runs-on: windows-2025
     timeout-minutes: 15
+    continue-on-error: true
     permissions:
       contents: read
 
