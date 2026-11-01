@@ -67,7 +67,7 @@ import {
   ConfirmDeleteDialogContent,
 } from "@bb/shared-ui/confirm-delete-dialog";
 import { appToast } from "@/components/ui/app-toast";
-import { BbLogo } from "@/components/ui/bb-logo";
+import { FoundryLogo } from "@/components/ui/foundry-logo";
 import { SettingsSection } from "@/components/ui/settings-section";
 import { invalidateHostProviderCliStatus } from "@/hooks/cache-owners/provider-cli-status-cache-owner";
 import { hydrateAppUpdateStatus } from "@/hooks/cache-owners/app-update-cache-owner";
@@ -535,7 +535,7 @@ export function BbAppUpdateRows({
     <UpdatesRow
       leading={
         <span data-bb-update-role="app" aria-hidden>
-          <BbLogo className="size-4 -translate-y-px" />
+          <FoundryLogo decorative className="size-4 -translate-y-px" />
         </span>
       }
       actions={<RowActions>{indicator}</RowActions>}
@@ -583,7 +583,7 @@ export function BbAppUpdateRows({
         name,
         <RowStateControl
           state="restart-required"
-          buttonLeading={<BbLogo className="size-3" />}
+          buttonLeading={<FoundryLogo decorative className="size-3" />}
           buttonLabel="Relaunch"
           actionLabel="Relaunch bb to finish updating"
           onClick={() => onRelaunchDesktop?.()}

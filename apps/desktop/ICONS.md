@@ -1,4 +1,4 @@
-# Foundry desktop icons
+# Foundry app icons
 
 The desktop app uses the Foundry Aperture artwork in `assets/foundry-aperture.png` at the repository root. That file is the original approved 1024×1024 RGB PNG, retained byte-for-byte as the source for the desktop renditions. It has no artificial rounded-square frame or baked-in corner mask.
 
@@ -10,7 +10,7 @@ The existing runtime and packaging paths remain unchanged:
 - `apps/desktop/assets/icon.icns`: stable macOS bundle icon.
 - `apps/desktop/assets/icon-nightly.icns`: nightly macOS bundle icon.
 
-All channels currently use the same Aperture artwork without a channel badge. Product names, bundle IDs, update channels, signing and upstream legal notices are unchanged. Mobile artwork, browser/PWA icons, in-app upstream marks and the upstream website are outside this desktop-icon change.
+All desktop channels currently use the same Aperture artwork without a channel badge. Product names, bundle IDs, update channels, signing and upstream legal notices are unchanged. Mobile artwork and the upstream website are outside this change. Marks that explicitly credit upstream bb plugin authors or the bb-official marketplace remain bb marks rather than being relabeled as Foundry contributions.
 
 ## Regenerate
 
@@ -21,6 +21,16 @@ uv run --no-project --with pillow==12.3.0 python apps/desktop/scripts/generate_f
 ```
 
 PNG renditions preserve the source bytes. The generator resizes the source directly with Lanczos filtering for each standard iconset entry, then uses `iconutil` to assemble both ICNS files. No additional generation service is involved. Generated files are committed, so ordinary application builds do not require Python or uv.
+
+## In-app and browser/PWA artwork
+
+`apps/app/scripts/generate-pwa-icons.mjs` derives the browser and install artwork from the same approved source. Run it through the existing command:
+
+```sh
+pnpm --filter @bb/app generate:pwa-icons
+```
+
+The generated transparent `apps/app/public/foundry-mark.png` is used by `FoundryLogo` in onboarding, app update rows and application-managed skill surfaces without the upstream monochrome mark's inversion classes. Browser favicon variants use transparent glyphs so the existing color preference and unread badge compositing remain usable. Install icons retain opaque backgrounds; all eight existing color preferences and manifest paths are preserved. Monochrome install renditions use a white glyph with an alpha mask rather than an opaque square. Existing `bb` persistence keys and protocol/provider identifiers are intentionally unchanged.
 
 ## Verify
 

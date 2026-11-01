@@ -866,6 +866,10 @@ The published lede.
       document.querySelector('[data-bb-update-role="app"]'),
     ).not.toBeNull();
     expect(screen.getByText("Server")).toBeDefined();
+    const appLogo = document.querySelector('[data-bb-update-role="app"] img');
+    expect(appLogo?.getAttribute("src")).toBe("/foundry-mark.png");
+    expect(appLogo?.getAttribute("alt")).toBe("");
+    expect(appLogo?.getAttribute("aria-hidden")).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Show machines" }));
     const row = document.querySelector<HTMLElement>(

@@ -18,7 +18,7 @@ import {
   ResourceSortMenu,
   ResourceToolbar,
 } from "@bb/shared-ui/resource-list";
-import { BbLogo } from "@/components/ui/bb-logo";
+import { FoundryLogo } from "@/components/ui/foundry-logo";
 import {
   ConfirmDeleteDialog,
   ConfirmDeleteDialogContent,
@@ -144,7 +144,7 @@ export function SkillProvenanceTooltip({
         className="flex size-3.5 shrink-0 items-center justify-center"
       >
         {providerId === null ? (
-          <BbLogo className="size-3.5 brightness-0 invert" />
+          <FoundryLogo decorative className="size-3.5" />
         ) : (
           <ProviderLogo
             providerId={providerId}
@@ -174,7 +174,7 @@ function SkillLeading({
       />
     );
   }
-  return <BbLogo className="size-6" />;
+  return <FoundryLogo decorative className="size-6" />;
 }
 
 function skillDescription(
@@ -389,7 +389,7 @@ export function SkillsOverview({
       label: providerFilterLabel(provider, providerRoster),
       leading:
         provider === "bb" ? (
-          <BbLogo className="size-4" />
+          <FoundryLogo decorative className="size-4" />
         ) : (
           <ProviderLogo
             providerId={provider}
