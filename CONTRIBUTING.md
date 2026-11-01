@@ -1,10 +1,14 @@
 # Contributing
 
-Thanks for helping improve bb.
+Thanks for helping improve Foundry.
+
+Foundry is an independent fork of [bb](https://github.com/get-bb/bb) with its own contribution process. If a bug or feature also applies to bb, consider sending it there first under [bb's contributing guide](https://github.com/get-bb/bb/blob/main/CONTRIBUTING.md). Please do not take problems that only affect Foundry to bb's maintainers.
+
+GitHub Issues are currently turned off for this repository. Until they are on, skip the issue steps below: explain the problem in your pull request, and a maintainer can exempt it from the linked-issue requirement.
 
 ## Before You Open A Pull Request
 
-A pull request from outside the bb team must meet all of these:
+A pull request from outside the Foundry maintainers must meet all of these:
 
 1. **Approved author.** You are on `.github/APPROVED_CONTRIBUTORS`. See [Contributor Approval](#contributor-approval).
 2. **Linked issue.** The description closes an open issue in this repo, for example `Fixes #123`. See [Linked Issue](#linked-issue).
@@ -14,21 +18,17 @@ The PR gate closes a pull request that misses any of these and comments with wha
 
 ## Contributor Approval
 
-bb approves new contributors before it reviews their pull requests. Anyone can open an issue. You need no approval for an issue.
+Foundry approves new contributors before it reviews their pull requests. The approved list starts with the contributors bb had approved when Foundry forked.
 
 1. Open an issue for the change, or find an existing one. Feature requests and UI changes need sign-off first; see below.
 2. Open the pull request with `Fixes #<number>` in its description. The gate closes it because you are not approved yet. That is expected.
-3. Join the #contributors channel in Discord ([invite link](https://discord.gg/kvBU6tJhcJ)), post a link to the closed pull request, and explain what it changes and why.
+3. Comment on the closed pull request and explain what it changes and why.
 
-A maintainer then adds your name to `.github/APPROVED_CONTRIBUTORS` and reopens the pull request. Authors with a merged change in main already have approval.
-
-A maintainer can also approve you with `/approve @your-name` on the pull request.
+A maintainer then adds your name to `.github/APPROVED_CONTRIBUTORS` and reopens the pull request. A maintainer can do this with `/approve @your-name` on the pull request.
 
 ## Linked Issue
 
-Every pull request from outside the bb team must close an open issue in this repo.
-
-A pull request is one attempt at a change, and many attempts do not land as written. We may ask for rework, a pull request closes after two weeks open, or we may solve the problem another way. The issue records the problem itself, so it stays visible and tracked whatever happens to any one pull request.
+Every pull request from outside the Foundry maintainers must close an open issue in this repo. The issue records the problem itself, so it stays visible and tracked whatever happens to any one pull request.
 
 Write `Fixes #<number>`, `Closes #<number>`, or `Resolves #<number>` in the pull request description. A mention without one of these words does not count.
 

@@ -1,5 +1,10 @@
 # Codebase Guidelines
 
+## Foundry And Upstream
+
+- This repository is Foundry, an independent fork of [bb](https://github.com/get-bb/bb). The code, `bb` CLI, packages, environment variables, and data directories keep the bb name. Use those names as they appear in the code.
+- Open issues and pull requests against `KyleMyers001/foundry`, never `get-bb/bb`. Pass `--repo KyleMyers001/foundry` to `gh`, because a fork can otherwise resolve to its parent.
+
 ## Task Completion
 
 - Carry the requested change through implementation, relevant verification, and fixes for failures it causes. Continue authorized, reversible local work without asking for approval at each step; ask when a missing user decision blocks progress.
