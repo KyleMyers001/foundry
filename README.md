@@ -1,110 +1,102 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/e40bda56-54a4-47f8-a417-6bbadf2e5b40">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/4d9d02fb-c179-449b-a38a-041955143232">
-    <img alt="bb" src="https://github.com/user-attachments/assets/4d9d02fb-c179-449b-a38a-041955143232" width="128">
-  </picture>
-</p>
+# Foundry
 
-# bb
-
-[![npm version](https://img.shields.io/npm/v/bb-app.svg)](https://www.npmjs.com/package/bb-app)
-[![Join Discord](https://img.shields.io/badge/Discord-Join%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/kvBU6tJhcJ)
-
-bb is an agentic IDE that builds itself. It can control, customize, and automate
-itself, laying the groundwork for your own software factory.
+Foundry is an independent fork of [bb](https://github.com/get-bb/bb), the agentic
+IDE that builds itself. It can control, customize, and automate itself, laying
+the groundwork for your own software factory.
 
 Every surface — the desktop app, web app, CLI, and HTTP API — is a first-class
-way to drive bb. Work runs in threads you can follow live, steer at any point,
+way to drive it. Work runs in threads you can follow live, steer at any point,
 or hand off to another agent.
 
 > [!NOTE]
-> bb is in active development. Core architecture is stable, but workflows
-> and surfaces are still evolving.
+> Foundry is maintained by Kyle Myers and is not affiliated with or endorsed by
+> the bb project. It forked from `get-bb/bb` at commit
+> [`916d684ac`](https://github.com/get-bb/bb/commit/916d684ac23d0b0de82c09cfc7553a50287d2188)
+> (2026-10-30). The fork has not changed the product yet, so it still looks and
+> behaves like bb.
 
 <p align="center">
-  <img alt="bb desktop app showing a code review thread, dispatch panel, and task board" src="assets/app-screenshot.png" width="800">
+  <img alt="The bb desktop app, which Foundry inherits, showing a code review thread, dispatch panel, and task board" src="assets/app-screenshot.png" width="800">
 </p>
 
-## Use bb
+## Run Foundry
 
-### Download the desktop app
+Foundry has no published packages or desktop builds, so run it from source.
+`npx bb-app` and the bb desktop downloads install upstream bb, not this fork.
 
-The recommended way to start using bb is the desktop app:
+You need:
 
-**[Download the latest desktop app](https://github.com/get-bb/bb/releases/tag/desktop-latest)**
-
-The desktop app supports macOS on Apple Silicon (arm64). The Linux x64 AppImage
-and the Windows x64 installer are alpha: expect problems, and please report
-them. Intel Mac users should run bb with `npx` instead. Native Windows needs
-[Git for Windows](https://git-scm.com/download/win), which bb uses for Git and
-for environment setup scripts. You can also run bb inside
-[WSL2 (Windows Subsystem for Linux)](https://learn.microsoft.com/windows/wsl/install):
-install WSL2 first, then run the `npx` command below from your WSL2 (Linux)
-shell.
-
-Early adopters can install
-**[bb Nightly](https://github.com/get-bb/bb/releases/tag/desktop-nightly)**
-alongside the stable desktop app. It has a separate application identity,
-yellow icon, and auto-update feed.
-
-### Or run it anywhere with npx
+- Node.js 22.19, 24, or 26.
+- pnpm 9.15. Run `corepack enable` to use the version pinned in `package.json`.
+- Git.
+- At least one supported agent provider you have already authenticated:
+  [Claude Code](https://docs.anthropic.com/en/docs/claude-code),
+  [Codex](https://developers.openai.com/codex/cli), Cursor via ACP,
+  [Pi](https://github.com/earendil-works/pi/tree/main/packages/coding-agent), or
+  another ACP-compatible agent.
 
 ```bash
-npx bb-app@latest
+git clone https://github.com/KyleMyers001/foundry.git
+cd foundry
+pnpm install
+pnpm start
 ```
 
 Then open `http://localhost:38886`.
 
-To control bb from outside bb with the `bb` CLI, open **Settings → General →
-Command line** and choose **Install**. See
-[The bb Command On PATH](./docs/configuration.md#the-bb-command-on-path).
+`pnpm start` uses the same `~/.bb` data directory and port as an installed copy
+of bb, so stop bb first and expect Foundry to open bb's existing projects and
+threads. To keep them apart, use [the development loop](#development), which
+gets its own data directory and ports.
 
-To run the newest automated build instead:
+To drive that instance from the command line, run `pnpm bb --help`.
 
-```bash
-npx bb-app@nightly
-```
+## What Still Says bb
 
-npm 12 and later block dependency install scripts by default. bb needs those
-scripts to build its native add-ons. If your npm version is 12 or later, allow
-the scripts for the install:
+The rename covers this repository's top-level documentation, not its code. These
+names are unchanged, so commands and paths throughout the docs still use them:
 
-```bash
-npx --allow-scripts=better-sqlite3,node-pty,@parcel/watcher bb-app@latest
-```
+- the `bb` CLI and the name shown in the app
+- the `bb-app`, `@bb/*`, and `@get-bb/*` packages
+- `BB_*` environment variables
+- the `~/.bb` and `~/.bb-dev` data directories and `.bb/` workspace files
 
-Or set the policy once for all global installs:
+Most guides under `docs/` and the package READMEs were written for bb and still
+call the product bb. They describe Foundry's behavior unless they cover bb's own
+releases or hosted services.
 
-```bash
-npm config set allow-scripts=better-sqlite3,node-pty,@parcel/watcher --location=user
-```
+Some defaults still lead to services and releases from the bb project:
 
-bb uses the provider CLI you already have authenticated.
-
-For install requirements, provider setup, configuration, and package-focused
-docs, start with
-[`packages/bb-app`](./packages/bb-app/README.md).
+- Desktop builds look for updates in `get-bb/bb` GitHub releases.
+- bb connect, the remote access service, defaults to `https://getbb.app`.
+- Settings → Mobile links to bb's iOS TestFlight and its Android APK in
+  `get-bb/bb` releases.
+- Settings → Community links to bb's Discord, which is for bb rather than Foundry.
+- Telemetry goes to the PostHog project inherited from bb.
 
 ### Telemetry
 
-Production runs (the desktop app, `npx bb-app`, and `pnpm start` checkouts) send
-anonymous usage telemetry (app starts, thread creation counts, user message
-counts, and plugin installs) to help us understand adoption. Each event carries
-the app version, how bb was installed (desktop, npm, or source checkout), and
-the OS release, CPU architecture, and Node version. Source checkouts report whether
-`origin` points to `github.com/get-bb/bb`, another repository, or is unavailable.
-Telemetry never includes Git commit hashes or remote URLs. Identification is a random per-install
-id stored in your data dir — no user, host, project, workspace, or message
-content is ever attached. Plugin install events name only public plugins
-(bundled plugins and `bb-community` marketplace entries); installs from a local
-path, a private git or npm source, or a third-party marketplace report no name. Development runs (`pnpm dev`, `pnpm start:worktree`) never send. Opt out any run with
-`BB_TELEMETRY=false`. See
+Foundry inherits bb's telemetry unchanged. Production runs, including `pnpm start`,
+send anonymous usage telemetry (app starts, thread creation counts, user message
+counts, and plugin installs) to the default PostHog project inherited from bb.
+Each event carries the app version, how the app was installed (desktop, npm, or
+source checkout), and the OS release, CPU architecture, and Node version. Source
+checkouts report whether `origin` points to `github.com/get-bb/bb`, another
+repository, or is unavailable, so a Foundry checkout reports as another
+repository. Telemetry never includes Git commit hashes or remote URLs.
+Identification is a random per-install id stored in your data dir — no user,
+host, project, workspace, or message content is ever attached. Plugin install
+events name only public plugins (bundled plugins and `bb-community` marketplace
+entries); installs from a local path, a private git or npm source, or a
+third-party marketplace report no name. Development runs (`pnpm dev`,
+`pnpm start:worktree`) never send.
+
+Opt out any run with `BB_TELEMETRY=false`. See
 [`apps/server/src/services/system/telemetry.ts`](./apps/server/src/services/system/telemetry.ts).
 
 ## Development
 
-Use the development loop when working on bb itself:
+Use the development loop when working on Foundry itself:
 
 ```bash
 pnpm dev
@@ -243,6 +235,8 @@ See [System overview](docs/system-overview.md) for runtime architecture, data mo
 
 ## Further Reading
 
+These guides are inherited from bb.
+
 - [Vision](docs/VISION.md)
 - [Platform support](docs/platform-support.md)
 - [Configuration](docs/configuration.md)
@@ -257,62 +251,41 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ### `Could not locate the bindings file`
 
-bb uses native add-ons, for example `better-sqlite3` and `@parcel/watcher`. npm
-downloads or builds those binaries in a package install script. If npm does not
-run install scripts, the binaries are absent. bb then stops at startup with this
-error:
+Foundry uses native add-ons, for example `better-sqlite3` and `@parcel/watcher`.
+Their binaries are built during `pnpm install` for one Node.js major version,
+operating system, CPU architecture, and libc. Foundry stops at startup with this
+error if they are missing or were built for something else:
 
 ```
 Error: Could not locate the bindings file. Tried:
  → .../node_modules/better-sqlite3/build/better_sqlite3.node
 ```
 
-There are two usual causes.
-
-The first cause is npm 12 or later. Since npm 12, npm blocks dependency install
-scripts by default and prints
-`npm warn install-scripts N packages had install scripts blocked`. Name bb's
-native add-ons in `--allow-scripts` to let this one command run their install
-scripts:
+To recover, for example after changing Node.js versions, run:
 
 ```bash
-npx --allow-scripts=better-sqlite3,node-pty,@parcel/watcher bb-app@latest
+pnpm install
+pnpm ensure-native-modules
 ```
 
-For a permanent install with the same setting, use:
+If you hit this error with `npx bb-app`, you are running upstream bb. See
+[bb's README](https://github.com/get-bb/bb#troubleshooting).
 
-```bash
-npm install -g --allow-scripts=better-sqlite3,node-pty,@parcel/watcher bb-app
-bb-app
-```
+## Credits
 
-To allow them for all global installs on this machine, run
-`npm config set allow-scripts=better-sqlite3,node-pty,@parcel/watcher --location=user`.
-npm 10 and 11 accept or ignore the flag, so it is safe on every supported Node.
+Foundry exists because of [bb](https://github.com/get-bb/bb) and the people who
+built it. bb was created by Michael Yong, the copyright holder of the original
+work, with major contributions from Sawyer Hood, Bersabel Tadesse, and
+[many other contributors](https://github.com/get-bb/bb/graphs/contributors).
+This repository keeps bb's full commit history, so their authorship stays with
+their work.
 
-The second cause is `ignore-scripts=true` in your `~/.npmrc`. Set the
-`npm_config_ignore_scripts` environment variable to let this one command run its
-install scripts:
+For bb itself, including releases and community, see
+[getbb.app](https://getbb.app).
 
-```bash
-npm_config_ignore_scripts=false npx bb-app@latest
-```
+bb's CI is powered by [Blacksmith](https://blacksmith.sh).
 
-For a permanent install with the same setting, use:
+## License
 
-```bash
-npm_config_ignore_scripts=false npm install -g bb-app
-bb-app
-```
-
-The environment variable applies to that one command only. Keep
-`ignore-scripts=true` in your `~/.npmrc` if you want it for security.
-
-The same error has other causes. A Node.js major-version change after the
-install causes it. A copy of `node_modules` from a different operating system,
-CPU architecture, or libc variant also causes it. To recover, install the
-package again, or run `npm rebuild better-sqlite3`.
-
-## Acknowledgements
-
-<a href="https://blacksmith.sh"><img src="assets/blacksmith-ci.png" alt="CI powered by Blacksmith" width="400"></a>
+Foundry is released under the [MIT License](LICENSE), the license bb uses, and
+keeps bb's original copyright notice.

@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please read [docs/filing-issues.md](https://github.com/get-bb/bb/blob/main/docs/filing-issues.md) first. Short and precise beats long and vague.
+        Please read [docs/filing-issues.md](https://github.com/KyleMyers001/foundry/blob/main/docs/filing-issues.md) first. Short and precise beats long and vague.
   - type: textarea
     id: summary
     attributes:
