@@ -52,8 +52,8 @@ export function createDesktopReleaseConfig(channel) {
   }
 
   return {
-    appId: "dev.bb.desktop",
-    applicationName: "bb",
+    appId: "io.github.kylemyers001.foundry",
+    applicationName: "Foundry",
     artifactName: "${productName}-${version}-${arch}.${ext}",
     iconFileName: "icon.png",
     linuxExecutableName: "bb",
@@ -69,5 +69,5 @@ export function createDesktopReleaseConfig(channel) {
 }
 
 export function createDesktopUpdateReleaseBaseUrl(releaseTag) {
-  return `https://github.com/get-bb/bb/releases/download/${releaseTag}/`;
+  return `https://github.com/KyleMyers001/foundry/releases/download/${releaseTag}/`;
 }
