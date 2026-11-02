@@ -14,6 +14,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
+import { AppInfo, Packager } from "electron-builder";
 import { describe, expect, it } from "vitest";
 import {
   createDesktopReleaseInfo,
@@ -277,6 +278,22 @@ const readResolvedConfig: ReadResolvedConfig = async (overrides) => {
 };
 
 describe("electron-builder signing config", () => {
+  it.each([
+    ["latest", "foundry-desktop-updater"],
+    ["nightly", "foundry-desktop-nightly-updater"],
+  ])(
+    "isolates the %s updater cache from bb and the other channel",
+    async (channel, cacheName) => {
+      const { config } = await readResolvedConfig({
+        BB_DESKTOP_RELEASE_CHANNEL: channel,
+      });
+      const packager = new Packager({ projectDir: desktopPackageRoot, config });
+      await packager.validateConfig();
+
+      expect(new AppInfo(packager, null).updaterCacheDirName).toBe(cacheName);
+    },
+  );
+
   it("keeps package metadata compatible with electron universal's CJS entry asar", async () => {
     const packageJsonText = await readFile(
       resolve(desktopPackageRoot, "package.json"),
@@ -554,12 +571,12 @@ describe("electron-builder signing config", () => {
     }
   });
 
-  it("keeps the updater provider pointed at desktop-latest release assets", async () => {
+  it("keeps the updater provider pointed at the latest published release", async () => {
     const config = await readStaticConfig();
 
     expect(config.publish[0]).toMatchObject(DESKTOP_AUTO_UPDATE_FEED_CONFIG);
     expect(DESKTOP_AUTO_UPDATE_FEED_CONFIG.url).toBe(
-      "https://github.com/KyleMyers001/foundry/releases/download/desktop-latest/",
+      "https://github.com/KyleMyers001/foundry/releases/latest/download/",
     );
   });
 

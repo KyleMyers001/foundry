@@ -75,9 +75,11 @@ jobs:
             exit 1
           fi
 
-          if gh release view "desktop-v${VERSION}" >/dev/null 2>&1; then
-            echo "::error::Release desktop-v${VERSION} already exists. Bump the version with scripts/bump-version.mjs."
-            exit 1
+          if target_sha=$(gh release view "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq '.targetCommitish' 2>/dev/null); then
+            if [[ "$target_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Release desktop-v${VERSION} belongs to another commit. Bump the version with scripts/bump-version.mjs."
+              exit 1
+            fi
           fi
 
       - name: Set up pnpm
@@ -124,7 +126,7 @@ jobs:
         run: pnpm exec turbo run smoke:packaged --filter=@bb/desktop --force --output-logs=new-only
 
       - name: Generate version feed
-        run: pnpm --dir apps/desktop run desktop:version-feed
+        run: pnpm --dir apps/desktop run desktop:version-feed --versioned
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -158,7 +160,7 @@ jobs:
           name: foundry-desktop-macos-arm64
           path: release
 
-      - name: Publish versioned and moving releases
+      - name: Publish versioned release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
@@ -176,39 +178,35 @@ jobs:
           done
 
           version_tag="desktop-v${VERSION}"
-          latest_tag="desktop-latest"
           notes="Foundry ${VERSION} for macOS (Apple silicon). Download the .dmg."
 
-          gh release create "$version_tag" "${assets[@]}" \
-            --target "$GITHUB_SHA" \
-            --title "Foundry ${VERSION}" \
-            --notes "$notes" \
-            --latest
-
-          git tag -f "$latest_tag" "$GITHUB_SHA"
-          git push --force origin "refs/tags/${latest_tag}"
-
-          if gh release view "$latest_tag" >/dev/null 2>&1; then
-            gh release edit "$latest_tag" \
-              --target "$GITHUB_SHA" \
-              --title "Foundry update feed" \
-              --notes "Moving update feed for installed Foundry apps. Download from the latest versioned release instead." \
-              --latest=false
-
-            gh release view "$latest_tag" --json assets --jq '.assets[].name' | while IFS= read -r asset_name; do
-              if [[ -n "$asset_name" ]]; then
-                gh release delete-asset "$latest_tag" "$asset_name" --yes
+          if release_info=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish --jq '[.isDraft, .targetCommitish] | @tsv' 2>/dev/null); then
+            IFS=$'\t' read -r is_draft target_sha <<< "$release_info"
+            if [[ "$target_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Release ${version_tag} belongs to another commit."
+              exit 1
+            fi
+            if [[ "$is_draft" == "false" ]]; then
+              tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${version_tag}" --jq '.sha')
+              if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+                echo "::error::Tag ${version_tag} belongs to another commit."
+                exit 1
               fi
-            done
-
-            gh release upload "$latest_tag" "${assets[@]}"
+              echo "Release ${version_tag} is already published; preserving its assets."
+              exit 0
+            fi
           else
-            gh release create "$latest_tag" "${assets[@]}" \
+            gh release create "$version_tag" \
+              --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "Foundry update feed" \
-              --notes "Moving update feed for installed Foundry apps. Download from the latest versioned release instead." \
+              --title "Foundry ${VERSION}" \
+              --notes "$notes" \
+              --draft \
               --latest=false
           fi
+
+          gh release upload "$version_tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$version_tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest
 
       - name: Verify the update feed
         env:
@@ -216,7 +214,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          feed_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/desktop-latest/desktop-version.json"
+          feed_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/desktop-version.json"
           for attempt in $(seq 1 12); do
             if curl -fsSL "$feed_url" | grep -q "\"${VERSION}\""; then
               echo "Update feed reports ${VERSION}."

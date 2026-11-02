@@ -277,7 +277,7 @@ To bump for a release:
 node scripts/bump-version.mjs <new-version>
 ```
 
-Then commit and ship through the normal `sawyer-next` → `main` flow. You can also
+Then commit on a feature branch and land through a pull request. You can also
 use `--patch`, `--minor`, or `--major` instead of an explicit version.
 
 CI enforces this lockstep. Direct edits that leave
@@ -285,10 +285,14 @@ CI enforces this lockstep. Direct edits that leave
 versions fail the build. Never edit either package version directly for a
 release; use `scripts/bump-version.mjs` so both files move together.
 
-The desktop release tag uses the locked version: `desktop-v<version>` for
-immutable releases and `desktop-latest` for the moving pointer.
+Foundry publishes a complete `desktop-v<version>` draft before marking it as
+GitHub's latest release. Its feeds use the latest-release download URL and pin
+binaries to the versioned release. Failed uploads leave the previous release
+untouched; retrying the same commit resumes the draft without replacing any
+published assets. See [Foundry's release process](../../docs/foundry-desktop-release.md).
 
-`build-desktop.yml` builds macOS, Linux, and Windows in parallel jobs, then
+Upstream bb uses `desktop-v<version>` for immutable releases and `desktop-latest`
+for its moving pointer. Its `build-desktop.yml` builds macOS, Linux, and Windows in parallel jobs, then
 publishes all three from one job. The moving release resets all of its assets
 on each publish, so a single publisher is what keeps one platform from deleting
 another's binaries. Each platform has its own update feed file inside the same release
@@ -393,6 +397,10 @@ GitHub Actions secrets:
 | `APPLE_APP_PASSWORD`         | App-specific password from `appleid.apple.com` under Sign-In and Security.                                                                                                             |
 | `APPLE_TEAM_ID`              | Developer Team ID from `developer.apple.com/account` membership details.                                                                                                               |
 
+Foundry requires every signing secret before publishing a release through
+`release-desktop-macos.yml`; see [its release process](../../docs/foundry-desktop-release.md).
+The following describes upstream bb's workflow, which does not run in this fork.
+
 Once those secrets are present, the next `Build Desktop` workflow run with
 `publish=true` and `release_channel=stable` signs the `.app`, notarizes it, and
 publishes the signed `.dmg` / `.zip` assets to `desktop-latest`. If no required
@@ -404,14 +412,17 @@ produce unsigned or signed-but-not-notarized artifacts.
 
 ## Auto-update
 
-The renderer update toast keeps using `desktop-version.json` as the lightweight
-feature surface. The installer path uses `electron-updater` against the same
-`desktop-latest` release asset directory and reads `latest-mac.yml`. These
-checks run in parallel on launch, hourly, and when the app becomes active: the
-JSON feed can show "update available" even when CI has published metadata only,
-while the Electron updater only flips the toast to "ready to install" after a
-signed update has actually downloaded. Local dev builds skip Electron auto-update
-unless `BB_DESKTOP_AUTO_UPDATE=1` is set.
+The renderer update toast uses `desktop-version.json` as the lightweight feature
+surface. The installer path uses `electron-updater` and `latest-mac.yml`. Stable
+Foundry builds read both feeds from this repository's
+`releases/latest/download/` directory; each feed pins binary downloads to its
+immutable `desktop-v<version>` release. The packaged metadata name also gives
+Foundry its own updater cache, separate from bb and from the nightly channel.
+
+These checks run in parallel on launch, hourly, and when the app becomes active.
+The toast becomes "ready to install" only after a signed update has downloaded.
+Local dev builds skip Electron auto-update unless `BB_DESKTOP_AUTO_UPDATE=1` is
+set.
 
 `bb Nightly` follows the equivalent isolated `desktop-nightly` release and
 `nightly-mac.yml`; it never reads or moves the stable feed. The scheduled

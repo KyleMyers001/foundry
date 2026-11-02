@@ -1,6 +1,9 @@
 {
   "appId": "io.github.kylemyers001.foundry",
   "productName": "Foundry",
+  "extraMetadata": {
+    "name": "foundry-desktop"
+  },
   "artifactName": "${productName}-${version}-${arch}.${ext}",
   "toolsets": {
     "appimage": "1.0.3"
@@ -33,7 +36,7 @@
     {
       "channel": "latest",
       "provider": "generic",
-      "url": "https://github.com/KyleMyers001/foundry/releases/download/desktop-latest/"
+      "url": "https://github.com/KyleMyers001/foundry/releases/latest/download/"
     }
   ],
   "mac": {

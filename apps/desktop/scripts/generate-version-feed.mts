@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { parseArgs } from "node:util";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 import {
@@ -9,10 +10,14 @@ import {
 } from "@bb/desktop-contract";
 import {
   createDesktopReleaseConfig,
+  createDesktopUpdateReleaseBaseUrl,
   resolveDesktopBuildPlatform,
   resolveDesktopReleaseChannel,
 } from "./desktop-release-channel.mjs";
 
+const { values } = parseArgs({
+  options: { versioned: { type: "boolean", default: false } },
+});
 const packageRoot = process.cwd();
 const packageJsonPath = resolve(packageRoot, "package.json");
 const releaseChannel = resolveDesktopReleaseChannel(process.env);
@@ -60,7 +65,7 @@ function parseJson(text: string): unknown {
 const packageJson = packageJsonSchema.parse(
   parseJson(await readFile(packageJsonPath, "utf8")),
 );
-const updateMetadata = updateMetadataSchema.parse(
+let updateMetadata = updateMetadataSchema.parse(
   parseYaml(await readFile(updateMetadataPath, "utf8")),
 );
 
@@ -68,6 +73,20 @@ if (updateMetadata.version !== packageJson.version) {
   throw new Error(
     `${updateMetadataFileName} version ${updateMetadata.version} did not match apps/desktop/package.json version ${packageJson.version}`,
   );
+}
+
+if (values.versioned) {
+  const releaseBaseUrl = createDesktopUpdateReleaseBaseUrl(
+    `desktop-v${packageJson.version}`,
+  );
+  updateMetadata = {
+    ...updateMetadata,
+    files: updateMetadata.files.map((file) => ({
+      ...file,
+      url: new URL(file.url, releaseBaseUrl).href,
+    })),
+    path: new URL(updateMetadata.path, releaseBaseUrl).href,
+  };
 }
 
 const desktopVersionFeed: BbDesktopVersionFeed = {
@@ -86,12 +105,14 @@ const desktopVersionFeed: BbDesktopVersionFeed = {
 };
 
 const validatedFeed = bbDesktopVersionFeedSchema.parse(desktopVersionFeed);
-if (validatedFeed.minimumSystemVersion !== null) {
+if (values.versioned || validatedFeed.minimumSystemVersion !== null) {
   await writeFile(
     updateMetadataPath,
     stringifyYaml({
       ...updateMetadata,
-      minimumSystemVersion: validatedFeed.minimumSystemVersion,
+      ...(validatedFeed.minimumSystemVersion === null
+        ? {}
+        : { minimumSystemVersion: validatedFeed.minimumSystemVersion }),
     }),
     "utf8",
   );

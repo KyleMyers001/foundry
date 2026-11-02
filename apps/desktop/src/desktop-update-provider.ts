@@ -3,28 +3,29 @@ import {
   type BbDesktopVersionFeedPlatform,
 } from "@bb/desktop-contract";
 
-type DesktopReleaseChannel = "latest" | "nightly";
+import {
+  createDesktopReleaseConfig,
+  createDesktopUpdateReleaseBaseUrl,
+  type DesktopReleaseChannel,
+} from "../scripts/desktop-release-channel.mjs";
 
 interface DesktopReleaseInfo {
   applicationName: "Foundry" | "bb Nightly";
   channel: DesktopReleaseChannel;
   iconFileName: "icon.png" | "icon-nightly.png";
-  releaseTag: "desktop-latest" | "desktop-nightly";
   updateReleaseBaseUrl: string;
 }
 
 export function createDesktopReleaseInfo(
   channel: DesktopReleaseChannel,
 ): DesktopReleaseInfo {
-  const nightly = channel === "nightly";
-  const releaseTag = nightly ? "desktop-nightly" : "desktop-latest";
+  const config = createDesktopReleaseConfig(channel);
 
   return {
-    applicationName: nightly ? "bb Nightly" : "Foundry",
+    applicationName: config.applicationName,
     channel,
-    iconFileName: nightly ? "icon-nightly.png" : "icon.png",
-    releaseTag,
-    updateReleaseBaseUrl: `https://github.com/KyleMyers001/foundry/releases/download/${releaseTag}/`,
+    iconFileName: config.iconFileName,
+    updateReleaseBaseUrl: createDesktopUpdateReleaseBaseUrl(config.releaseTag),
   };
 }
 

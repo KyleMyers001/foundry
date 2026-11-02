@@ -51,9 +51,9 @@ describe("electron-builder Windows config", () => {
     expect(config.extraMetadata).toEqual({ name: "bb-nightly" });
   });
 
-  it("leaves the package name alone for other platforms", async () => {
+  it("keeps Windows install metadata out of other platforms", async () => {
     const config = await printConfig(["--linux", "--x64"], "latest");
 
-    expect(config.extraMetadata).toBeUndefined();
+    expect(config.extraMetadata).toEqual({ name: "foundry-desktop" });
   });
 });

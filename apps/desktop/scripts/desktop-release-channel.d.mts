@@ -14,7 +14,7 @@ export interface DesktopReleaseConfig {
   iconFileName: "icon.png" | "icon-nightly.png";
   linuxExecutableName: "bb" | "bb-nightly";
   macIconPath: "assets/icon.icns" | "assets/icon-nightly.icns";
-  releaseTag: "desktop-latest" | "desktop-nightly";
+  releaseTag: "desktop-nightly" | null;
   updateMetadataFileNames: DesktopUpdateMetadataFileNames;
   windowsInstallName: "bb" | "bb-nightly";
 }
@@ -32,5 +32,5 @@ export function createDesktopReleaseConfig(
 ): DesktopReleaseConfig;
 
 export function createDesktopUpdateReleaseBaseUrl(
-  releaseTag: DesktopReleaseConfig["releaseTag"],
+  releaseTag: string | null,
 ): string;

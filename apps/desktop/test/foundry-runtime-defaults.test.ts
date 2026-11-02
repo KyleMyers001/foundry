@@ -50,7 +50,7 @@ describe("foundry desktop identity", () => {
 
     expect(release.applicationName).toBe("Foundry");
     expect(release.updateReleaseBaseUrl).toBe(
-      "https://github.com/KyleMyers001/foundry/releases/download/desktop-latest/",
+      "https://github.com/KyleMyers001/foundry/releases/latest/download/",
     );
   });
 });

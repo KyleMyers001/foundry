@@ -37,8 +37,6 @@ export function createDesktopReleaseConfig(channel) {
       applicationName: "bb Nightly",
       artifactName: "bb-nightly-${version}-${arch}.${ext}",
       iconFileName: "icon-nightly.png",
-      // The Linux binary name must differ from stable so both channels can be
-      // installed at once without one shadowing the other on PATH.
       linuxExecutableName: "bb-nightly",
       macIconPath: "assets/icon-nightly.icns",
       releaseTag: "desktop-nightly",
@@ -58,7 +56,7 @@ export function createDesktopReleaseConfig(channel) {
     iconFileName: "icon.png",
     linuxExecutableName: "bb",
     macIconPath: "assets/icon.icns",
-    releaseTag: "desktop-latest",
+    releaseTag: null,
     windowsInstallName: "bb",
     updateMetadataFileNames: {
       linux: "latest-linux.yml",
@@ -69,5 +67,7 @@ export function createDesktopReleaseConfig(channel) {
 }
 
 export function createDesktopUpdateReleaseBaseUrl(releaseTag) {
-  return `https://github.com/KyleMyers001/foundry/releases/download/${releaseTag}/`;
+  const releasePath =
+    releaseTag === null ? "latest/download" : `download/${releaseTag}`;
+  return `https://github.com/KyleMyers001/foundry/releases/${releasePath}/`;
 }

@@ -42,11 +42,19 @@ secrets the app is unsigned, and it is still a valid test of the build.
    ```
 
 Publishing fails before the build if the run is not on `main`, the version is a
-prerelease, a signing secret is missing, or the version was already released.
+prerelease, a signing secret is missing, or an existing release belongs to a
+different commit.
 
-The run creates two releases. `desktop-v<version>` is the immutable download and
-is marked as GitHub's latest. `desktop-latest` is the moving feed that installed
-apps poll for updates, so do not delete it.
+The run creates a draft `desktop-v<version>`, uploads every artifact, then
+publishes it and marks it as GitHub's latest. Installed apps read
+`releases/latest/download/desktop-version.json` and `latest-mac.yml`. Both feeds
+pin binary URLs to the immutable versioned release, so cached metadata still
+works after a newer release becomes latest. There is no moving release to reset.
+
+If an upload fails, the previous release stays live and the incomplete draft can
+be resumed by rerunning the workflow on the same commit. A published release on
+the same commit is a no-op; its assets are never replaced. A different commit
+requires a version bump.
 
 Download the `.dmg` from
 <https://github.com/KyleMyers001/foundry/releases/latest>.
@@ -65,7 +73,10 @@ applies these defaults at launch unless the variable is already set:
 
 An installed bb keeps `~/.bb` and ports `38886` and `38887`, so the two do not
 share threads, projects, or settings. The `bb` CLI inside a Foundry thread comes
-from `~/.foundry/bin/bb`. Source checkouts and `pnpm dev:desktop` are unaffected.
+from `~/.foundry/bin/bb`. Its Electron update cache is also separate from bb:
+`~/Library/Caches/foundry-desktop-updater` on macOS. Nightly builds use
+`foundry-desktop-nightly-updater`. Source checkouts and `pnpm dev:desktop` are
+unaffected.
 
 ## Known upstream ties
 
