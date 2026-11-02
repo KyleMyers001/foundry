@@ -69,5 +69,5 @@ from `~/.foundry/bin/bb`. Source checkouts and `pnpm dev:desktop` are unaffected
 
 ## Known upstream ties
 
-These still point at bb's services and are not changed by a release: the plugin
-marketplace and bb connect at `getbb.app`, and some in-app text and icons.
+These are not changed by a release: the plugin marketplace and bb connect still
+default to `getbb.app`, and in-app text and the official plugin logo still say bb.

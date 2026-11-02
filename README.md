@@ -12,9 +12,10 @@ or hand off to another agent.
 > Foundry is maintained by Kyle Myers and is not affiliated with or endorsed by
 > the bb project. It forked from `get-bb/bb` at commit
 > [`916d684ac`](https://github.com/get-bb/bb/commit/916d684ac23d0b0de82c09cfc7553a50287d2188)
-> (2026-10-30). So far the fork changes how packaged desktop builds identify and
-> update themselves, as described in [What Still Says bb](#what-still-says-bb).
-> Otherwise it still looks and behaves like bb.
+> (2026-10-30). So far the fork changes the desktop and web app's icons and main
+> logo, and how packaged desktop builds identify and update themselves, as
+> described in [What Still Says bb](#what-still-says-bb). Otherwise it still
+> behaves like bb.
 
 <p align="center">
   <img alt="The bb desktop app, which Foundry inherits, showing a code review thread, dispatch panel, and task board" src="assets/app-screenshot.png" width="800">
@@ -54,22 +55,24 @@ To drive that instance from the command line, run `pnpm bb --help`.
 
 ## What Still Says bb
 
-The rename covers this repository's top-level documentation and the identity of
-packaged desktop builds. These names are otherwise unchanged, so commands and
-paths throughout the docs still use them:
+The rename covers this repository's top-level documentation, the desktop and web
+app's icons and main logo, and the identity of packaged desktop builds. These
+names are otherwise unchanged, so commands and paths throughout the docs still
+use them:
 
 - the `bb` CLI and the name shown in the app's pages
 - the `bb-app`, `@bb/*`, and `@get-bb/*` packages
 - `BB_*` environment variables
 - the `~/.bb` and `~/.bb-dev` data directories and `.bb/` workspace files
 
+bb's logo also still marks official plugins in the app.
+
 A desktop app packaged from this repository is the exception, so it can run
 beside an installed bb. It is named Foundry, uses the app ID
 `io.github.kylemyers001.foundry`, and checks this repository's GitHub releases
 for updates. Unless they are already set, it defaults `BB_DATA_DIR` to
 `~/.foundry`, `BB_SERVER_PORT` to `38986`, `BB_HOST_DAEMON_PORT` to `38987`, and
-`BB_TELEMETRY` to `false`. It still uses bb's icon. `pnpm start` and the
-development loop are unaffected.
+`BB_TELEMETRY` to `false`. `pnpm start` and the development loop are unaffected.
 
 Most guides under `docs/` and the package READMEs were written for bb and still
 call the product bb. They describe Foundry's behavior unless they cover bb's own
