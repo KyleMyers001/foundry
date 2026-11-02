@@ -89,7 +89,7 @@ jobs:
 
   windows-dependency-cache:
     name: Warm Windows dependencies
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.repository == 'get-bb/bb' && github.event_name != 'pull_request' }}
     runs-on: windows-2025
     timeout-minutes: 10
     continue-on-error: true
@@ -128,11 +128,10 @@ jobs:
 
   windows-foundation:
     needs: plan
-    if: ${{ fromJSON(needs.plan.outputs.selection).foundation }}
+    if: ${{ github.repository == 'get-bb/bb' && fromJSON(needs.plan.outputs.selection).foundation }}
     name: Windows host packages (Node 22.x)
     runs-on: windows-2025
     timeout-minutes: 15
-    continue-on-error: true
     permissions:
       contents: read
 
@@ -181,7 +180,7 @@ jobs:
 
   windows-app-smoke:
     needs: plan
-    if: ${{ fromJSON(needs.plan.outputs.selection).packaging }}
+    if: ${{ github.repository == 'get-bb/bb' && fromJSON(needs.plan.outputs.selection).packaging }}
     name: Windows app smoke (Node 22.x)
     runs-on: windows-2025
     timeout-minutes: 40
@@ -266,7 +265,7 @@ jobs:
 
   windows-desktop-smoke:
     needs: plan
-    if: ${{ fromJSON(needs.plan.outputs.selection).packaging }}
+    if: ${{ github.repository == 'get-bb/bb' && fromJSON(needs.plan.outputs.selection).packaging }}
     name: Windows desktop smoke (Node 22.x)
     runs-on: windows-2025
     timeout-minutes: 40
@@ -338,7 +337,7 @@ jobs:
   windows-tests:
     name: Windows tests (${{ matrix.shard }}, Node 22.x)
     needs: plan
-    if: ${{ fromJSON(needs.plan.outputs.selection)['windows-tests'].include[0] != null }}
+    if: ${{ github.repository == 'get-bb/bb' && fromJSON(needs.plan.outputs.selection)['windows-tests'].include[0] != null }}
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -974,7 +973,7 @@ jobs:
 
   node-compat-smoke:
     name: Node Compatibility Smoke (${{ matrix.os }}, Node ${{ matrix.node-version }})
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.repository == 'get-bb/bb' && github.event_name != 'pull_request' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
