@@ -48,6 +48,7 @@ function stepScript(name) {
 function fixture(run) {
   const root = mkdtempSync(join(tmpdir(), "foundry-release-"));
   const statePath = join(root, "state.json");
+  const summaryPath = join(root, "summary.md");
   const state = {
     latest: "desktop-v0.48.0",
     tags: { "desktop-v0.48.0": "b".repeat(40) },
@@ -88,6 +89,7 @@ function fixture(run) {
             "packages/scripts/test/fixtures/foundry-release-gh.mjs",
           ),
           RELEASE_TEST_STATE: statePath,
+          GITHUB_STEP_SUMMARY: summaryPath,
           RELEASE_TEST_FAILURE: failure,
           VERSION: "0.48.1",
           GITHUB_SHA: sha,
@@ -105,44 +107,76 @@ function fixture(run) {
     return result;
   };
   try {
-    run({ state, execute });
+    run({ state, execute, summaryPath });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
 
-const publishStep = "Publish versioned";
+const publishStep = "Publish versioned draft";
+const verifyStep = "Verify the draft release";
 
 describe.skipIf(process.platform === "win32")(
   "Foundry desktop publication",
   () => {
-    it.each(["upload", "promote"])(
-      "recovers after a failed %s without damaging published assets",
-      (failure) => {
-        fixture(({ state, execute }) => {
-          const failed = execute(publishStep, failure);
-          expect(failed.status, failed.stderr).toBe(23);
-          expect(state.releases["desktop-v0.48.0"].assets).toEqual(oldAssets);
-          expect(state.releases["desktop-latest"].assets).toEqual(oldAssets);
-          expect(state.releases[versionTag].isDraft).toBe(failure === "upload");
-          expect(state.latest).toBe(
-            failure === "upload" ? "desktop-v0.48.0" : versionTag,
-          );
+    it("leaves a non-latest draft and never promotes it", () => {
+      fixture(({ state, execute, summaryPath }) => {
+        const published = execute(publishStep);
+        expect(published.status, published.stderr).toBe(0);
+        expect(state.releases[versionTag].isDraft).toBe(true);
+        expect(state.latest).toBe("desktop-v0.48.0");
+        expect(state.tags[versionTag]).toBeUndefined();
+        expect(Object.keys(state.releases[versionTag].assets).sort()).toEqual(
+          [...assets].sort(),
+        );
+        expect(state.releases["desktop-v0.48.0"].assets).toEqual(oldAssets);
+        expect(state.releases["desktop-latest"].assets).toEqual(oldAssets);
 
-          const resumed = execute(publishStep);
-          expect(resumed.status, resumed.stderr).toBe(0);
-          expect(state.releases[versionTag].isDraft).toBe(false);
-          expect(state.latest).toBe(versionTag);
-          expect(Object.keys(state.releases[versionTag].assets).sort()).toEqual(
-            [...assets].sort(),
-          );
-          const published = structuredClone(state.releases[versionTag]);
-          const repeated = execute(publishStep);
-          expect(repeated.status, repeated.stderr).toBe(0);
-          expect(state.releases[versionTag]).toEqual(published);
-        });
-      },
-    );
+        const verified = execute(verifyStep);
+        expect(verified.status, verified.stderr).toBe(0);
+        expect(readFileSync(summaryPath, "utf8")).toContain("--draft=false");
+      });
+    });
+
+    it("recovers after a failed upload without damaging published assets", () => {
+      fixture(({ state, execute }) => {
+        const failed = execute(publishStep, "upload");
+        expect(failed.status, failed.stderr).toBe(23);
+        expect(state.releases[versionTag].isDraft).toBe(true);
+        expect(state.latest).toBe("desktop-v0.48.0");
+        expect(execute(verifyStep).status).not.toBe(0);
+
+        const resumed = execute(publishStep);
+        expect(resumed.status, resumed.stderr).toBe(0);
+        expect(state.releases[versionTag].isDraft).toBe(true);
+        expect(state.latest).toBe("desktop-v0.48.0");
+        expect(Object.keys(state.releases[versionTag].assets).sort()).toEqual(
+          [...assets].sort(),
+        );
+        expect(state.releases["desktop-v0.48.0"].assets).toEqual(oldAssets);
+        expect(state.releases["desktop-latest"].assets).toEqual(oldAssets);
+        const draft = structuredClone(state.releases[versionTag]);
+        const repeated = execute(publishStep);
+        expect(repeated.status, repeated.stderr).toBe(0);
+        expect(state.releases[versionTag]).toEqual(draft);
+        expect(execute(verifyStep).status).toBe(0);
+      });
+    });
+
+    it("preserves a release that was already published from the same commit", () => {
+      fixture(({ state, execute }) => {
+        state.releases[versionTag] = {
+          isDraft: false,
+          targetCommitish: sha,
+          assets: { "keep.zip": "unchanged" },
+        };
+        state.tags[versionTag] = sha;
+        const before = structuredClone(state);
+        const result = execute(publishStep);
+        expect(result.status, result.stderr).toBe(0);
+        expect(state).toEqual(before);
+      });
+    });
 
     it.each([true, false])(
       "rejects reusing a version from another commit (draft=%s)",

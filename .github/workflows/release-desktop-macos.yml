@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish to GitHub Releases. Requires main and every Apple signing secret. Off builds a workflow artifact only."
+        description: "Upload to a draft GitHub Release that is promoted by hand. Requires main and every Apple signing secret. Off builds a workflow artifact only."
         required: true
         type: boolean
         default: false
@@ -160,7 +160,7 @@ jobs:
           name: foundry-desktop-macos-arm64
           path: release
 
-      - name: Publish versioned release
+      - name: Publish versioned draft release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
@@ -206,24 +206,28 @@ jobs:
           fi
 
           gh release upload "$version_tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
-          gh release edit "$version_tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest
 
-      - name: Verify the update feed
+      - name: Verify the draft release
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           set -euo pipefail
 
-          feed_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/desktop-version.json"
-          for attempt in $(seq 1 12); do
-            if curl -fsSL "$feed_url" | grep -q "\"${VERSION}\""; then
-              echo "Update feed reports ${VERSION}."
-              echo "Download: https://github.com/${GITHUB_REPOSITORY}/releases/tag/desktop-v${VERSION}" >> "$GITHUB_STEP_SUMMARY"
-              exit 0
+          version_tag="desktop-v${VERSION}"
+          uploaded=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          for file in release/*; do
+            if ! grep -Fxq "$(basename "$file")" <<< "$uploaded"; then
+              echo "::error::Release ${version_tag} is missing $(basename "$file")."
+              exit 1
             fi
-            echo "Feed does not report ${VERSION} yet (attempt ${attempt}/12)."
-            sleep 10
           done
 
-          echo "::error::Update feed at ${feed_url} never reported ${VERSION}."
-          exit 1
+          is_draft=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')
+          release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${version_tag}"
+          if [[ "$is_draft" == "true" ]]; then
+            echo "Draft ${version_tag} is ready and is not marked latest. Promote it with: gh release edit ${version_tag} --repo ${GITHUB_REPOSITORY} --draft=false --latest" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Release ${version_tag} was already published and was left unchanged." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Release: ${release_url}" >> "$GITHUB_STEP_SUMMARY"

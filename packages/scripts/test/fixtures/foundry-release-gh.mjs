@@ -26,6 +26,8 @@ if (command === "api" && action.includes("/commits/")) {
       console.log(`${release.isDraft}\t${release.targetCommitish}`);
     } else if (query === ".targetCommitish") {
       console.log(release.targetCommitish);
+    } else if (query === ".isDraft") {
+      console.log(release.isDraft);
     } else if (query === ".assets[].name") {
       console.log(Object.keys(release.assets).join("\n"));
     } else {
@@ -51,15 +53,6 @@ if (command === "api" && action.includes("/commits/")) {
     );
     save();
     if (process.env.RELEASE_TEST_FAILURE === "upload") process.exit(23);
-  } else if (action === "edit") {
-    if (!release) process.exit(1);
-    if (args.includes("--draft=false")) {
-      release.isDraft = false;
-      state.tags[tag] = release.targetCommitish;
-    }
-    if (args.includes("--latest")) state.latest = tag;
-    save();
-    if (process.env.RELEASE_TEST_FAILURE === "promote") process.exit(23);
   } else if (action === "delete-asset") {
     delete release.assets[args[0]];
     save();

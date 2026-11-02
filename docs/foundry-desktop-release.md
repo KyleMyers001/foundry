@@ -19,6 +19,10 @@ their values out of chat, logs, and commits.
 | `APPLE_TEAM_ID`              | Team ID from `developer.apple.com/account`.                                                                  |
 | `MACOS_CERTIFICATE_NAME`     | Optional. Certificate common name, when the `.p12` holds more than one identity.                             |
 
+Do not add any of these secrets until the protected `release` environment
+exists (EL-98). Until then, any user with write access can run a branch that
+reads repository secrets.
+
 The certificate must be `Developer ID Application`. An `Apple Development` or
 `Apple Distribution` certificate does not work outside the App Store.
 
@@ -45,18 +49,29 @@ Publishing fails before the build if the run is not on `main`, the version is a
 prerelease, a signing secret is missing, or an existing release belongs to a
 different commit.
 
-The run creates a draft `desktop-v<version>`, uploads every artifact, then
-publishes it and marks it as GitHub's latest. Installed apps read
-`releases/latest/download/desktop-version.json` and `latest-mac.yml`. Both feeds
-pin binary URLs to the immutable versioned release, so cached metadata still
-works after a newer release becomes latest. There is no moving release to reset.
+The run creates a draft `desktop-v<version>` that is not marked latest, uploads
+every artifact, and checks that each one is attached. It never publishes the
+release, so installed apps keep reading the previous release until you promote
+the draft.
+
+Promote it by hand once you have checked the draft's assets. This publishes the
+release and marks it as GitHub's latest:
+
+```bash
+gh release edit desktop-v<version> --repo KyleMyers001/foundry --draft=false --latest
+```
+
+Installed apps read `releases/latest/download/desktop-version.json` and
+`latest-mac.yml`. Both feeds pin binary URLs to the immutable versioned release,
+so cached metadata still works after a newer release becomes latest. There is no
+moving release to reset.
 
 If an upload fails, the previous release stays live and the incomplete draft can
 be resumed by rerunning the workflow on the same commit. A published release on
 the same commit is a no-op; its assets are never replaced. A different commit
 requires a version bump.
 
-Download the `.dmg` from
+After promotion, download the `.dmg` from
 <https://github.com/KyleMyers001/foundry/releases/latest>.
 
 ## Running beside bb
