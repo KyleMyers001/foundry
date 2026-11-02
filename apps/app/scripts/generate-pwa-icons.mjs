@@ -6,6 +6,13 @@ import sharp from "sharp";
 
 const appDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const publicDir = join(appDir, "public");
+const sourceArtwork = await readFile(
+  join(appDir, "../../assets/foundry-aperture.png"),
+);
+const source = await sharp(sourceArtwork)
+  .ensureAlpha()
+  .raw()
+  .toBuffer({ resolveWithObject: true });
 const checkOnly = process.argv.includes("--check");
 
 const faviconColorValues = {
@@ -20,71 +27,64 @@ const faviconColorValues = {
 };
 
 const icons = [
-  "icon-192.png",
-  "icon-512.png",
-  "icon-192-maskable.png",
-  "icon-512-maskable.png",
-  // Opaque white tile: iOS renders transparency in touch icons as black,
-  // and the system's dark/tinted home-screen treatments need a full-bleed
-  // opaque source.
-  "apple-touch-icon.png",
+  ["icon-192.png", 192],
+  ["icon-512.png", 512],
+  ["icon-192-maskable.png", 192],
+  ["icon-512-maskable.png", 512],
+  ["apple-touch-icon.png", 180],
 ];
-
-// Monochrome manifest icons (purpose: "monochrome") are alpha masks — the
-// platform supplies the fill color when tinting (Android themed icons,
-// notification badges) — so a single color-independent asset serves every
-// manifest variant.
-const monochromeIcons = [
-  { source: "icon-192.png", target: "icon-monochrome-192.png" },
-  { source: "icon-512.png", target: "icon-monochrome-512.png" },
-];
-
 const mismatches = [];
 
-function parseHex(hex) {
-  return [1, 3, 5].map((index) =>
+function extractedMark() {
+  const data = Buffer.from(source.data);
+  for (let index = 0; index < data.length; index += 4) {
+    const brightness = Math.max(data[index], data[index + 1], data[index + 2]);
+    const coverage = Math.max(0, Math.min(1, (brightness - 40) / 40));
+    data[index + 3] = Math.round(data[index + 3] * coverage);
+  }
+  return data;
+}
+
+function tintedArtwork(mark, hex) {
+  const rgb = [1, 3, 5].map((index) =>
     Number.parseInt(hex.slice(index, index + 2), 16),
   );
-}
-
-function outputFileName(file, color) {
-  return file.replace(/\.png$/u, `-${color}.png`);
-}
-
-function tintTileIcon(data, colorRgb) {
-  const output = Buffer.from(data);
-  for (let index = 0; index < output.length; index += 4) {
-    const red = data[index];
-    const green = data[index + 1];
-    const blue = data[index + 2];
-    const alpha = data[index + 3];
-    if (alpha === 0) continue;
-
-    const luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-    if (luma >= 245) continue;
-
-    const maskAlpha = Math.round(
-      255 * Math.sqrt((245 - luma) / 245) * (alpha / 255),
-    );
-    if (maskAlpha <= 0) continue;
-
-    const ratio = maskAlpha / 255;
-    output[index] = Math.round(colorRgb[0] * ratio + 255 * (1 - ratio));
-    output[index + 1] = Math.round(colorRgb[1] * ratio + 255 * (1 - ratio));
-    output[index + 2] = Math.round(colorRgb[2] * ratio + 255 * (1 - ratio));
-    output[index + 3] = alpha;
+  const data = Buffer.from(source.data);
+  for (let index = 0; index < data.length; index += 4) {
+    const coverage = mark[index + 3] / 255;
+    const brightness =
+      Math.max(data[index], data[index + 1], data[index + 2]) / 255;
+    for (let channel = 0; channel < 3; channel++) {
+      data[index + channel] = Math.round(
+        data[index + channel] * (1 - coverage) +
+          rgb[channel] * brightness * coverage,
+      );
+    }
   }
-  return output;
+  return data;
 }
 
-async function generatedPng(file, hex) {
-  const { data, info } = await sharp(join(publicDir, file))
+function generatedPng(data, size = source.info.width) {
+  return sharp(data, {
+    raw: { width: source.info.width, height: source.info.height, channels: 4 },
+  })
+    .resize(size, size)
+    .png()
+    .toBuffer();
+}
+
+async function generatedMonochromePng(mark, size) {
+  const { data, info } = await sharp(mark)
+    .resize(size, size)
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const output = tintTileIcon(data, parseHex(hex));
-
-  return sharp(output, {
+  for (let index = 0; index < data.length; index += 4) {
+    data[index] = 255;
+    data[index + 1] = 255;
+    data[index + 2] = 255;
+  }
+  return sharp(data, {
     raw: { width: info.width, height: info.height, channels: 4 },
   })
     .png()
@@ -111,38 +111,6 @@ function generatedManifest(baseManifest, color) {
   );
 }
 
-// Platforms use only the alpha channel of a monochrome icon as the tint
-// mask, so the glyph's darkness (against the tile's white backing) becomes
-// alpha — the same luma mask tintTileIcon uses to find glyph pixels.
-async function generatedMonochromePng(sourceFile) {
-  const { data, info } = await sharp(join(publicDir, sourceFile))
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const output = Buffer.from(data);
-  for (let index = 0; index < output.length; index += 4) {
-    const luma =
-      0.2126 * data[index] +
-      0.7152 * data[index + 1] +
-      0.0722 * data[index + 2];
-    const maskAlpha =
-      luma >= 245
-        ? 0
-        : Math.round(
-            255 * Math.sqrt((245 - luma) / 245) * (data[index + 3] / 255),
-          );
-    output[index] = 255;
-    output[index + 1] = 255;
-    output[index + 2] = 255;
-    output[index + 3] = maskAlpha;
-  }
-  return sharp(output, {
-    raw: { width: info.width, height: info.height, channels: 4 },
-  })
-    .png()
-    .toBuffer();
-}
-
 async function writeOrCheck(fileName, content) {
   const filePath = join(publicDir, fileName);
   const existing = await readFile(filePath).catch((error) => {
@@ -164,25 +132,50 @@ async function writeOrCheck(fileName, content) {
   }
 }
 
-const baseManifest = JSON.parse(
-  await readFile(join(publicDir, "manifest.webmanifest"), "utf8"),
+const baseManifest = {
+  ...JSON.parse(
+    await readFile(join(publicDir, "manifest.webmanifest"), "utf8"),
+  ),
+  name: "Foundry",
+  short_name: "Foundry",
+};
+await writeOrCheck(
+  "manifest.webmanifest",
+  Buffer.from(`${JSON.stringify(baseManifest, null, 2)}\n`),
 );
 
-for (const monochromeIcon of monochromeIcons) {
+for (const [file, size] of icons) {
   await writeOrCheck(
-    monochromeIcon.target,
-    await generatedMonochromePng(monochromeIcon.source),
+    file,
+    await sharp(sourceArtwork).resize(size, size).png().toBuffer(),
+  );
+}
+
+const markData = extractedMark();
+const mark = await generatedPng(markData);
+await writeOrCheck("foundry-mark.png", mark);
+for (const size of [16, 32]) {
+  const favicon = await sharp(mark).resize(size, size).png().toBuffer();
+  for (const variant of ["", "-dark", "-dev"]) {
+    await writeOrCheck(`favicon-${size}x${size}${variant}.png`, favicon);
+  }
+}
+
+for (const size of [192, 512]) {
+  await writeOrCheck(
+    `icon-monochrome-${size}.png`,
+    await generatedMonochromePng(mark, size),
   );
 }
 
 for (const [color, hex] of Object.entries(faviconColorValues)) {
-  for (const file of icons) {
+  const tinted = tintedArtwork(markData, hex);
+  for (const [file, size] of icons) {
     await writeOrCheck(
-      outputFileName(file, color),
-      await generatedPng(file, hex),
+      file.replace(/\.png$/u, `-${color}.png`),
+      await generatedPng(tinted, size),
     );
   }
-
   await writeOrCheck(
     `manifest-${color}.webmanifest`,
     generatedManifest(baseManifest, color),
