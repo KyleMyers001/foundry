@@ -17,10 +17,10 @@ describe("resolveShellIncomingLink", () => {
   it.each([
     ["bb://", "/webview"],
     ["bb://threads/thr_1", "/webview?path=%2Fthreads%2Fthr_1"],
-    ["bb://connect?code=ABCD-EFGH", "/connect?code=ABCD-EFGH"],
+    ["bb://connect?code=ABCD-EFGH", "/webview?path=%2Fconnect%3Fcode%3DABCD-EFGH"],
     ["bb://settings/servers/add", "/settings/servers/add"],
     ["bb://settings/device", "/settings/device"],
-    ["bb://settings/notifications", "/settings/notifications"],
+    ["bb://settings/notifications", "/webview?path=%2Fsettings%2Fnotifications"],
     ["bb://settings", "/webview?path=%2Fsettings"],
     ["bb://settings/general", "/webview?path=%2Fsettings%2Fgeneral"],
     ["bb://connections", "/webview?path=%2Fconnections"],
