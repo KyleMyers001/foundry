@@ -23,6 +23,7 @@ const unavailableSystemConfig: SystemConfigResponse = {
     defaultProviderId: "direct",
     effectiveUrl: null,
     urlSource: null,
+    notice: null,
   },
   generalSettings: defaultAppSettings,
   keybindings: [],

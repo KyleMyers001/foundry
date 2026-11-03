@@ -116,6 +116,7 @@ function aiServices(
   selection: SystemAiServicesResponse["selections"]["thread-title"],
 ): SystemAiServicesResponse {
   return {
+    notice: null,
     selections: {
       "thread-title": selection,
       "commit-message": { mode: "automatic" },

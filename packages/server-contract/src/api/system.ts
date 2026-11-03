@@ -171,6 +171,7 @@ export type SystemAiService = z.infer<typeof systemAiServiceSchema>;
 
 export const systemAiServicesResponseSchema = z.object({
   selections: aiServiceSelectionsSchema,
+  notice: z.string().nullable(),
   services: z.array(systemAiServiceSchema),
 });
 export type SystemAiServicesResponse = z.infer<
@@ -411,6 +412,7 @@ export const serverAccessStatusSchema = z.object({
   defaultProviderId: z.string(),
   effectiveUrl: z.string().nullable(),
   urlSource: z.enum(["setting", "BB_EXTERNAL_URL"]).nullable(),
+  notice: z.string().nullable(),
 });
 export type ServerAccessStatus = z.infer<typeof serverAccessStatusSchema>;
 

@@ -70,6 +70,7 @@ const STORY_GLOBAL_VARIABLES = [
 ];
 
 const STORY_AI_SERVICES: SystemAiServicesResponse = {
+  notice: null,
   selections: {
     "thread-title": { mode: "automatic" },
     "commit-message": { mode: "automatic" },

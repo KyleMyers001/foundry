@@ -360,6 +360,7 @@ describe("connectAccessUrl", () => {
       defaultProviderId: "connect",
       effectiveUrl: null,
       urlSource: null,
+      notice: null,
     };
   }
   const connect = {

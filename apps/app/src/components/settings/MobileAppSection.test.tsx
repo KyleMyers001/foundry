@@ -173,6 +173,7 @@ it("places mobile plugin sections only on Mobile and removes them when unregiste
         defaultProviderId: "relay",
         effectiveUrl: null,
         urlSource: null,
+        notice: null,
         providers: [
           {
             id: "relay",

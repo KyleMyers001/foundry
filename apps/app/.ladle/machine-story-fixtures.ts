@@ -32,6 +32,7 @@ export const CONNECT_UNPAIRED: ServerAccessStatus = {
   defaultProviderId: "connect",
   effectiveUrl: null,
   urlSource: null,
+  notice: null,
 };
 
 export const CONNECT_PAIRED: ServerAccessStatus = {

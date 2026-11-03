@@ -30,6 +30,7 @@ function access(): ServerAccessStatus {
     defaultProviderId: "relay",
     effectiveUrl: null,
     urlSource: null,
+    notice: null,
   };
 }
 

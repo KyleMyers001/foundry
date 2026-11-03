@@ -143,6 +143,7 @@ function describeAiSelection(
 }
 
 function printAiServices(view: SystemAiServicesResponse): void {
+  if (view.notice !== null) console.log(`${view.notice}\n`);
   for (const task of AI_TASKS) {
     const selection = view.selections[task];
     const automatic =

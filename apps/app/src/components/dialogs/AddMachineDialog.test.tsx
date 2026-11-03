@@ -50,6 +50,7 @@ const READY_SERVER_ACCESS: ServerAccessStatus = {
   defaultProviderId: "direct",
   effectiveUrl: "https://bb.example.com",
   urlSource: "setting",
+  notice: null,
 };
 
 beforeEach(() => {
