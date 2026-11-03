@@ -186,25 +186,24 @@ do not set it yourself.
 
 ## In-App Updates
 
-In-app updates are on when you start bb with `npx bb-app start` (or a global
-`bb-app`) or with `pnpm start` from a source checkout. bb runs under a small
-update shim, so Settings → Updates and `bb updates app apply` can update bb
-without a terminal. Pass `--no-in-app-updates` to turn them off: bb then starts
-without the shim and Settings → Updates shows the npm upgrade command for
-release installs. `--in-app-updates`, which earlier releases needed, is still
-accepted and changes nothing. Source checkouts show their
-Git revision, or a labeled build version when unavailable, and are never compared
-with npm releases. Without the update shim, no freshness indicator is shown.
-Failed checks report “Latest unknown”; release checks can be retried in the UI,
-with `sdk.system.version({ force: true })`, or by rerunning `bb updates`.
-`GET /api/v1/system/version` and `sdk.system.version()` expose nullable
-`installKind` (`desktop`, `npm`, or `source`) and `currentCommit` fields.
+In-app updates are on when you start Foundry with `pnpm start` from a source
+checkout. bb runs under a small update shim, so Settings → Updates and
+`bb updates app apply` can update it without a terminal. Pass
+`--no-in-app-updates` to turn them off. `--in-app-updates`, which earlier
+releases needed, is still accepted and changes nothing. Source checkouts show
+their Git revision, or a labeled build version when unavailable. Without the
+update shim, no freshness indicator is shown. Failed checks report “Latest
+unknown” and can be retried in the UI or by rerunning `bb updates`.
 
-- **npm installs** download the release into
-  `<dataDir>/app-versions/<version>/` and restart into it. The shim runs
-  whichever is newer, that install or the launched `npx` copy; `--bundled`
-  always runs the launched copy. bb keeps the running and previous versions.
-  Stable installs follow the `latest` dist-tag and nightly builds `nightly`.
+Foundry is not published to npm and never checks npm for a newer release. An
+install started through the `bb-app` npm launcher reports the app-update
+support reason `manual`, and Settings → Updates and `bb updates` link to
+https://github.com/KyleMyers001/foundry/releases/latest instead of an upgrade
+command. `GET /api/v1/system/version` and `sdk.system.version()` return
+`source: "foundry-releases"`, that `releasesUrl`, `latestVersion: null`,
+`updateAvailable: false`, and nullable `installKind` (`desktop`, `npm`, or
+`source`) and `currentCommit` fields.
+
 - **Source checkouts** update only from a clean `main` that fast-forwards to
   `origin/main`; bb fast-forwards, runs `pnpm install --frozen-lockfile`,
   rebuilds, and restarts.

@@ -174,9 +174,9 @@ describe("resolveAppUpdateAvailable", () => {
     latestVersion: "1.1.0",
     currentCommit: null,
     installKind: "npm",
-    source: "npm",
+    source: "foundry-releases",
     updateAvailable: true,
-    upgradeCommand: "npx bb-app@latest",
+    releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
   };
 
   function status(
@@ -195,15 +195,18 @@ describe("resolveAppUpdateAvailable", () => {
       current: { commit: null, version: "1.0.0" },
       lastResult: null,
       runningThreadCount: 0,
-      support: { kind: "supported", mode: "npm" },
+      support: { kind: "supported", mode: "source" },
       ...overrides,
     };
   }
 
-  it("counts an in-app server update even inside the desktop app", () => {
+  it("counts a desktop-managed server update even inside the desktop app", () => {
     expect(
       resolveAppUpdateAvailable({
-        appUpdate: status({}),
+        appUpdate: status({
+          desktopUpdateSupported: true,
+          support: { kind: "unsupported", reason: "desktop" },
+        }),
         isDesktop: true,
         systemVersion: npmVersion,
       }),

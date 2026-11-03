@@ -234,13 +234,13 @@ const systemConfig = makeSystemConfig({
 
 const systemVersion = {
   currentVersion: "0.39.0",
-  latestVersion: "0.39.0",
+  latestVersion: null,
   currentCommit: null,
   installKind: "npm",
-  source: "npm",
+  source: "foundry-releases",
   updateAvailable: false,
   isDevelopment: false,
-  upgradeCommand: "npx bb-app@latest",
+  releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
 } satisfies SystemVersionResponse;
 
 const systemProviders = [

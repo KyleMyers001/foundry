@@ -35,7 +35,7 @@ function appUpdate(
     current: { commit: null, version: current },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
   };
 }
 
@@ -54,10 +54,10 @@ function systemVersion(
     installKind: "npm",
     currentVersion: "0.46.1",
     latestVersion: "0.46.1",
-    source: "npm",
+    source: "foundry-releases",
     updateAvailable: false,
     isDevelopment: false,
-    upgradeCommand: "npx bb-app@latest",
+    releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
     ...overrides,
   };
 }

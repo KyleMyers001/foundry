@@ -254,12 +254,10 @@ async function startIntegrationServer(
     installKind: null,
     sourceCommit: null,
     config,
-    logger: testLogger,
   });
   const appUpdate = createAppUpdateService({
     currentCommit: null,
     appSurface: "web",
-    appVersion,
     config,
     countRunningThreads: () => listRunningThreads(db).length,
     launcher: null,

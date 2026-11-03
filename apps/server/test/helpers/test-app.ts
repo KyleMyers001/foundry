@@ -284,14 +284,12 @@ export async function createTestAppHarness(
       sourceCommit: null,
       installKind: null,
       config,
-      logger,
     });
   const appUpdate =
     appUpdateService ??
     createAppUpdateService({
       currentCommit: null,
       appSurface: "web",
-      appVersion,
       config,
       countRunningThreads: () => listRunningThreads(db).length,
       launcher: null,
@@ -394,13 +392,8 @@ export async function startTestServer(
 ): Promise<RunningTestServer> {
   const harness = await createTestAppHarness(overrides);
   let addressInfo: AddressInfo | null = null;
-  const {
-    app,
-    closeWebSockets,
-    injectWebSocket,
-    pluginService,
-    serverMove,
-  } = createApp(harness.deps);
+  const { app, closeWebSockets, injectWebSocket, pluginService, serverMove } =
+    createApp(harness.deps);
   const server = serve(
     {
       hostname: TEST_SERVER_HOST,

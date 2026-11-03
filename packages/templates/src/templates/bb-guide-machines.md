@@ -142,18 +142,20 @@ that hosting app through its native updater. It never updates the desktop you
 are viewing from unless that desktop hosts this server.
 
 `bb updates apply` covers provider CLIs only. `bb updates app apply` updates
-bb itself when it was started from `npx bb-app` (or a global `bb-app`) without
-`--no-in-app-updates`: it installs the new version next to the running one and
-restarts into it. It does not roll back if the new version fails to start.
-Desktop users update through the desktop app's relaunch, and `bb-server` cannot
-update itself. Connected daemons follow the server version automatically.
+a source checkout started with `pnpm start` without `--no-in-app-updates`: it
+fast-forwards `main`, rebuilds, and restarts into it. It does not roll back if
+the new version fails to start. Foundry is not published to npm, so an npm
+install never checks npm and reports a manual update with a link to
+https://github.com/KyleMyers001/foundry/releases/latest. Desktop users update
+through the desktop app's relaunch, and `bb-server` cannot update itself.
+Connected daemons follow the server version automatically.
 
 Targeting machines
 
 For source installs, `bb updates` shows the checkout commit and explains manual
-Git updates when no update shim is running. It does not compare that checkout
-with npm releases. Failed or unavailable release checks show “Latest unknown”;
-“Up to date” requires a successful check.
+Git updates when no update shim is running. Other installs show “Manual
+updates” and the Foundry releases link. Failed or unavailable checks show
+“Latest unknown”; “Up to date” requires a successful check.
 
 Machine selectors accept either an exact machine ID or an unambiguous machine
 name. `--host` is an alias for `--machine`.

@@ -239,7 +239,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     installKind: serverConfig.BB_APP_INSTALL_KIND ?? null,
     sourceCommit: serverConfig.BB_APP_SOURCE_COMMIT ?? null,
     config: runtimeConfig,
-    logger,
   });
   const appUpdateMode = serverConfig.BB_APP_UPDATE_MODE ?? null;
   const desktopUpdateChannel =
@@ -254,7 +253,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
               ? (serverConfig.BB_APP_SOURCE_COMMIT ?? null)
               : null,
           appSurface: serverConfig.BB_APP_SURFACE,
-          appVersion,
           config: runtimeConfig,
           countRunningThreads: () => listRunningThreads(db).length,
           launcher:

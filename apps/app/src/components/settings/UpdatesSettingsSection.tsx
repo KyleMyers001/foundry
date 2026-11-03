@@ -94,7 +94,7 @@ import { PluginIcon } from "@/components/plugin/PluginIcon";
 import { pluginAdminErrorMessage } from "@/lib/plugin-admin-error";
 import { useHostDaemon } from "@/hooks/useHostDaemon";
 import { useDesktopUpdateInfo } from "@/hooks/useDesktopUpdateInfo";
-import { copyToClipboardWithToast } from "@/lib/clipboard";
+import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
 import {
   hostCanRetryUpdate,
   hostNeedsUpdate,
@@ -695,59 +695,41 @@ export function BbAppUpdateRows({
     );
   }
 
-  const desktopHostedServer =
-    systemVersion.installKind === "desktop" ||
-    (appUpdate !== undefined && isDesktopOwnedServer(appUpdate));
   const name = (
     <RowName
       name={rowName}
-      detail={
-        systemVersion.updateAvailable && !desktopHostedServer ? (
-          <span className="hidden truncate font-mono text-2xs text-muted-foreground sm:inline">
-            {systemVersion.upgradeCommand}
-          </span>
-        ) : undefined
-      }
       current={systemVersion.currentVersion}
-      latest={
-        systemVersion.updateAvailable ? systemVersion.latestVersion : null
-      }
+      latest={null}
       trailing={notesLink}
     />
   );
-
-  if (systemVersion.updateAvailable) {
-    if (desktopHostedServer) {
-      return row(name, <RowStateControl state="update-available" />);
-    }
-    return row(
-      name,
-      <RowStateControl
-        state="update-available"
-        actionIcon="Copy"
-        actionLabel="Copy the upgrade command"
-        actionTooltip="Copy command"
-        onClick={() => {
-          void copyToClipboardWithToast(systemVersion.upgradeCommand, {
-            successMessage: "Upgrade command copied",
-            errorMessage: "Couldn't copy upgrade command",
-          });
-        }}
-      />,
-    );
+  const desktopHostedServer =
+    systemVersion.installKind === "desktop" ||
+    (appUpdate !== undefined && isDesktopOwnedServer(appUpdate));
+  if (desktopHostedServer) {
+    return row(name, null);
   }
-
-  if (systemVersion.latestVersion === null) {
-    return row(
-      name,
-      unavailableCheckControl,
-      undefined,
-      isChecking
-        ? "Checking npm for a newer release…"
-        : "Couldn't check npm for a newer release.",
-    );
-  }
-  return row(name, settledStatus);
+  return row(
+    name,
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-6 shrink-0 gap-1.5 px-2 text-xs"
+      aria-label="Open Foundry releases"
+      onClick={() => {
+        openUrlInExternalBrowser(systemVersion.releasesUrl);
+      }}
+    >
+      Releases
+      <Icon
+        name="ExternalLink"
+        className="size-3 shrink-0 text-muted-foreground"
+      />
+    </Button>,
+    undefined,
+    "Foundry updates are manual. Download new releases from GitHub.",
+  );
 }
 
 type BbAppRowRenderer = (
@@ -846,8 +828,7 @@ function InAppUpdateRow({
   if (status.blocked !== null) {
     return row(
       name,
-      ((status.support.kind === "supported" && status.support.mode === "npm") ||
-        status.desktopUpdateSupported === true) &&
+      status.desktopUpdateSupported === true &&
         status.blocked.reason === "fetch-failed"
         ? unavailableCheckControl
         : null,

@@ -286,10 +286,10 @@ export const systemVersionResponseSchema = z.object({
   installKind: z.enum(["desktop", "npm", "source"]).nullable(),
   currentVersion: z.string(),
   latestVersion: z.string().nullable(),
-  source: z.literal("npm"),
+  source: z.literal("foundry-releases"),
   updateAvailable: z.boolean(),
   isDevelopment: z.boolean(),
-  upgradeCommand: z.string(),
+  releasesUrl: z.string().url(),
 });
 export type SystemVersionResponse = z.infer<typeof systemVersionResponseSchema>;
 
@@ -327,11 +327,11 @@ export type SystemAppUpdateRevision = z.infer<
 export const systemAppUpdateSupportSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("supported"),
-    mode: z.enum(["npm", "source"]),
+    mode: z.literal("source"),
   }),
   z.object({
     kind: z.literal("unsupported"),
-    reason: z.enum(["development", "desktop", "unmanaged"]),
+    reason: z.enum(["development", "desktop", "manual", "unmanaged"]),
   }),
 ]);
 export type SystemAppUpdateSupport = z.infer<

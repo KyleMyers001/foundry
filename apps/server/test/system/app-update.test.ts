@@ -6,10 +6,8 @@ import type {
   ServerToLauncherMessage,
   SourceUpdateCheck,
 } from "@bb/config/app-update";
-import type { SystemVersionResponse } from "@bb/server-contract";
 import { ApiError } from "../../src/errors.js";
 import { createAppUpdateService } from "../../src/services/system/app-update.js";
-import type { AppVersionService } from "../../src/services/system/app-version.js";
 import {
   createLauncherChannel,
   type LauncherChannel,
@@ -19,32 +17,13 @@ import { testLogger } from "../helpers/test-app.js";
 const COMMIT_A = "a".repeat(40);
 const COMMIT_B = "b".repeat(40);
 
-function appVersion(
-  response: Partial<SystemVersionResponse>,
-): AppVersionService {
-  return {
-    async getSystemVersion() {
-      return {
-        currentVersion: "1.0.0",
-        isDevelopment: false,
-        latestVersion: "1.1.0",
-        currentCommit: null,
-        installKind: "npm",
-        source: "npm",
-        updateAvailable: true,
-        upgradeCommand: "npx bb-app@latest",
-        ...response,
-      };
-    },
-  };
-}
-
 class FakeLauncher implements LauncherChannel {
   readonly requests: AppUpdateLauncherRequest[] = [];
   private listeners = new Set<(status: LauncherAppUpdateStatus) => void>();
   private disconnectListeners = new Set<() => void>();
-  respond: (request: AppUpdateLauncherRequest) => Promise<unknown> = async () =>
-    null;
+  respond: (request: AppUpdateLauncherRequest) => Promise<unknown> = async (
+    request,
+  ) => (request.type === "check-source" ? sourceCheck() : null);
 
   dispose(): void {
     this.listeners.clear();
@@ -73,9 +52,9 @@ class FakeLauncher implements LauncherChannel {
     for (const listener of this.listeners) {
       listener({
         activity: { phase: "idle" },
-        current: { kind: "npm", packageRoot: "/pkg/1.0.0", version: "1.0.0" },
+        current: { commit: COMMIT_A, kind: "source", version: "1.0.0" },
         lastResult: null,
-        mode: "npm",
+        mode: "source",
         ...status,
       });
     }
@@ -105,7 +84,6 @@ function createService(args: {
   mode?: "npm" | "source" | null;
   now?: () => number;
   runningThreads?: number;
-  version?: Partial<SystemVersionResponse>;
 }) {
   const notifyChanged = vi.fn();
   const launcher =
@@ -113,12 +91,11 @@ function createService(args: {
   const service = createAppUpdateService({
     currentCommit: null,
     appSurface: args.appSurface ?? "web",
-    appVersion: appVersion(args.version ?? {}),
     config: { appVersion: "1.0.0", isDevelopment: args.isDevelopment ?? false },
     countRunningThreads: () => args.runningThreads ?? 0,
     launcher,
     logger: testLogger,
-    mode: args.mode === undefined ? "npm" : args.mode,
+    mode: args.mode === undefined ? "source" : args.mode,
     notifyChanged,
     ...(args.now === undefined ? {} : { now: args.now }),
   });
@@ -145,6 +122,7 @@ describe("app update service", () => {
     [{ isDevelopment: true }, "development"],
     [{ appSurface: "desktop" as const }, "desktop"],
     [{ appSurface: "desktop" as const, isDevelopment: true }, "desktop"],
+    [{ mode: "npm" as const }, "manual"],
     [{ mode: null }, "unmanaged"],
     [{ launcher: null }, "unmanaged"],
   ])("reports updates as unsupported for %o", async (overrides, reason) => {
@@ -160,36 +138,31 @@ describe("app update service", () => {
     );
   });
 
-  it("keeps a failed npm lookup distinct from an up-to-date install", async () => {
-    const { service } = createService({
-      version: { latestVersion: null, updateAvailable: false },
-    });
-    const status = await service.getStatus({ forceRefresh: false });
+  it("never asks the launcher about an upstream npm release", async () => {
+    const { launcher, service } = createService({ mode: "npm" });
+
+    const status = await service.getStatus({ forceRefresh: true });
+
+    expect(status.support).toEqual({ kind: "unsupported", reason: "manual" });
     expect(status.available).toBeNull();
-    expect(status.blocked).toMatchObject({ reason: "fetch-failed" });
+    expect(status.blocked).toBeNull();
+    const error = await expectApiError(
+      service.apply({ confirmInterruptingThreads: true }),
+      "app_update_unsupported",
+    );
+    expect(error.body.message).toContain(
+      "https://github.com/KyleMyers001/foundry/releases/latest",
+    );
+    expect(launcher?.requests).toEqual([]);
   });
 
   it("does not report a source checkout as current before its first check completes", async () => {
     const launcher = new FakeLauncher();
+    launcher.respond = () => new Promise(() => undefined);
     const { service } = createService({ launcher, mode: "source" });
     const status = await service.getStatus({ forceRefresh: false });
     expect(status.available).toBeNull();
     expect(status.blocked).toMatchObject({ reason: "fetch-failed" });
-  });
-
-  it("offers the npm latest version on the stable channel", async () => {
-    const { service } = createService({});
-
-    const status = await service.getStatus({ forceRefresh: false });
-
-    expect(status.support).toEqual({ kind: "supported", mode: "npm" });
-    expect(status.available).toEqual({
-      channel: "latest",
-      commit: null,
-      commitCount: null,
-      subjects: [],
-      version: "1.1.0",
-    });
   });
 
   it("asks before interrupting running threads and sends the target once confirmed", async () => {
@@ -200,22 +173,26 @@ describe("app update service", () => {
       "threads_running",
     );
     expect(error.body.details).toEqual({ runningThreadCount: 2 });
-    expect(launcher?.requests).toEqual([]);
+    expect(launcher?.requests.some((request) => request.type === "apply")).toBe(
+      false,
+    );
 
     await service.apply({ confirmInterruptingThreads: true });
-    expect(launcher?.requests).toEqual([
+    expect(
+      launcher?.requests.filter((request) => request.type === "apply"),
+    ).toEqual([
       {
-        target: { kind: "npm", version: "1.1.0" },
-        targetVersion: "1.1.0",
+        target: { commit: COMMIT_B, kind: "source" },
+        targetVersion: "1.0.0",
         type: "apply",
       },
     ]);
   });
 
   it("rejects an update when bb is already current", async () => {
-    const { service } = createService({
-      version: { latestVersion: "1.0.0", updateAvailable: false },
-    });
+    const launcher = new FakeLauncher();
+    launcher.respond = async () => sourceCheck({ incoming: null });
+    const { service } = createService({ launcher });
 
     await expectApiError(
       service.apply({ confirmInterruptingThreads: true }),
@@ -230,8 +207,8 @@ describe("app update service", () => {
         output: [],
         phase: "preparing",
         startedAt: "2026-09-23T00:00:00.000Z",
-        step: "Downloading bb-app 1.1.0",
-        target: { kind: "npm", version: "1.1.0" },
+        step: "Fetching origin/main",
+        target: { commit: COMMIT_B, kind: "source" },
         targetVersion: "1.1.0",
       },
     });
@@ -243,8 +220,9 @@ describe("app update service", () => {
 
   it("surfaces launcher rejections as conflicts", async () => {
     const launcher = new FakeLauncher();
-    launcher.respond = async () => {
-      throw new Error("This bb updates through npm, not source.");
+    launcher.respond = async (request) => {
+      if (request.type === "check-source") return sourceCheck();
+      throw new Error("The launcher refused this update.");
     };
     const { service } = createService({ launcher });
 
@@ -252,7 +230,7 @@ describe("app update service", () => {
       service.apply({ confirmInterruptingThreads: true }),
       "app_update_rejected",
     );
-    expect(error.body.message).toContain("not source");
+    expect(error.body.message).toContain("refused");
   });
 
   it.each([
@@ -281,9 +259,9 @@ describe("app update service", () => {
         to: { kind: "npm", packageRoot: "/pkg/1.0.0", version: "1.0.0" },
       },
     });
+    expect(notifyChanged).toHaveBeenCalledOnce();
     const status = await service.getStatus({ forceRefresh: false });
 
-    expect(notifyChanged).toHaveBeenCalledOnce();
     expect(status.activity).toEqual({
       phase: "restarting",
       startedAt: "2026-09-23T00:00:00.000Z",
@@ -380,12 +358,11 @@ describe("app update service", () => {
     const service = createAppUpdateService({
       currentCommit: null,
       appSurface: "web",
-      appVersion: appVersion({}),
       config: { appVersion: "1.0.0", isDevelopment: false },
       countRunningThreads: () => runningThreads,
       launcher,
       logger: testLogger,
-      mode: "npm",
+      mode: "source",
       notifyChanged: vi.fn(),
     });
     launcher.push({});
@@ -396,20 +373,24 @@ describe("app update service", () => {
       activity: {
         phase: "ready",
         startedAt: "2026-09-23T00:00:00.000Z",
-        target: { kind: "npm", version: "1.1.0" },
-        targetVersion: "1.1.0",
+        target: { commit: COMMIT_B, kind: "source" },
+        targetVersion: "1.0.0",
       },
     });
     launcher.push({
       activity: {
         phase: "ready",
         startedAt: "2026-09-23T00:00:00.000Z",
-        target: { kind: "npm", version: "1.1.0" },
-        targetVersion: "1.1.0",
+        target: { commit: COMMIT_B, kind: "source" },
+        targetVersion: "1.0.0",
       },
     });
 
-    expect(launcher.requests.slice(1)).toEqual([
+    expect(
+      launcher.requests
+        .filter((request) => request.type !== "check-source")
+        .slice(1),
+    ).toEqual([
       {
         message:
           "1 thread started while bb was downloading the update. Update again to restart.",
@@ -423,8 +404,8 @@ describe("app update service", () => {
       activity: {
         phase: "ready",
         startedAt: "2026-09-23T00:05:00.000Z",
-        target: { kind: "npm", version: "1.1.0" },
-        targetVersion: "1.1.0",
+        target: { commit: COMMIT_B, kind: "source" },
+        targetVersion: "1.0.0",
       },
     });
     expect(launcher.requests.at(-1)).toEqual({ type: "restart" });
