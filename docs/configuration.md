@@ -1099,10 +1099,10 @@ all-or-selected host list, set on its autosaving plugin page or with
 
 ### Push notifications
 
-The builtin Push notifications plugin's `mobileEnabled`, `webEnabled`, and
-`desktopEnabled` booleans default to `true`. `expoPushUrl` (default
-`https://exp.host/--/api/v2/push/send`) is the relay URL, read on every send.
-`defaultLevel` (default `all`) and `childLevel` (default `input-only`) set
+The builtin Push notifications plugin's `webEnabled` and `desktopEnabled`
+booleans default to `true`. Foundry sends no mobile push notifications; the
+`mobileEnabled` and `expoPushUrl` values and device registrations saved by an
+older version are kept but unused. `defaultLevel` (default `all`) and `childLevel` (default `input-only`) set
 top-level and child thread levels. Set them with
 `bb plugin config push-notifications set <key> <value>`. Web and desktop
 notifications need an open bb tab or window, HTTPS or localhost, and
