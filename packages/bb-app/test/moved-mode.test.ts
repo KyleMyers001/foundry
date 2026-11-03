@@ -674,30 +674,30 @@ describe("bb-app start after the server moved", () => {
     writeFileSync(
       join(dataDir, "config.json"),
       JSON.stringify({
-        serverHeaders: { "x-bb-connect-machine": "bbcm_laptop" },
+        serverHeaders: { "x-proxy-auth": "laptop" },
         serverUrl: "https://bb.example.com/desk",
       }),
     );
-    const connectLaunch = await resolveLaunch();
+    const proxiedLaunch = await resolveLaunch();
 
-    expect(connectLaunch.serverUrl).toBe("https://bb.example.com/desk");
-    expect(connectLaunch.context.serverUrl).toBe("https://bb.example.com/desk");
-    expect(connectLaunch.context.dataDir).toBe(dataDir);
-    expect(connectLaunch.context.daemonPort).toBe(39911);
-    expect(connectLaunch.env).toMatchObject({
+    expect(proxiedLaunch.serverUrl).toBe("https://bb.example.com/desk");
+    expect(proxiedLaunch.context.serverUrl).toBe("https://bb.example.com/desk");
+    expect(proxiedLaunch.context.dataDir).toBe(dataDir);
+    expect(proxiedLaunch.context.daemonPort).toBe(39911);
+    expect(proxiedLaunch.env).toMatchObject({
       BB_DATA_DIR: dataDir,
       BB_HOST_DAEMON_PORT: "39911",
       BB_SERVER_URL: "https://bb.example.com/desk",
     });
-    expect(JSON.parse(connectLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual({
-      "x-bb-connect-machine": "bbcm_laptop",
+    expect(JSON.parse(proxiedLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual({
+      "x-proxy-auth": "laptop",
     });
-    expect(connectLaunch.env.BB_THREAD_ID).toBeUndefined();
+    expect(proxiedLaunch.env.BB_THREAD_ID).toBeUndefined();
 
     writeFileSync(
       join(dataDir, "config.json"),
       JSON.stringify({
-        serverHeaders: { "x-bb-connect-machine": "bbcm_rotated" },
+        serverHeaders: { "x-proxy-auth": "rotated" },
         serverUrl: "https://desk.tailnet.example",
       }),
     );
@@ -708,7 +708,7 @@ describe("bb-app start after the server moved", () => {
       "https://desk.tailnet.example",
     );
     expect(JSON.parse(rewrittenLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual(
-      { "x-bb-connect-machine": "bbcm_rotated" },
+      { "x-proxy-auth": "rotated" },
     );
 
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({}));

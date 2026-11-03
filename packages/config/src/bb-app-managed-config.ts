@@ -28,6 +28,11 @@ export const REMOVED_AI_SERVICE_CONFIG_KEYS: readonly string[] = [
 export const REMOVED_AI_SERVICE_CONFIG_MESSAGE =
   "BB_INFERENCE, BB_INFERENCE_FALLBACK, and BB_TRANSCRIPTION were removed. Choose AI services in Settings → AI services or with `bb settings ai-services set <task> <automatic|off|service>`.";
 
+export const LEGACY_CONNECT_MACHINE_HEADER = "x-bb-connect-machine";
+
+export const LEGACY_CONNECT_ENROLLMENT_MESSAGE =
+  "This machine was enrolled through bb connect, which Foundry no longer supports, so it will not connect to its saved bb connect address. Its saved identity is kept. Add it again from the server with a direct or Tailscale URL (Settings → Machines → Add machine) and run the command shown there on this machine.";
+
 export const PORTABLE_ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const REMOVED_CUSTOM_ACP_AGENTS_CONFIG_KEY = "customAcpAgents";
 const REMOVED_CUSTOM_ACP_AGENTS_MESSAGE =
@@ -201,6 +206,32 @@ export function parseBbAppManagedConfig(
     config.connectMachineId = parsed.connectMachineId;
   }
   return config;
+}
+
+export function hasLegacyConnectEnrollment(
+  config: Pick<
+    BbAppManagedConfig,
+    "connectMachineId" | "machineCredential" | "serverHeaders"
+  >,
+): boolean {
+  return (
+    config.machineCredential !== undefined ||
+    config.connectMachineId !== undefined ||
+    (config.serverHeaders !== undefined &&
+      Object.hasOwn(config.serverHeaders, LEGACY_CONNECT_MACHINE_HEADER))
+  );
+}
+
+export function withoutLegacyConnectHeader(
+  headers: Readonly<Record<string, string>> | undefined,
+): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  const kept = Object.fromEntries(
+    Object.entries(headers).filter(
+      ([name]) => name.toLowerCase() !== LEGACY_CONNECT_MACHINE_HEADER,
+    ),
+  );
+  return Object.keys(kept).length === 0 ? undefined : kept;
 }
 
 export function formatBbAppConfigPath(dataDir: string): string {

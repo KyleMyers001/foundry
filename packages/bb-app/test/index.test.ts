@@ -22,9 +22,11 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { waitForProcessExit } from "@bb/config/child-process-exit";
 import { resolvePortFromEnv } from "@bb/config/runtime";
+import { LEGACY_CONNECT_ENROLLMENT_MESSAGE } from "@bb/config/bb-app-managed-config";
 import {
   assertBbAppArtifacts,
   assertBbHostArtifacts,
+  assertNoLegacyConnectEnrollment,
   completeFullStackSupervision,
   createDaemonEnv,
   createHostEnrollKeyRequestBody,
@@ -51,6 +53,7 @@ import type {
   DelayMillisecondsArgs,
   DelayMillisecondsFn,
   FullStackSupervisionResult,
+  LauncherCliOptions,
   ManagedFullStackProcesses,
   ManagedProcessName,
   ManagedProcessRun,
@@ -935,11 +938,90 @@ describe("bb-app launcher", () => {
     });
     expect(
       JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8")),
-    ).toMatchObject({
-      machineCredential: "bbcm_machine",
-      connectMachineId: "machine-1",
-      serverUrl: "https://bb.example.test",
+    ).toEqual({ serverUrl: "https://bb.example.test" });
+  });
+
+  it("re-enrolls a bb connect machine on a direct URL without its connect credentials", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-remote-join-"));
+    const context = { ...createTestStartContext(), dataDir };
+    writeFileSync(
+      join(dataDir, "config.json"),
+      JSON.stringify({
+        serverUrl: "https://laptop.connect.example",
+        serverHeaders: {
+          "x-bb-connect-machine": "bbcm_old",
+          "x-proxy-auth": "kept",
+        },
+        machineCredential: "bbcm_old",
+        connectMachineId: "machine-1",
+        config: { BB_LOG_LEVEL: "debug" },
+      }),
+    );
+
+    await createHostDaemonJoinEnv({
+      context,
+      env: { BB_HOST_ENROLL_KEY: "bbde_supplied", BB_HOST_ID: "host_remote" },
+      serverUrl: "https://laptop.tailnet.example",
     });
+
+    expect(
+      JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8")),
+    ).toEqual({
+      serverUrl: "https://laptop.tailnet.example",
+      serverHeaders: { "x-proxy-auth": "kept" },
+      config: { BB_LOG_LEVEL: "debug" },
+    });
+  });
+
+  it("will not dial a saved bb connect address or forward its credential", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-legacy-connect-"));
+    const legacyConfig = JSON.stringify({
+      serverUrl: "https://laptop.connect.example",
+      serverHeaders: {
+        "x-bb-connect-machine": "bbcm_secret",
+        "x-proxy-auth": "kept",
+      },
+      machineCredential: "bbcm_secret",
+      connectMachineId: "machine-1",
+    });
+    writeFileSync(join(dataDir, "config.json"), legacyConfig);
+    try {
+      const resolve = (options: LauncherCliOptions) =>
+        resolveBbAppRuntimeState({
+          entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+            .href,
+          env: { BB_DATA_DIR: dataDir },
+          homeDir: "/home/tester",
+          options,
+          serverUrlMode: "managed",
+        });
+
+      const saved = await resolve(parseLauncherArgs([]).options);
+      expect(() => assertNoLegacyConnectEnrollment(saved)).toThrow(
+        LEGACY_CONNECT_ENROLLMENT_MESSAGE,
+      );
+      expect(() => assertNoLegacyConnectEnrollment(saved)).not.toThrow(
+        /bbcm_secret/u,
+      );
+      expect(saved.env.BB_SERVER_URL).not.toBe(
+        "https://laptop.connect.example",
+      );
+
+      const direct = await resolve(
+        parseLauncherArgs(["--server-url", "https://laptop.tailnet.example"])
+          .options,
+      );
+      expect(() => assertNoLegacyConnectEnrollment(direct)).not.toThrow();
+      expect(direct.env.BB_SERVER_URL).toBe("https://laptop.tailnet.example");
+      expect(JSON.parse(direct.env.BB_SERVER_HEADERS ?? "{}")).toEqual({
+        "x-proxy-auth": "kept",
+      });
+      expect(readFileSync(join(dataDir, "config.json"), "utf8")).toBe(
+        legacyConfig,
+      );
+    } finally {
+      rmSync(dataDir, { recursive: true, force: true });
+    }
   });
 
   it("requires the join-code host ID on a fresh machine", async () => {

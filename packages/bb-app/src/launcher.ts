@@ -53,6 +53,8 @@ import {
   bbAppManagedEnvFileSchema,
   formatBbAppConfigPath,
   formatBbAppEnvPath,
+  hasLegacyConnectEnrollment,
+  LEGACY_CONNECT_ENROLLMENT_MESSAGE,
   parseBbAppManagedConfig,
   REMOVED_AI_SERVICE_CONFIG_KEYS,
   REMOVED_AI_SERVICE_CONFIG_MESSAGE,
@@ -61,6 +63,7 @@ import {
   type BbAppManagedConfigValues,
   type BbAppManagedEnvConfig,
   type BbAppManagedEnvFile,
+  withoutLegacyConnectHeader,
 } from "@bb/config/bb-app-managed-config";
 import {
   formatClientConfigPath,
@@ -326,6 +329,7 @@ interface BbAppRuntimeState {
   config: ManagedConfig;
   context: BbAppStartContext;
   env: NodeJS.ProcessEnv;
+  legacyConnectEnrollment: boolean;
   serverEnv: NodeJS.ProcessEnv;
 }
 
@@ -366,7 +370,7 @@ interface InvalidCommand {
   kind: "invalid";
 }
 
-interface LauncherCliOptions {
+export interface LauncherCliOptions {
   autoUpdate?: boolean;
   bundled?: boolean;
   dataDir?: string;
@@ -1064,21 +1068,35 @@ export function resolveServerListenerUrl(
 function applyManagedConfigEnv(
   args: ApplyManagedConfigEnvArgs,
 ): NodeJS.ProcessEnv {
+  const serverHeaders = withoutLegacyConnectHeader(args.config.serverHeaders);
   return {
     ...args.env,
-    ...(args.config.serverHeaders !== undefined ||
-    args.config.machineCredential !== undefined
-      ? {
-          BB_SERVER_HEADERS: JSON.stringify(
-            args.config.serverHeaders ?? {
-              "x-bb-connect-machine": args.config.machineCredential,
-            },
-          ),
-        }
+    ...(serverHeaders !== undefined
+      ? { BB_SERVER_HEADERS: JSON.stringify(serverHeaders) }
       : {}),
     ...args.config.config,
     ...args.envFile.env,
   };
+}
+
+export function assertNoLegacyConnectEnrollment(
+  runtime: Pick<BbAppRuntimeState, "legacyConnectEnrollment">,
+): void {
+  if (runtime.legacyConnectEnrollment) {
+    throw new Error(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+  }
+}
+
+function withoutLegacyConnectEnrollment(
+  config: ManagedConfigForWrite,
+): ManagedConfigForWrite {
+  const next: ManagedConfigForWrite = { ...config };
+  delete next.machineCredential;
+  delete next.connectMachineId;
+  const serverHeaders = withoutLegacyConnectHeader(config.serverHeaders);
+  if (serverHeaders === undefined) delete next.serverHeaders;
+  else next.serverHeaders = serverHeaders;
+  return next;
 }
 
 function createServerBaseEnv(args: CreateServerBaseEnvArgs): NodeJS.ProcessEnv {
@@ -1444,14 +1462,19 @@ export async function resolveBbAppRuntimeState(
         homeDir: args.homeDir,
       }),
       env: localEnv,
+      legacyConnectEnrollment: false,
       serverEnv: localServerEnv,
     };
   }
 
+  const legacyConnect = hasLegacyConnectEnrollment(config);
+  const explicitServerUrl =
+    toOptionalString(args.options.serverUrl) ??
+    toOptionalString(managedEnv.BB_SERVER_URL);
   const finalEnv = {
     ...managedEnv,
     BB_SERVER_URL: resolveServerUrl({
-      config,
+      config: legacyConnect ? { ...config, serverUrl: undefined } : config,
       defaultServerUrl: initialContext.serverUrl,
       env: managedEnv,
       optionServerUrl: args.options.serverUrl,
@@ -1465,6 +1488,7 @@ export async function resolveBbAppRuntimeState(
       homeDir: args.homeDir,
     }),
     env: finalEnv,
+    legacyConnectEnrollment: legacyConnect && explicitServerUrl === undefined,
     serverEnv: stripThreadContextEnv(
       applyRuntimePolicy(
         createServerBaseEnv({
@@ -2691,19 +2715,12 @@ export async function createHostDaemonJoinEnv(
     toOptionalString(args.env.BB_HOST_ID) ??
     (await readPersistedHostId(args.context.dataDir));
   const suppliedJoinCode = toOptionalString(args.env.BB_HOST_ENROLL_KEY);
-  const machineCredential = toOptionalString(
-    args.env.BB_CONNECT_MACHINE_CREDENTIAL,
-  );
-  const connectMachineId = toOptionalString(args.env.BB_CONNECT_MACHINE_ID);
   const writeJoinConfig = (): Promise<void> =>
-    writeManagedConfig({
-      config: {
-        serverUrl: args.serverUrl,
-        ...(machineCredential !== undefined ? { machineCredential } : {}),
-        ...(connectMachineId !== undefined ? { connectMachineId } : {}),
-      },
-      dataDir: args.context.dataDir,
-    });
+    mutateManagedConfig(args.context.dataDir, (current) =>
+      withoutLegacyConnectEnrollment(
+        mergeManagedConfig(current, { serverUrl: args.serverUrl }),
+      ),
+    );
   if (suppliedJoinCode !== undefined) {
     if (requestedHostId === null) {
       throw new Error("--host-id is required when --join-code is supplied");
@@ -2790,6 +2807,7 @@ export async function runBbCli(
     serverUrlMode: "managed",
   });
   assertBbHostArtifacts(runtime.context);
+  assertNoLegacyConnectEnrollment(runtime);
   process.exitCode = await runBundledCliCommand({
     args: cliArgs,
     context: runtime.context,
@@ -3088,6 +3106,7 @@ Usage:
     serverUrlMode: "managed",
   });
   assertBbHostArtifacts(runtime.context);
+  assertNoLegacyConnectEnrollment(runtime);
   await runHostDaemonOnly({
     args: parsedArgs.positionals,
     context: runtime.context,
@@ -4112,6 +4131,7 @@ export async function runBbApp(
 
   if (command.kind === "host-daemon") {
     assertBbHostArtifacts(runtime.context);
+    assertNoLegacyConnectEnrollment(runtime);
     await runHostDaemonOnly({
       args: command.args,
       context: runtime.context,
