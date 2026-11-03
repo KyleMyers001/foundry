@@ -14,6 +14,7 @@ async function createRuntime() {
   return createPluginRuntime({
     machineEnrollments: null,
     includedBuiltinNames: new Set(),
+    isDiscontinuedBuiltin: () => false,
     deps: {
       db,
       hub: {

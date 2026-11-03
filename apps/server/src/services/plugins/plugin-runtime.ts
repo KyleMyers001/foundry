@@ -64,7 +64,10 @@ import { parsePluginSource } from "./install-sources.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";
 import { buildPluginProviderRegistration } from "../providers/plugin-provider-registration.js";
 import type { ProviderInstallRank } from "../providers/provider-registry.js";
-import { BUNDLED_PLUGINS } from "./builtin-registry.js";
+import {
+  BUNDLED_PLUGINS,
+  DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+} from "./builtin-registry.js";
 import { readPluginSettingsValuesSync } from "./plugin-settings.js";
 import {
   nextCronRunAt,
@@ -363,6 +366,7 @@ interface PluginRuntimeContext {
   machineEnrollments: MachineEnrollmentService | null;
   deps: PluginServiceDeps;
   includedBuiltinNames: ReadonlySet<string>;
+  isDiscontinuedBuiltin(row: InstalledPluginRow): boolean;
   settingsChanged?: () => void;
 }
 
@@ -1659,6 +1663,11 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
   }
 
   async function loadOne(row: InstalledPluginRow): Promise<string | null> {
+    if (context.isDiscontinuedBuiltin(row)) {
+      await disposeOne(row.id);
+      setStatus(row.id, "disabled", DISCONTINUED_BUILTIN_PLUGIN_DETAIL);
+      return null;
+    }
     const held = await heldDetail(row);
     if (held !== null) {
       await disposeOne(row.id);

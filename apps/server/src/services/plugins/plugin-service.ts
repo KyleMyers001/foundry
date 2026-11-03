@@ -10,6 +10,7 @@ import type {
 import { watch } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { ApiError } from "../../errors.js";
 import { homedir } from "node:os";
 import type { Context } from "hono";
 import {
@@ -127,8 +128,11 @@ import {
 } from "./plugin-artifact-gc.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";
 import {
+  DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+  DISCONTINUED_BUILTIN_PLUGINS,
   RETIRED_BUNDLED_PLUGINS,
   listBundledPluginRegistrations,
+  type DiscontinuedBuiltinPlugin,
 } from "./builtin-registry.js";
 import {
   type BbPluginApi,
@@ -620,6 +624,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     deps.bundledPlugins ?? listBundledPluginRegistrations();
   const retiredBundledPlugins =
     deps.retiredBundledPlugins ?? RETIRED_BUNDLED_PLUGINS;
+  const discontinuedBuiltinPlugins =
+    deps.discontinuedBuiltinPlugins ?? DISCONTINUED_BUILTIN_PLUGINS;
+  function discontinuedBuiltinFor(
+    row: InstalledPluginRow,
+  ): DiscontinuedBuiltinPlugin | undefined {
+    if (row.sourceKind !== "builtin") return undefined;
+    return discontinuedBuiltinPlugins.find(
+      (plugin) => plugin.name === row.sourceBuiltinName,
+    );
+  }
   function isOrphanedBuiltinRow(row: InstalledPluginRow): boolean {
     return (
       row.sourceKind === "builtin" &&
@@ -711,6 +725,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
         .filter((plugin) => plugin.autoInstall)
         .map((plugin) => plugin.name),
     ),
+    isDiscontinuedBuiltin: (row) => discontinuedBuiltinFor(row) !== undefined,
     machineEnrollments: deps.machineEnrollments ?? null,
     settingsChanged: notifyPluginsChanged,
   });
@@ -1044,6 +1059,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     return rows
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((row) => {
+        const discontinued = discontinuedBuiltinFor(row);
         const runtime = getStatus(row);
         const stats = handlerStats.get(row.id);
         const loadedPlugin = loaded.get(row.id);
@@ -1076,12 +1092,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           isOrphanedBuiltin: isOrphanedBuiltinRow(row),
           sourceDisplay: sourceDisplayForRow(row),
           updateState: updateStateForRow(row),
-          enabled: row.enabled,
+          enabled: discontinued === undefined && row.enabled,
           description:
             loadedPlugin?.manifest.description ??
             identity?.manifest.description ??
             null,
-          name: loadedPlugin?.manifest.name ?? identity?.manifest.name ?? null,
+          name:
+            discontinued?.displayName ??
+            loadedPlugin?.manifest.name ??
+            identity?.manifest.name ??
+            null,
           ...catalogMetadata,
           icon:
             loadedPlugin?.manifest.branding.icon ??
@@ -1334,6 +1354,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
   async function removeUnbundledBuiltins(): Promise<void> {
     for (const row of listInstalledPlugins(deps.db)) {
       if (!isOrphanedBuiltinRow(row)) continue;
+      if (discontinuedBuiltinFor(row) !== undefined) continue;
       await deleteRemovedPluginData(row, pluginProviderIds(row));
       deleteInstalledPlugin(deps.db, row.id);
       logger.info(
@@ -1826,7 +1847,15 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           return true;
         };
 
-        if (getInstalledPlugin(deps.db, id) === undefined) return undefined;
+        const current = getInstalledPlugin(deps.db, id);
+        if (current === undefined) return undefined;
+        if (enabled && discontinuedBuiltinFor(current) !== undefined) {
+          throw new ApiError(
+            409,
+            "plugin_discontinued",
+            DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+          );
+        }
         if (!(await applyEnabled(id, enabled))) return undefined;
         if (!enabled) forgetPluginRecommendation(deps.db, id);
         await syncCliSkill();

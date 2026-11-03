@@ -22,6 +22,7 @@ import type { TelemetryService } from "../system/telemetry.js";
 import type { NotificationHub } from "../../ws/hub.js";
 import type {
   BundledPluginRegistration,
+  DiscontinuedBuiltinPlugin,
   RetiredBundledPlugin,
 } from "./builtin-registry.js";
 import type { PluginManifest } from "./manifest.js";
@@ -123,6 +124,7 @@ export interface PluginServiceDeps {
   appVersion: string;
   bundledPlugins?: readonly BundledPluginRegistration[];
   retiredBundledPlugins?: readonly RetiredBundledPlugin[];
+  discontinuedBuiltinPlugins?: readonly DiscontinuedBuiltinPlugin[];
   watchBuiltinPluginSources?: boolean;
   loadTimeoutMs?: number;
   /** How long an install waits for `bb.onInstall` handlers. Defaults to 30s. */

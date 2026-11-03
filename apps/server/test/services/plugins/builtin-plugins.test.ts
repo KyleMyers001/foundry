@@ -15,8 +15,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getInstalledPluginRegistration,
+  getPluginKvValue,
   getPluginSettingsValues,
   listPluginSchedules,
+  setPluginKvValue,
   setPluginSettingsValues,
   upsertPluginSchedule,
   type DbConnection,
@@ -34,8 +36,10 @@ import {
 import {
   accountPoolDefaultEnabled,
   BUILTIN_PLUGINS,
+  DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
   OFFICIAL_PLUGINS,
   resolveBuiltinPluginRootPath,
+  type DiscontinuedBuiltinPlugin,
 } from "../../../src/services/plugins/builtin-registry.js";
 import { copyPluginRuntime } from "@bb/plugin-build";
 import { testLogger } from "../../helpers/test-app.js";
@@ -181,8 +185,10 @@ function createService(args: {
   pluginId?: string;
   rootDir?: string;
   watchBuiltinPluginSources?: boolean;
+  discontinued?: readonly DiscontinuedBuiltinPlugin[];
 }): PluginService {
   return createPluginService({
+    discontinuedBuiltinPlugins: args.discontinued ?? [],
     aiServices: createAiServiceRegistry(),
     telemetry: createNoopTelemetryService(),
     db: args.db,
@@ -404,6 +410,107 @@ describe("builtin plugin reconciliation", () => {
     } finally {
       vi.mocked(rm).mockImplementation(actual.rm);
     }
+  });
+
+  it("keeps a discontinued builtin's data across restarts without running its stale code", async () => {
+    const dataDir = join(workDir, "data");
+    const secretsDir = join(dataDir, "plugins", "builtin-fixture", "secrets");
+    service = createService({ db, dataDir });
+    await service.start();
+    expect(loadCount()).toBe(1);
+    await service.stop();
+    setPluginSettingsValues(db, "builtin-fixture", { mode: "on" });
+    setPluginKvValue(db, "builtin-fixture", "cache", JSON.stringify("kept"));
+    upsertPluginSchedule(db, {
+      pluginId: "builtin-fixture",
+      name: "tick",
+      cron: "* * * * *",
+      nextRunAt: 0,
+    });
+    await mkdir(secretsDir, { recursive: true });
+    await writeFile(join(secretsDir, "token"), "secret");
+
+    for (let start = 0; start < 2; start += 1) {
+      service = createService({
+        db,
+        dataDir,
+        includeBuiltin: false,
+        discontinued: [{ name: "fixture", displayName: "Fixture cloud" }],
+      });
+      await service.start();
+      await service.sweepDueSchedules(Date.now());
+
+      expect(service.list()).toMatchObject([
+        {
+          id: "builtin-fixture",
+          name: "Fixture cloud",
+          enabled: false,
+          status: "disabled",
+          statusDetail: DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+        },
+      ]);
+      await service.stop();
+    }
+
+    expect(loadCount()).toBe(1);
+    expect(getInstalledPluginRegistration(db, "builtin-fixture")).toMatchObject(
+      { enabled: true, removedAt: null },
+    );
+    expect(getPluginSettingsValues(db, "builtin-fixture")).toEqual({
+      mode: "on",
+    });
+    expect(getPluginKvValue(db, "builtin-fixture", "cache")).toBe(
+      JSON.stringify("kept"),
+    );
+    expect(listPluginSchedules(db, "builtin-fixture")).toMatchObject([
+      { name: "tick", lastRunAt: null },
+    ]);
+    expect(await readFile(join(secretsDir, "token"), "utf8")).toBe("secret");
+  });
+
+  it("refuses to turn a discontinued builtin back on", async () => {
+    const dataDir = join(workDir, "data");
+    service = createService({ db, dataDir });
+    await service.start();
+    await service.setEnabled("builtin-fixture", false);
+    await service.stop();
+
+    service = createService({
+      db,
+      dataDir,
+      includeBuiltin: false,
+      discontinued: [{ name: "fixture", displayName: "Fixture cloud" }],
+    });
+    await service.start();
+
+    await expect(service.setEnabled("builtin-fixture", true)).rejects.toThrow(
+      DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+    );
+    expect(getInstalledPluginRegistration(db, "builtin-fixture")?.enabled).toBe(
+      false,
+    );
+    expect(loadCount()).toBe(1);
+  });
+
+  it("still deletes other unbundled builtins while keeping a discontinued one", async () => {
+    const dataDir = join(workDir, "data");
+    service = createService({ db, dataDir });
+    await service.start();
+    await service.stop();
+    setPluginSettingsValues(db, "builtin-fixture", { mode: "on" });
+
+    service = createService({
+      db,
+      dataDir,
+      includeBuiltin: false,
+      discontinued: [{ name: "another", displayName: "Another" }],
+    });
+    await service.start();
+
+    expect(
+      getInstalledPluginRegistration(db, "builtin-fixture"),
+    ).toBeUndefined();
+    expect(getPluginSettingsValues(db, "builtin-fixture")).toEqual({});
   });
 
   it("backfills every legacy source form once while preserving registration state", async () => {

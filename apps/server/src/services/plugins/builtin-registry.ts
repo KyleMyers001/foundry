@@ -307,6 +307,23 @@ export const RETIRED_BUNDLED_PLUGINS: readonly RetiredBundledPlugin[] =
     }),
   );
 
+export interface DiscontinuedBuiltinPlugin {
+  name: string;
+  displayName: string;
+}
+
+export const DISCONTINUED_BUILTIN_PLUGIN_DETAIL =
+  "Foundry no longer includes this plugin, so it does not run. Its saved settings and secrets are kept.";
+
+export const DISCONTINUED_BUILTIN_PLUGINS: readonly DiscontinuedBuiltinPlugin[] =
+  [
+    { name: "bb-account", displayName: "bb account" },
+    { name: "bb-ai", displayName: "bb AI" },
+    { name: "connect", displayName: "bb connect" },
+    { name: "connect-next", displayName: "bb connect next" },
+    { name: "environment-modal-sandbox", displayName: "Modal sandbox" },
+  ];
+
 const builtinPluginsModuleDir = path.dirname(fileURLToPath(import.meta.url));
 
 export function builtinPluginSource(name: string): string {
