@@ -1585,9 +1585,12 @@ describe("@bb/sdk", () => {
     });
 
     expect(
-      queue.requests.map((request) => `${request.method} ${request.url}`),
+      queue.requests.map((request) => {
+        const url = new URL(request.url);
+        return `${request.method} ${url.origin}${url.pathname}${url.search}`;
+      }),
     ).toEqual([
-      "GET http://bb.test/api/v1/queued-messages?",
+      "GET http://bb.test/api/v1/queued-messages",
       "POST http://bb.test/api/v1/threads/thr_123/queued-messages/qm_1/send",
       "DELETE http://bb.test/api/v1/threads/thr_123/queued-messages/qm_1",
     ]);
@@ -1692,7 +1695,11 @@ describe("@bb/sdk", () => {
       ],
     });
 
-    expect(queue.requests[0].url).toBe("http://bb.test/api/v1/threads/count?");
+    expect(new URL(queue.requests[0].url)).toMatchObject({
+      origin: "http://bb.test",
+      pathname: "/api/v1/threads/count",
+      search: "",
+    });
     expect(queue.requests[1].url).toBe(
       "http://bb.test/api/v1/threads/count?status=active&hostId=host_a&providerId=codex&projectId=proj_123&parentThreadId=none&groupBy=host",
     );
