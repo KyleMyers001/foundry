@@ -46,13 +46,11 @@ import { createAppVersionService } from "../../../apps/server/src/services/syste
 import { createProviderNativeRootsCache } from "../../../apps/server/src/services/providers/native-roots.js";
 import { createProviderLiveCommandsCache } from "../../../apps/server/src/services/providers/provider-live-commands.js";
 import { createBbAppManagedConfigReloader } from "../../../apps/server/src/services/system/bb-app-managed-config.js";
-import { createNoopTelemetryService } from "../../../apps/server/src/services/system/telemetry.js";
 import { TerminalSessionLifecycle } from "../../../apps/server/src/services/terminals/terminal-session-lifecycle.js";
 import type {
   ServerLogger,
   ServerRuntimeConfig,
 } from "../../../apps/server/src/types.js";
-import { HostSharedPortCoordinator } from "../../../apps/server/src/ws/host-shared-ports.js";
 import { NotificationHub } from "../../../apps/server/src/ws/hub.js";
 import { WatchInterestCoordinator } from "../../../apps/server/src/ws/watch-interests.js";
 import { createPublicApiClient } from "@bb/server-contract";
@@ -196,7 +194,6 @@ async function startIntegrationServer(
   const db = createMigratedConnection();
   ensurePersonalProject(db);
   const hub = new NotificationHub();
-  const sharedPorts = new HostSharedPortCoordinator({ db, hub });
   const watchInterests = new WatchInterestCoordinator({ db, hub });
   const config: ServerRuntimeConfig = {
     appVersion: INTEGRATION_APP_VERSION,
@@ -206,8 +203,6 @@ async function startIntegrationServer(
     featureFlags: defaultFeatureFlags,
     hostDaemonPort: 3001,
     inheritedSkillsRootPaths: [],
-    marketplaceUrl: "https://marketplace.invalid/marketplace.json",
-    connectGateKeysUrl: "https://gate-keys.invalid/bb-connect-gate-keys.json",
     appUrl: "https://bb.example.test",
     serverPort: 0,
     sharedSkillRoots: { user: [], project: [] },
@@ -234,7 +229,6 @@ async function startIntegrationServer(
     hub,
     logger: testLogger,
   });
-  const telemetry = createNoopTelemetryService();
   const skillTreeRegistry = new SkillTreeRegistry();
   const providerRegistry = createProviderRegistryService({});
   await registerFirstPartyProviders(providerRegistry);
@@ -253,7 +247,6 @@ async function startIntegrationServer(
     pluginHostArtifacts,
     aiServices,
     skillTreeRegistry,
-    telemetry,
     terminalSessions,
   });
   pendingInteractions.start();
@@ -300,9 +293,7 @@ async function startIntegrationServer(
     logger: testLogger,
     machineAuth,
     pendingInteractions,
-    sharedPorts,
     skillTreeRegistry,
-    telemetry,
     terminalSessions,
     watchInterests,
   };
