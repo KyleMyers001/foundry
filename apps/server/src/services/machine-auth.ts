@@ -147,6 +147,7 @@ export async function createMachineAuthService(
   const auth = betterAuth({
     baseURL: "http://localhost",
     secret,
+    advanced: { database: { validateSchema: false } },
     database: drizzleAdapter(args.db, {
       provider: "sqlite",
       schema: machineAuthSchema,
