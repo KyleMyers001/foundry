@@ -2049,6 +2049,8 @@ async function writeOwnCliLauncher(
     const written = await writeCliLauncher({
       content: renderCliLauncher({
         dataDir: context.dataDir,
+        daemonPort: context.daemonPort,
+        serverPort: context.serverPort,
         platform: process.platform,
         target: resolveCliLauncherTarget({
           electron: process.versions.electron !== undefined,

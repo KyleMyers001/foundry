@@ -32,6 +32,7 @@ concurrency:
 jobs:
   macos:
     name: macOS arm64 desktop artifacts
+    if: github.repository == 'get-bb/bb'
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 45
     outputs:
@@ -148,6 +149,7 @@ jobs:
     # Pinned rather than ubuntu-latest so the glibc the AppImage links against
     # changes only when we choose it: the build machine's glibc sets the
     # minimum distro version users need.
+    if: github.repository == 'get-bb/bb'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 45
 
@@ -219,6 +221,7 @@ jobs:
 
   windows:
     name: Windows x64 desktop artifacts
+    if: github.repository == 'get-bb/bb'
     runs-on: blacksmith-4vcpu-windows-2025
     timeout-minutes: 45
     outputs:

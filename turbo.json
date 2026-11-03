@@ -639,6 +639,7 @@
         "$TURBO_ROOT$/.github/APPROVED_CONTRIBUTORS",
         "$TURBO_ROOT$/.github/workflows/approve-contributor.yml",
         "$TURBO_ROOT$/.github/workflows/pr-gate.yml",
+        "$TURBO_ROOT$/.github/workflows/release-desktop-macos.yml",
         "$TURBO_ROOT$/package.json",
         "$TURBO_ROOT$/scripts/*.mjs",
         "$TURBO_ROOT$/turbo.json",

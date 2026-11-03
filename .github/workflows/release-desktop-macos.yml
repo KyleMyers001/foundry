@@ -1,0 +1,259 @@
+name: Release Foundry Desktop (macOS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload to a draft GitHub Release that is promoted by hand. Requires main and every Apple signing secret. Off builds a workflow artifact only."
+        required: true
+        type: boolean
+        default: false
+
+run-name: ${{ inputs.publish && 'Release Foundry desktop' || 'Build Foundry desktop (no publish)' }}
+
+env:
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+  NODE_VERSION: "22.x"
+  PNPM_VERSION: "9.15.0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-desktop-macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build macOS arm64 app
+    runs-on: macos-15
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: echo "version=$(node -p "require('./apps/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Check publish preconditions
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Publishing must run from main, got ${GITHUB_REF}."
+            exit 1
+          fi
+
+          if [[ "$VERSION" == *-* ]]; then
+            echo "::error::Refusing to publish prerelease version ${VERSION}."
+            exit 1
+          fi
+
+          missing=()
+          for name in MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if [[ "${#missing[@]}" -gt 0 ]]; then
+            echo "::error::Publishing needs a signed, notarized app. Missing secrets: ${missing[*]}."
+            exit 1
+          fi
+
+          if target_sha=$(gh release view "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq '.targetCommitish' 2>/dev/null); then
+            if [[ "$target_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Release desktop-v${VERSION} belongs to another commit. Bump the version with scripts/bump-version.mjs."
+              exit 1
+            fi
+          fi
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Verify arm64 runner
+        run: test "$(uname -m)" = "arm64"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline --filter '!@bb/mobile'
+
+      - name: Typecheck desktop and launcher
+        run: pnpm exec turbo run typecheck --filter=@bb/desktop --filter=bb-app --output-logs=new-only
+
+      - name: Build desktop
+        run: pnpm exec turbo run build --filter=@bb/desktop --output-logs=new-only
+
+      - name: Install Electron before parallel tests
+        run: ELECTRON_RUN_AS_NODE=1 pnpm --filter @bb/desktop exec electron --version
+
+      - name: Test desktop and launcher
+        run: pnpm exec turbo run test --filter=@bb/desktop --filter=bb-app --force --output-logs=new-only
+
+      - name: Package arm64 app
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          CSC_NAME: ${{ secrets.MACOS_CERTIFICATE_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: pnpm exec turbo run desktop:build --filter=@bb/desktop --force --output-logs=new-only
+
+      - name: Verify signed and notarized app
+        if: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          app="apps/desktop/release/mac-arm64/Foundry.app"
+          codesign --verify --deep --strict --verbose=2 \
+            --test-requirement='=anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+
+      - name: Smoke test packaged app
+        run: pnpm exec turbo run smoke:packaged --filter=@bb/desktop --force --output-logs=new-only
+
+      - name: Generate version feed
+        run: pnpm --dir apps/desktop run desktop:version-feed --versioned
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: foundry-desktop-macos-arm64
+          retention-days: 14
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest-mac.yml
+            apps/desktop/release/desktop-version.json
+          if-no-files-found: error
+
+  publish:
+    name: Publish to GitHub Releases
+    if: ${{ inputs.publish }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download app
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: foundry-desktop-macos-arm64
+          path: release
+
+      - name: Publish versioned draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          assets=()
+          for pattern in release/desktop-version.json release/latest-mac.yml release/*.dmg release/*.zip release/*.blockmap; do
+            matches=($pattern)
+            if [[ ! -e "${matches[0]}" ]]; then
+              echo "::error::No release artifact matched ${pattern}."
+              exit 1
+            fi
+            assets+=("${matches[@]}")
+          done
+
+          version_tag="desktop-v${VERSION}"
+          notes="Foundry ${VERSION} for macOS (Apple silicon). Download the .dmg."
+
+          tag_sha=""
+          if tag_response=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${version_tag}" --include --jq '.object.sha'); then
+            tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${version_tag}" --jq '.sha')
+            if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag ${version_tag} belongs to another commit."
+              exit 1
+            fi
+          elif ! grep -qE '^HTTP/[0-9.]+ 404 ' <<< "$tag_response"; then
+            echo "::error::Could not check tag ${version_tag}."
+            exit 1
+          fi
+
+          release_exists=false
+          if release_info=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish --jq '[.isDraft, .targetCommitish] | @tsv' 2>/dev/null); then
+            release_exists=true
+            IFS=$'\t' read -r is_draft target_sha <<< "$release_info"
+            if [[ "$target_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Release ${version_tag} belongs to another commit."
+              exit 1
+            fi
+            if [[ "$is_draft" == "false" ]]; then
+              if [[ -z "$tag_sha" ]]; then
+                echo "::error::Published release ${version_tag} has no tag."
+                exit 1
+              fi
+              echo "Release ${version_tag} is already published; preserving its assets."
+              exit 0
+            fi
+          fi
+
+          if [[ "$release_exists" == "false" ]]; then
+            gh release create "$version_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Foundry ${VERSION}" \
+              --notes "$notes" \
+              --draft \
+              --latest=false
+          fi
+
+          gh release upload "$version_tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Verify the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          version_tag="desktop-v${VERSION}"
+          uploaded=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          for file in release/*; do
+            if ! grep -Fxq "$(basename "$file")" <<< "$uploaded"; then
+              echo "::error::Release ${version_tag} is missing $(basename "$file")."
+              exit 1
+            fi
+          done
+
+          is_draft=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')
+          release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${version_tag}"
+          if [[ "$is_draft" == "true" ]]; then
+            echo "Draft ${version_tag} is ready and is not marked latest. Promote it with: gh release edit ${version_tag} --repo ${GITHUB_REPOSITORY} --draft=false --latest" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Release ${version_tag} was already published and was left unchanged." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Release: ${release_url}" >> "$GITHUB_STEP_SUMMARY"

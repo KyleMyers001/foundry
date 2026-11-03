@@ -8,6 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -46,6 +47,87 @@ function writeExecutable(path: string, content: string): void {
 }
 
 describe("bb command launcher", () => {
+  posixIt.each([
+    {
+      name: "fresh shell",
+      env: {},
+      config: {},
+      serverUrl: "http://127.0.0.1:38986",
+      daemonPort: 38987,
+    },
+    {
+      name: "caller ports",
+      env: { BB_SERVER_PORT: "41001", BB_HOST_DAEMON_PORT: "41002" },
+      config: {},
+      serverUrl: "http://127.0.0.1:41001",
+      daemonPort: 41002,
+    },
+    {
+      name: "caller URL",
+      env: { BB_SERVER_URL: "https://caller.example.com" },
+      config: {},
+      serverUrl: "https://caller.example.com",
+      daemonPort: 38987,
+    },
+    {
+      name: "managed remote",
+      env: {},
+      config: { serverUrl: "https://remote.example.com" },
+      serverUrl: "https://remote.example.com",
+      daemonPort: 38987,
+    },
+  ])(
+    "resolves Foundry's generated command endpoints for $name",
+    async (scenario) => {
+      const root = scratchDir();
+      const dataDir = join(root, "data");
+      mkdirSync(dataDir);
+      writeFileSync(
+        join(dataDir, "config.json"),
+        JSON.stringify(scenario.config),
+      );
+      const entryPath = join(root, "bb.mjs");
+      writeFileSync(
+        entryPath,
+        `
+      import { resolveBbAppRuntimeState } from ${JSON.stringify(new URL("../src/launcher.ts", import.meta.url).href)};
+      const { context } = await resolveBbAppRuntimeState({
+        entrypointUrl: import.meta.url,
+        env: process.env,
+        homeDir: process.env.HOME,
+        options: { help: false, json: false },
+        serverUrlMode: "managed",
+      });
+      process.stdout.write(JSON.stringify({ serverUrl: context.serverUrl, daemonPort: context.daemonPort }));
+    `,
+      );
+      const runtimePath = join(root, "node-with-source");
+      const tsx = createRequire(import.meta.url).resolve("tsx");
+      writeExecutable(
+        runtimePath,
+        `#!/bin/sh\nexec '${process.execPath}' --conditions=source --import '${tsx}' "$@"\n`,
+      );
+      const launcherPath = join(root, "bin", "bb");
+      await writeCliLauncher({
+        content: renderCliLauncher({
+          dataDir,
+          serverPort: 38986,
+          daemonPort: 38987,
+          platform: process.platform,
+          target: { electron: false, entryPath, kind: "direct", runtimePath },
+        }),
+        launcherPath,
+      });
+      const result = await execFileAsync(launcherPath, [], {
+        env: { HOME: root, PATH: "/nonexistent", ...scenario.env },
+      });
+      expect(JSON.parse(result.stdout)).toEqual({
+        serverUrl: scenario.serverUrl,
+        daemonPort: scenario.daemonPort,
+      });
+    },
+  );
+
   posixIt(
     "runs the bb entry with the install's runtime and passes arguments through unchanged",
     async () => {
@@ -61,6 +143,8 @@ describe("bb command launcher", () => {
       await writeCliLauncher({
         content: renderCliLauncher({
           dataDir,
+          serverPort: 38886,
+          daemonPort: 38887,
           platform: process.platform,
           target: {
             electron: false,
@@ -100,6 +184,8 @@ describe("bb command launcher", () => {
       await writeCliLauncher({
         content: renderCliLauncher({
           dataDir: root,
+          serverPort: 38886,
+          daemonPort: 38887,
           platform: process.platform,
           target: {
             electron: false,
@@ -159,6 +245,8 @@ describe("bb command launcher", () => {
       await writeCliLauncher({
         content: renderCliLauncher({
           dataDir: join(root, "data"),
+          serverPort: 38886,
+          daemonPort: 38887,
           platform: "linux",
           target,
         }),
@@ -188,11 +276,15 @@ describe("bb command launcher", () => {
     };
     const electron = renderCliLauncher({
       dataDir: "/Users/me/.bb",
+      serverPort: 38886,
+      daemonPort: 38887,
       platform: "darwin",
       target: resolveCliLauncherTarget({ ...base, electron: true }),
     });
     const node = renderCliLauncher({
       dataDir: "/Users/me/.bb",
+      serverPort: 38886,
+      daemonPort: 38887,
       platform: "darwin",
       target: resolveCliLauncherTarget({ ...base, electron: false }),
     });
@@ -204,6 +296,8 @@ describe("bb command launcher", () => {
   it("writes a Windows batch launcher that survives percent signs and spaces", () => {
     const launcher = renderCliLauncher({
       dataDir: "C:\\Users\\me\\.bb",
+      serverPort: 38886,
+      daemonPort: 38887,
       platform: "win32",
       target: {
         electron: true,
@@ -218,6 +312,8 @@ describe("bb command launcher", () => {
       `rem ${CLI_LAUNCHER_MARKER}`,
       "setlocal EnableExtensions DisableDelayedExpansion",
       'if not defined BB_DATA_DIR set "BB_DATA_DIR=C:\\Users\\me\\.bb"',
+      'if not defined BB_SERVER_PORT set "BB_SERVER_PORT=38886"',
+      'if not defined BB_HOST_DAEMON_PORT set "BB_HOST_DAEMON_PORT=38887"',
       'set "ELECTRON_RUN_AS_NODE=1"',
       'if not exist "C:\\Program Files (x86)\\bb\\bb.exe" goto moved',
       'if exist "C:\\Program Files (x86)\\bb\\100%%\\dist\\bb.js" goto run',

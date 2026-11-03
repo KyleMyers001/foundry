@@ -2,7 +2,7 @@
 
 ## Foundry And Upstream
 
-- This repository is Foundry, an independent fork of [bb](https://github.com/get-bb/bb). The code, `bb` CLI, packages, environment variables, and data directories keep the bb name. Use those names as they appear in the code.
+- This repository is Foundry, an independent fork of [bb](https://github.com/get-bb/bb). The code, `bb` CLI, packages, environment variables, and data directories keep the bb name. Use those names as they appear in the code. Packaged desktop builds are the exception: `apps/desktop` names them Foundry, gives them the app ID `io.github.kylemyers001.foundry`, and defaults them to the `~/.foundry` data directory, separate ports, and telemetry off. See [docs/foundry-desktop-release.md](docs/foundry-desktop-release.md).
 - Open issues and pull requests against `KyleMyers001/foundry`, never `get-bb/bb`. Pass `--repo KyleMyers001/foundry` to `gh`, because a fork can otherwise resolve to its parent.
 
 ## Task Completion

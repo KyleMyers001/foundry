@@ -1,5 +1,8 @@
 # Releasing bb-app
 
+This is upstream bb's process. Foundry releases only its macOS desktop app; see
+[foundry-desktop-release.md](foundry-desktop-release.md).
+
 This runbook is for agents preparing and publishing the `bb-app` npm package.
 Official plugins bundle into the app during packaging and ship with this same
 release; see

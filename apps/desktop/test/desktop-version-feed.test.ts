@@ -11,17 +11,37 @@ const execFileAsync = promisify(execFile);
 
 describe("desktop release compatibility metadata", () => {
   it.each([
-    { platform: "darwin", channel: "latest", suffix: "mac", minimum: "22.0.0" },
+    {
+      platform: "darwin",
+      channel: "latest",
+      suffix: "mac",
+      minimum: "22.0.0",
+      versioned: false,
+    },
+    {
+      platform: "darwin",
+      channel: "latest",
+      suffix: "mac",
+      minimum: "22.0.0",
+      versioned: true,
+    },
     {
       platform: "darwin",
       channel: "nightly",
       suffix: "mac",
       minimum: "22.0.0",
+      versioned: false,
     },
-    { platform: "linux", channel: "latest", suffix: "linux", minimum: null },
+    {
+      platform: "linux",
+      channel: "latest",
+      suffix: "linux",
+      minimum: null,
+      versioned: false,
+    },
   ])(
-    "publishes the OS requirement for $platform $channel without losing update fields",
-    async ({ platform, channel, suffix, minimum }) => {
+    "publishes $platform $channel metadata with versioned=$versioned without losing update fields",
+    async ({ platform, channel, suffix, minimum, versioned }) => {
       const root = await mkdtemp(join(tmpdir(), "bb-version-feed-test-"));
       try {
         const release = join(root, "release");
@@ -52,16 +72,24 @@ describe("desktop release compatibility metadata", () => {
           },
           define: { "process.platform": JSON.stringify(platform) },
         });
-        await execFileAsync(process.execPath, [script], {
-          cwd: root,
-          env: { ...process.env, BB_DESKTOP_RELEASE_CHANNEL: channel },
-        });
-        const updated: unknown = parse(await readFile(metadataPath, "utf8"));
-        expect(updated).toEqual(
-          minimum === null
-            ? metadata
-            : { ...metadata, minimumSystemVersion: minimum },
+        await execFileAsync(
+          process.execPath,
+          [script, ...(versioned ? ["--versioned"] : [])],
+          {
+            cwd: root,
+            env: { ...process.env, BB_DESKTOP_RELEASE_CHANNEL: channel },
+          },
         );
+        const updated: unknown = parse(await readFile(metadataPath, "utf8"));
+        const assetUrl = versioned
+          ? "https://github.com/KyleMyers001/foundry/releases/download/desktop-v0.43.1/bb.zip"
+          : "bb.zip";
+        expect(updated).toEqual({
+          ...metadata,
+          files: [{ ...metadata.files[0], url: assetUrl }],
+          path: assetUrl,
+          ...(minimum === null ? {} : { minimumSystemVersion: minimum }),
+        });
         const feedName =
           platform === "darwin"
             ? "desktop-version.json"
@@ -72,7 +100,8 @@ describe("desktop release compatibility metadata", () => {
         expect(feed).toMatchObject({
           channel,
           minimumSystemVersion: minimum,
-          files: [{ url: "bb.zip", sha512: "checksum", size: 123 }],
+          files: [{ url: assetUrl, sha512: "checksum", size: 123 }],
+          path: assetUrl,
           version: metadata.version,
         });
         if (platform === "darwin") {

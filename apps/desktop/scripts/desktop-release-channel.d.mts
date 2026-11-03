@@ -8,13 +8,13 @@ export interface DesktopUpdateMetadataFileNames {
 }
 
 export interface DesktopReleaseConfig {
-  appId: "dev.bb.desktop" | "dev.bb.desktop.nightly";
-  applicationName: "bb" | "bb Nightly";
+  appId: "io.github.kylemyers001.foundry" | "dev.bb.desktop.nightly";
+  applicationName: "Foundry" | "bb Nightly";
   artifactName: string;
   iconFileName: "icon.png" | "icon-nightly.png";
   linuxExecutableName: "bb" | "bb-nightly";
   macIconPath: "assets/icon.icns" | "assets/icon-nightly.icns";
-  releaseTag: "desktop-latest" | "desktop-nightly";
+  releaseTag: "desktop-nightly" | null;
   updateMetadataFileNames: DesktopUpdateMetadataFileNames;
   windowsInstallName: "bb" | "bb-nightly";
 }
@@ -32,5 +32,5 @@ export function createDesktopReleaseConfig(
 ): DesktopReleaseConfig;
 
 export function createDesktopUpdateReleaseBaseUrl(
-  releaseTag: DesktopReleaseConfig["releaseTag"],
+  releaseTag: string | null,
 ): string;

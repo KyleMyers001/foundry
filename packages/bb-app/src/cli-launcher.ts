@@ -104,6 +104,8 @@ export function resolveCliLauncherTarget(args: {
 
 function renderWindowsCliLauncher(args: {
   dataDir: string;
+  daemonPort: number;
+  serverPort: number;
   target: Extract<CliLauncherTarget, { kind: "direct" }>;
 }): string {
   const paths = [args.target.runtimePath, args.target.entryPath, args.dataDir];
@@ -122,6 +124,8 @@ function renderWindowsCliLauncher(args: {
         ]
       : []),
     `if not defined BB_DATA_DIR set "BB_DATA_DIR=${cmdText(args.dataDir)}"`,
+    `if not defined BB_SERVER_PORT set "BB_SERVER_PORT=${args.serverPort}"`,
+    `if not defined BB_HOST_DAEMON_PORT set "BB_HOST_DAEMON_PORT=${args.daemonPort}"`,
     ...(args.target.electron ? ['set "ELECTRON_RUN_AS_NODE=1"'] : []),
     `if not exist ${cmdWord(args.target.runtimePath)} goto moved`,
     `if exist ${cmdWord(args.target.entryPath)} goto run`,
@@ -140,6 +144,8 @@ function renderWindowsCliLauncher(args: {
 
 export function renderCliLauncher(args: {
   dataDir: string;
+  daemonPort: number;
+  serverPort: number;
   platform: NodeJS.Platform;
   target: CliLauncherTarget;
 }): string {
@@ -148,13 +154,15 @@ export function renderCliLauncher(args: {
     if (target.kind !== "direct") {
       throw new Error("An AppImage bb command launcher is Linux only.");
     }
-    return renderWindowsCliLauncher({ dataDir: args.dataDir, target });
+    return renderWindowsCliLauncher({ ...args, target });
   }
   const header = [
     "#!/bin/sh",
     `# ${CLI_LAUNCHER_MARKER}`,
     `data_dir=${shellWord(args.dataDir)}`,
     'export BB_DATA_DIR="${BB_DATA_DIR:-$data_dir}"',
+    `export BB_SERVER_PORT="\${BB_SERVER_PORT:-${args.serverPort}}"`,
+    `export BB_HOST_DAEMON_PORT="\${BB_HOST_DAEMON_PORT:-${args.daemonPort}}"`,
   ];
   const moved = [`  echo "${CLI_LAUNCHER_MOVED_MESSAGE}" >&2`, "  exit 127"];
   if (target.kind === "direct") {

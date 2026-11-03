@@ -1,7 +1,10 @@
 # Windows CI
 
-Every Windows job in `.github/workflows/ci.yml` runs on Blacksmith Windows
-Server 2025 x64 alongside the Linux checks. Main pushes run all of them; pull
+Foundry skips these jobs. They run only in `get-bb/bb`, because Foundry does not
+ship for Windows. The rest of this page describes them as they run there.
+
+Every Windows job in `.github/workflows/ci.yml` runs on Windows Server 2025 x64
+alongside the Linux checks. Main pushes run all of them; pull
 requests run the jobs that [PR selection](ci-performance.md#pr-selection)
 picks, and frontend-only pull requests leave their Windows coverage to main. A
 selected Windows job is blocking, not advisory.

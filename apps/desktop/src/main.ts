@@ -1,3 +1,4 @@
+import "./install-foundry-runtime-defaults.js";
 import { spawnHostProcess as spawn, hostToolchain } from "@bb/process-utils";
 import { openApplicationUrl } from "./application-url.js";
 import { createDesktopLogger } from "./desktop-logger.js";
@@ -2919,7 +2920,7 @@ async function runDesktopApp(): Promise<void> {
   app.setAppUserModelId(
     DESKTOP_RELEASE_CHANNEL === "nightly"
       ? "dev.bb.desktop.nightly"
-      : "dev.bb.desktop",
+      : "io.github.kylemyers001.foundry",
   );
   if (app.isPackaged) {
     await hostToolchain.refresh();
