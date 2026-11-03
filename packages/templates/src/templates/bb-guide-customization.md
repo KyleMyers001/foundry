@@ -161,7 +161,9 @@ already have `bb`. `bb settings cli-command` shows the state, and `install` or
 folder such as `~/.local/bin` (on Windows it adds `~/.bb/bin` to the user
 PATH). bb never replaces another `bb`: install is refused while one runs first
 in a new terminal. Only an installed bb (`npx bb-app` or the desktop app)
-offers this; a source checkout does not.
+offers this; a source checkout does not. The launcher defaults to the install's
+server and daemon ports, while preserving caller endpoint overrides and managed
+remote-server settings.
 
 Completed turns: `bb settings completed-turns` lists how each provider shows a
 finished turn: `collapse` folds the turn's work into one "Worked for" row and

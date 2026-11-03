@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import {
   access,
   chmod,
@@ -13,6 +13,7 @@ import {
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { promisify } from "node:util";
 import { z } from "zod";
 import { AppInfo, Packager } from "electron-builder";
 import { describe, expect, it } from "vitest";
@@ -650,6 +651,44 @@ describe("electron-builder signing config", () => {
     expect(partialAppleCredentials.stderr).toContain(
       "Missing: APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.",
     );
+  });
+
+  it("rejects a missing Developer ID identity with the environment-backed signing policy", async () => {
+    const { config } = await readResolvedConfig({
+      APPLE_APP_SPECIFIC_PASSWORD: "fixture-password",
+      APPLE_ID: "fixture@example.com",
+      APPLE_TEAM_ID: "FIXTURE123",
+      CSC_KEY_PASSWORD: "fixture-password",
+      CSC_LINK: "fixture-p12",
+    });
+    const script = `
+      const { createRequire } = require("node:module");
+      const { Packager } = require("electron-builder");
+      const builderRequire = createRequire(require.resolve("electron-builder"));
+      const { MacPackager } = builderRequire("app-builder-lib/out/macPackager");
+      const { reportError } = builderRequire("app-builder-lib/out/codeSign/macCodeSign");
+      (async () => {
+        const packager = new Packager({ projectDir: process.cwd(), config: JSON.parse(process.argv[1]) });
+        await packager.validateConfig();
+        const mac = new MacPackager(packager);
+        await reportError(false, ["Developer ID Application"], null, undefined, mac.forceCodeSigning);
+      })().catch(error => { console.error(error.message); process.exitCode = 1; });
+    `;
+    await expect(
+      promisify(execFile)(
+        process.execPath,
+        ["-e", script, JSON.stringify(config)],
+        {
+          cwd: desktopPackageRoot,
+          env: createScriptEnvironment({
+            CSC_IDENTITY_AUTO_DISCOVERY: "false",
+          }),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining("skipped macOS application code signing"),
+    });
   });
 
   it("enables app signing and notarization when signing and Apple credentials are complete", async () => {

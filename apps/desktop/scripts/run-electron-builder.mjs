@@ -162,6 +162,7 @@ function resolveElectronBuilderConfig(baseConfig, env, electronBuilderArgs) {
     delete mac.identity;
   }
 
+  config.forceCodeSigning = signingPlan.mode === "environment";
   config.mac = mac;
   config.linux = {
     ...config.linux,

@@ -12,10 +12,34 @@ const upload = (release, files) => {
   }
 };
 
-if (command === "api" && action.includes("/commits/")) {
-  const sha = state.tags[action.split("/").at(-1)];
-  if (!sha) process.exit(1);
-  console.log(sha);
+if (command === "api") {
+  const includeHeaders = process.argv.includes("--include");
+  const respond = (value) => {
+    const failure = process.env.RELEASE_TEST_FAILURE;
+    const unavailable =
+      failure === "tag-lookup" && action.includes("/git/ref/tags/");
+    const status = unavailable
+      ? "500 Internal Server Error"
+      : value
+        ? "200 OK"
+        : "404 Not Found";
+    if (includeHeaders)
+      console.log(`HTTP/2.0 ${status}\nContent-Type: application/json\r\n\r\n`);
+    if (unavailable || !value) {
+      console.log(
+        JSON.stringify({
+          message: unavailable ? "Internal Server Error" : "Not Found",
+        }),
+      );
+      process.exit(1);
+    }
+    console.log(value);
+  };
+  if (action.includes("/commits/") || action.includes("/git/ref/tags/")) {
+    respond(state.tags[action.split("/").at(-1)]);
+  } else {
+    throw new Error(`Unexpected gh API endpoint: ${action}`);
+  }
 } else if (command === "release") {
   const release = state.releases[tag];
   const files = args.filter((arg) => existsSync(arg) && statSync(arg).isFile());
@@ -42,7 +66,7 @@ if (command === "api" && action.includes("/commits/")) {
     };
     upload(created, files);
     state.releases[tag] = created;
-    if (!created.isDraft) state.tags[tag] = created.targetCommitish;
+    if (!created.isDraft) state.tags[tag] ??= created.targetCommitish;
     if (args.includes("--latest")) state.latest = tag;
     save();
   } else if (action === "upload") {

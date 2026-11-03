@@ -70,13 +70,35 @@ function fixture(run) {
     writeFileSync(join(root, "release", asset), `new ${asset}`);
   const save = () => writeFileSync(statePath, JSON.stringify(state));
   const read = () => JSON.parse(readFileSync(statePath, "utf8"));
+  const nativeLog = join(root, "native-checks");
   const execute = (step, failure = "") => {
     save();
+    writeFileSync(nativeLog, "");
     const result = spawnSync(
       "bash",
       [
         "-c",
-        `gh() { "$TEST_NODE" "$TEST_GH" "$@"; }\ngit() { :; }\n${stepScript(step)}`,
+        `gh() { "$TEST_NODE" "$TEST_GH" "$@"; }
+        verify() { printf '%s\\n' "$1" >> "$TEST_NATIVE_LOG"; [ "$RELEASE_TEST_FAILURE" != "$1" ]; }
+        codesign() {
+          local requirement=""
+          while (($#)); do
+            case "$1" in
+              -R|--test-requirement) requirement="$2"; shift ;;
+              --test-requirement=*) requirement="\${1#--test-requirement=}" ;;
+              -R*) requirement="\${1#-R}" ;;
+            esac
+            shift
+          done
+          if [[ "$requirement" != =* ]]; then
+            echo "codesign: requirement '$requirement' is a file path; literal requirements start with =" >&2
+            return 1
+          fi
+          verify codesign
+        }
+        xcrun() { verify stapler; }
+        spctl() { verify spctl; }
+        ${stepScript(step)}`,
       ],
       {
         cwd: root,
@@ -88,6 +110,7 @@ function fixture(run) {
             repoRoot,
             "packages/scripts/test/fixtures/foundry-release-gh.mjs",
           ),
+          TEST_NATIVE_LOG: nativeLog,
           RELEASE_TEST_STATE: statePath,
           GITHUB_STEP_SUMMARY: summaryPath,
           RELEASE_TEST_FAILURE: failure,
@@ -104,7 +127,10 @@ function fixture(run) {
       },
     );
     Object.assign(state, read());
-    return result;
+    return {
+      ...result,
+      nativeChecks: readFileSync(nativeLog, "utf8").trim().split("\n"),
+    };
   };
   try {
     run({ state, execute, summaryPath });
@@ -135,6 +161,32 @@ describe.skipIf(process.platform === "win32")(
         const verified = execute(verifyStep);
         expect(verified.status, verified.stderr).toBe(0);
         expect(readFileSync(summaryPath, "utf8")).toContain("--draft=false");
+      });
+    });
+
+    it.each(["codesign", "stapler", "spctl", ""])(
+      "requires every native signature/notarization check (failure=%s)",
+      (failure) => {
+        fixture(({ execute }) => {
+          const result = execute("Verify signed and notarized app", failure);
+          expect(result.status, result.stdout + result.stderr).toBe(
+            failure ? 1 : 0,
+          );
+          const checks = ["codesign", "stapler", "spctl"];
+          expect(result.nativeChecks).toEqual(
+            failure ? checks.slice(0, checks.indexOf(failure) + 1) : checks,
+          );
+        });
+      },
+    );
+
+    it("aborts on tag lookup API failures without modifying any release", () => {
+      fixture(({ state, execute }) => {
+        const before = structuredClone(state);
+        const result = execute(publishStep, "tag-lookup");
+        expect(result.status, result.stdout + result.stderr).toBe(1);
+        expect(result.stdout + result.stderr).toContain("Could not check");
+        expect(state).toEqual(before);
       });
     });
 
@@ -197,6 +249,63 @@ describe.skipIf(process.platform === "win32")(
         });
       },
     );
+
+    it.each(["missing", "draft"])(
+      "rejects a conflicting existing tag for a %s release",
+      (existing) => {
+        fixture(({ state, execute }) => {
+          state.tags[versionTag] = "c".repeat(40);
+          if (existing === "draft") {
+            state.releases[versionTag] = {
+              isDraft: true,
+              targetCommitish: sha,
+              assets: { "keep.zip": "incomplete" },
+            };
+          }
+          const before = structuredClone(state);
+          const result = execute(publishStep);
+          expect(result.status, result.stdout + result.stderr).not.toBe(0);
+          expect(result.stdout + result.stderr).toContain(
+            `Tag ${versionTag} belongs to another commit`,
+          );
+          expect(state).toEqual(before);
+        });
+      },
+    );
+
+    it("rejects a published release whose tag was removed", () => {
+      fixture(({ state, execute }) => {
+        state.releases[versionTag] = {
+          isDraft: false,
+          targetCommitish: sha,
+          assets: {},
+        };
+        const before = structuredClone(state);
+        const result = execute(publishStep);
+        expect(result.status, result.stdout + result.stderr).toBe(1);
+        expect(result.stdout + result.stderr).toContain("has no tag");
+        expect(state).toEqual(before);
+      });
+    });
+
+    it("resumes a draft whose existing tag matches the commit", () => {
+      fixture(({ state, execute }) => {
+        state.tags[versionTag] = sha;
+        state.releases[versionTag] = {
+          isDraft: true,
+          targetCommitish: sha,
+          assets: {},
+        };
+        const result = execute(publishStep);
+        expect(result.status, result.stdout + result.stderr).toBe(0);
+        expect(state.tags[versionTag]).toBe(sha);
+        expect(state.releases[versionTag].isDraft).toBe(true);
+        expect(state.latest).toBe("desktop-v0.48.0");
+        expect(Object.keys(state.releases[versionTag].assets).sort()).toEqual(
+          [...assets].sort(),
+        );
+      });
+    });
 
     it.each([true, false])(
       "allows retrying the same commit (draft=%s)",

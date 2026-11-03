@@ -164,7 +164,9 @@ SDK methods are `system.experimental_cliCommand()`,
 - Every start of an installed bb (`npx bb-app` or the desktop app) writes a
   small launcher to `<dataDir>/bin/bb` (`bb.cmd` on Windows). It runs the bb
   CLI of the install that started last, with that install's own Node runtime,
-  so the desktop app needs no separate Node. After bb moves or updates, start
+  so the desktop app needs no separate Node. The launcher carries that install's
+  server and daemon ports as defaults; caller environment overrides and managed
+  remote-server configuration still apply. After bb moves or updates, start
   it once to refresh the launcher. Source checkouts (`pnpm start`, `pnpm dev`)
   write no launcher and do not show the setting.
 - Install acts on the computer that runs the bb server. On macOS and Linux it

@@ -122,6 +122,17 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm exec turbo run desktop:build --filter=@bb/desktop --force --output-logs=new-only
 
+      - name: Verify signed and notarized app
+        if: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          app="apps/desktop/release/mac-arm64/Foundry.app"
+          codesign --verify --deep --strict --verbose=2 \
+            --test-requirement='=anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+
       - name: Smoke test packaged app
         run: pnpm exec turbo run smoke:packaged --filter=@bb/desktop --force --output-logs=new-only
 
@@ -180,22 +191,37 @@ jobs:
           version_tag="desktop-v${VERSION}"
           notes="Foundry ${VERSION} for macOS (Apple silicon). Download the .dmg."
 
+          tag_sha=""
+          if tag_response=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${version_tag}" --include --jq '.object.sha'); then
+            tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${version_tag}" --jq '.sha')
+            if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag ${version_tag} belongs to another commit."
+              exit 1
+            fi
+          elif ! grep -qE '^HTTP/[0-9.]+ 404 ' <<< "$tag_response"; then
+            echo "::error::Could not check tag ${version_tag}."
+            exit 1
+          fi
+
+          release_exists=false
           if release_info=$(gh release view "$version_tag" --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish --jq '[.isDraft, .targetCommitish] | @tsv' 2>/dev/null); then
+            release_exists=true
             IFS=$'\t' read -r is_draft target_sha <<< "$release_info"
             if [[ "$target_sha" != "$GITHUB_SHA" ]]; then
               echo "::error::Release ${version_tag} belongs to another commit."
               exit 1
             fi
             if [[ "$is_draft" == "false" ]]; then
-              tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${version_tag}" --jq '.sha')
-              if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
-                echo "::error::Tag ${version_tag} belongs to another commit."
+              if [[ -z "$tag_sha" ]]; then
+                echo "::error::Published release ${version_tag} has no tag."
                 exit 1
               fi
               echo "Release ${version_tag} is already published; preserving its assets."
               exit 0
             fi
-          else
+          fi
+
+          if [[ "$release_exists" == "false" ]]; then
             gh release create "$version_tag" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
