@@ -42,15 +42,11 @@ import {
   type UpdateInventory,
   type UpdateInventoryMachine,
 } from "@/hooks/useUpdateInventory";
-import { recordTelemetryEvent } from "@/components/onboarding/onboarding-telemetry";
 import {
   UpdateActionButton,
   UpdatesSettingsSection,
 } from "./UpdatesSettingsSection";
 
-vi.mock("@/components/onboarding/onboarding-telemetry", () => ({
-  recordTelemetryEvent: vi.fn(),
-}));
 
 vi.mock("@/components/ui/app-toast", () => ({
   appToast: {
@@ -518,7 +514,6 @@ describe("UpdatesSettingsSection", () => {
       const button = releaseNotesButton("0.47.0");
       expect(button.getAttribute("aria-expanded")).toBe("false");
       expect(releaseNotesPanel("0.47.0")).toBeNull();
-      expect(recordTelemetryEvent).not.toHaveBeenCalled();
     });
 
     it("offers the installed release's notes when no update is available", () => {
@@ -554,10 +549,6 @@ describe("UpdatesSettingsSection", () => {
       expect(
         within(panel).getByText("This build includes changes since 0.48.0"),
       ).toBeDefined();
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.48.2", view: "inline" },
-      });
     });
 
     it("opens the release's notes under the bb row and closes them again", () => {
@@ -587,20 +578,14 @@ describe("UpdatesSettingsSection", () => {
       expect(screen.getByRole("region", { name: "bb" }).contains(panel)).toBe(
         true,
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "inline" },
-      });
 
       fireEvent.click(button);
       expect(releaseNotesPanel("0.47.0")).toBeNull();
-      expect(recordTelemetryEvent).toHaveBeenCalledTimes(1);
     });
 
     it("opens the full changelog in the external browser", () => {
       renderSection();
       fireEvent.click(releaseNotesButton("0.47.0"));
-      vi.mocked(recordTelemetryEvent).mockClear();
 
       const link = within(releaseNotesPanel("0.47.0")!).getByRole("link", {
         name: /Full changelog/,
@@ -613,10 +598,6 @@ describe("UpdatesSettingsSection", () => {
       expect(openUrlInExternalBrowserMock).toHaveBeenCalledExactlyOnceWith(
         "https://getbb.app/changelog#0-47-0",
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "web" },
-      });
     });
 
     it("prefers the published changelog over the bundled one", async () => {
@@ -2760,10 +2741,6 @@ The published lede.
       expect(notesButton(bbCard, "0.0.6").getAttribute("aria-expanded")).toBe(
         "false",
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "inline" },
-      });
     });
 
     it("offers the installed desktop release when no update is available", async () => {

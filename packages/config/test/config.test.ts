@@ -316,7 +316,6 @@ describe("consumer-specific config", () => {
     expect(serverConfig.BB_EXTERNAL_URL).toBe("");
     expect(serverConfig.featureFlags).toEqual({
       placeholder: false,
-      initiatorTelemetry: true,
       timelineWindowEventBudget: 1_500,
     });
   });
@@ -403,14 +402,21 @@ describe("consumer-specific config", () => {
     expect(serverConfig.featureFlags.placeholder).toBe(true);
   });
 
-  it("parses the initiator telemetry flag from env", () => {
+  it("ignores the retired analytics environment variables", () => {
     const serverConfig = loadServerConfig({
       env: createServerRuntimeEnv({
-        BB_FF_INITIATOR_TELEMETRY: "false",
+        BB_TELEMETRY: "true",
+        BB_POSTHOG_API_KEY: "phc_example",
+        BB_FF_INITIATOR_TELEMETRY: "true",
       }),
     });
 
-    expect(serverConfig.featureFlags.initiatorTelemetry).toBe(false);
+    expect(serverConfig).not.toHaveProperty("BB_TELEMETRY");
+    expect(serverConfig).not.toHaveProperty("BB_POSTHOG_API_KEY");
+    expect(serverConfig.featureFlags).toEqual({
+      placeholder: false,
+      timelineWindowEventBudget: 1_500,
+    });
   });
 
   it("parses the timeline window event budget from env", () => {
@@ -465,7 +471,7 @@ describe("consumer-specific config", () => {
     expect(serverConfig.BB_APP_VERSION).toBe("0.1.2");
   });
 
-  it("parses the internal app surface marker for server telemetry", () => {
+  it("parses the internal app surface marker", () => {
     const serverConfig = loadServerConfig({
       env: createServerRuntimeEnv({
         BB_APP_SURFACE: "desktop",

@@ -6,6 +6,8 @@ import type {
 
 export type OnboardingStepId = "agent" | "projects" | "plugins" | "devices";
 
+export type OnboardingEntry = "first_run" | "replay";
+
 export const ONBOARDING_STEPS: readonly {
   id: OnboardingStepId;
   label: string;

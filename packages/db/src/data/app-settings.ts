@@ -14,7 +14,7 @@ import {
   type AppKeybindingOverrides,
   type AppSettings,
 } from "@bb/domain";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { DbConnection, DbQueryConnection } from "../connection.js";
 import { appSettingsValues } from "../schema.js";
 
@@ -26,7 +26,6 @@ const AI_SERVICE_SELECTIONS_KEY = "aiServiceSelections";
 const PLUGIN_SAFE_MODE_KEY = "pluginSafeMode";
 const DISABLED_PROVIDER_IDS_KEY = "disabledProviderIds";
 const LEGACY_DIAGNOSTIC_EVENTS_KEY = "showUnhandledProviderEvents";
-const INSTALL_TURN_NUMBER_KEY = "installTurnNumber";
 
 function parseStoredValue(text: string): unknown {
   try {
@@ -284,52 +283,3 @@ export function forgetPluginProviders(
   });
 }
 
-function pluginRecommendationKey(pluginId: string): string {
-  return `pluginRecommendation:${pluginId}`;
-}
-
-export function getPluginRecommendationId(
-  db: DbConnection,
-  pluginId: string,
-): string | null {
-  const row = db
-    .select({ value: appSettingsValues.value })
-    .from(appSettingsValues)
-    .where(eq(appSettingsValues.key, pluginRecommendationKey(pluginId)))
-    .get();
-  const value = row === undefined ? undefined : parseStoredValue(row.value);
-  return typeof value === "string" ? value : null;
-}
-
-export function setPluginRecommendationId(
-  db: DbConnection,
-  pluginId: string,
-  recommendationId: string,
-): void {
-  writeValue(db, pluginRecommendationKey(pluginId), recommendationId, Date.now());
-}
-
-export function deletePluginRecommendationId(
-  db: DbConnection,
-  pluginId: string,
-): void {
-  db.delete(appSettingsValues)
-    .where(eq(appSettingsValues.key, pluginRecommendationKey(pluginId)))
-    .run();
-}
-
-export function claimInstallTurnNumber(db: DbQueryConnection, now: number): number {
-  const row = db
-    .insert(appSettingsValues)
-    .values({ key: INSTALL_TURN_NUMBER_KEY, value: "1", updatedAt: now })
-    .onConflictDoUpdate({
-      target: appSettingsValues.key,
-      set: {
-        value: sql`CAST(CAST(${appSettingsValues.value} AS INTEGER) + 1 AS TEXT)`,
-        updatedAt: now,
-      },
-    })
-    .returning({ value: appSettingsValues.value })
-    .get();
-  return Number(row!.value);
-}

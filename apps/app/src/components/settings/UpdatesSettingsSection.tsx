@@ -112,7 +112,6 @@ import {
   resolveReleaseUpdateVersion,
   type ReleaseVersionInput,
 } from "./release-notes-model";
-import { recordReleaseNotesOpened } from "./release-notes";
 import { ReleaseNotesPanel } from "./ReleaseNotesPanel";
 
 const BULK_RETRY_THRESHOLD = 1;
@@ -2125,9 +2124,6 @@ export function UpdatesSettingsSection() {
       expanded,
       onToggle: () => {
         setOpenReleaseNotes(expanded ? null : row);
-        if (!expanded) {
-          recordReleaseNotesOpened(version, "inline");
-        }
       },
     };
   }

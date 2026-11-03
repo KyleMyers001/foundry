@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { afterCommit, claimInstallTurnNumber } from "../src/index.js";
+import { afterCommit } from "../src/index.js";
 import { createMigratedConnection } from "../src/testing.js";
 
 const connections: ReturnType<typeof createMigratedConnection>[] = [];
@@ -7,24 +7,24 @@ afterEach(() => {
   for (const db of connections.splice(0)) db.$client.close();
 });
 
-describe("committed turn numbers", () => {
+describe("after-commit callbacks", () => {
   it("discards rolled-back savepoints and keeps committed callbacks in order", () => {
     const db = createMigratedConnection();
     connections.push(db);
-    const numbers: number[] = [];
+    const calls: string[] = [];
     db.transaction((tx) => {
-      afterCommit(tx, () => numbers.push(claimInstallTurnNumber(db, 1)));
+      afterCommit(tx, () => calls.push("outer"));
       expect(() =>
         tx.transaction((nested) => {
-          afterCommit(nested, () => numbers.push(999));
+          afterCommit(nested, () => calls.push("rolled back"));
           throw new Error("rollback");
         }),
       ).toThrow("rollback");
       tx.transaction((nested) => {
-        afterCommit(nested, () => numbers.push(claimInstallTurnNumber(db, 2)));
+        afterCommit(nested, () => calls.push("nested"));
       });
-      expect(numbers).toEqual([]);
+      expect(calls).toEqual([]);
     });
-    expect(numbers).toEqual([1, 2]);
+    expect(calls).toEqual(["outer", "nested"]);
   });
 });
