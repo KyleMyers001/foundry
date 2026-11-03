@@ -112,7 +112,7 @@ import type { LocalHostDaemonAccessState } from "@/lib/local-host-daemon-access"
 import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
 
 const LOCAL_EDITOR_INTEGRATION_DOCS_URL =
-  "https://github.com/get-bb/bb/blob/main/docs/multiple-devices.md#open-bb-from-another-browser";
+  "https://github.com/KyleMyers001/foundry/blob/main/docs/multiple-devices.md#open-bb-from-another-browser";
 
 interface ThemePreferenceOption {
   label: string;

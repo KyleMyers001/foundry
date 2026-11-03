@@ -4,10 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { Command } from "commander";
 import { formatServerDataSize } from "@bb/domain";
-import {
-  deleteOldServerCopy,
-  readServerMovedFile,
-} from "@bb/server-archive";
+import { deleteOldServerCopy, readServerMovedFile } from "@bb/server-archive";
 import type { ServerMoveStatus } from "@bb/server-contract";
 import { action, CliExitError } from "../action.js";
 import { createCliBbSdk } from "../client.js";
@@ -78,8 +75,8 @@ const SERVER_EXPORT_UNENCRYPTED_WARNING =
 
 function startServerHint(dataDir: string): string {
   return isDefaultDataDir(dataDir)
-    ? "npx bb-app or the desktop app"
-    : `npx bb-app --data-dir ${dataDir}`;
+    ? "pnpm start or the desktop app"
+    : `pnpm start --data-dir ${dataDir}`;
 }
 
 const STOPPED_FOLLOWING_MESSAGE =

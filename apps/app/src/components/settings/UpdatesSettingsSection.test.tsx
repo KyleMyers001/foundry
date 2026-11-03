@@ -584,40 +584,24 @@ describe("UpdatesSettingsSection", () => {
       expect(releaseNotesPanel("0.47.0")).toBeNull();
     });
 
-    it("opens the full changelog in the external browser", () => {
+    it("links to Foundry's releases and never fetches a published changelog", () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
       renderSection();
       fireEvent.click(releaseNotesButton("0.47.0"));
 
       const link = within(releaseNotesPanel("0.47.0")!).getByRole("link", {
-        name: /Full changelog/,
+        name: /Foundry releases/,
       });
       expect(link.getAttribute("href")).toBe(
-        "https://getbb.app/changelog#0-47-0",
+        "https://github.com/KyleMyers001/foundry/releases",
       );
       fireEvent.click(link);
 
       expect(openUrlInExternalBrowserMock).toHaveBeenCalledExactlyOnceWith(
-        "https://getbb.app/changelog#0-47-0",
+        "https://github.com/KyleMyers001/foundry/releases",
       );
-    });
-
-    it("prefers the published changelog over the bundled one", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          new Response(`# Changelog
-
-## 0.47.0
-
-The published lede.
-`),
-        ),
-      );
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.47.0"));
-
-      expect(await screen.findByText("The published lede.")).toBeDefined();
-      expect(screen.queryByRole("heading", { name: "Highlights" })).toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("fades the top edge once the changelog is scrolled", () => {
@@ -638,83 +622,18 @@ The published lede.
       ).not.toBeNull();
     });
 
-    function stubPublishedSources(changelog: string, metadata: string): void {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn((url: string) =>
-          Promise.resolve(
-            new Response(
-              url.endsWith("changelog-metadata.ts") ? metadata : changelog,
-            ),
-          ),
-        ),
-      );
-    }
-
-    it("says so when the changelog has no entry for the release", async () => {
-      stubPublishedSources("## 0.47.0\n\nAnother release.\n", "");
+    it("says so when the bundled changelog has no entry for the release", () => {
       useUpdateInventoryMock.mockReturnValue(makeInventory({}));
       renderSection();
       fireEvent.click(releaseNotesButton("0.0.5"));
 
       const panel = releaseNotesPanel("0.0.5")!;
       expect(
-        await within(panel).findByText("bb 0.0.5 has no changelog in the app."),
+        within(panel).getByText("bb 0.0.5 has no changelog in the app."),
       ).toBeDefined();
       expect(
         within(panel).getByRole("heading", { name: "What's new in bb 0.0.5" }),
       ).toBeDefined();
-    });
-
-    it("shows loading, not a missing changelog, while the notes load", () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(() => new Promise<Response>(() => {})),
-      );
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(within(panel).getByText("Loading the changelog…")).toBeDefined();
-      expect(within(panel).queryByText(/has no changelog/)).toBeNull();
-    });
-
-    it("says the changelog couldn't load when the fetch fails", async () => {
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(
-        await within(panel).findByText("Couldn't load the changelog."),
-      ).toBeDefined();
-      expect(within(panel).queryByText(/has no changelog/)).toBeNull();
-    });
-
-    it("takes a newer release's headline from the published metadata", async () => {
-      stubPublishedSources(
-        "## 0.0.5\n\nA tiny lede.\n",
-        `export const RELEASE_META = {
-  "0.0.5": {
-    date: "January 2, 2026",
-    headline: "A tiny release",
-  },
-};
-`,
-      );
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(
-        await within(panel).findByRole("heading", { name: "A tiny release" }),
-      ).toBeDefined();
-      expect(
-        within(panel).getByText("bb 0.0.5 · January 2, 2026"),
-      ).toBeDefined();
-      expect(within(panel).getByText("A tiny lede.")).toBeDefined();
     });
   });
 

@@ -1,4 +1,3 @@
-import { createMobileAppReleaseService } from "../services/install/mobile-app-releases.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -155,12 +154,6 @@ export function registerSystemRoutes(
   const routes = publicApiRoutes.system;
 
   const themeRoot = resolveThemeRootPath(deps.config.dataDir);
-
-  const mobileAppReleases = createMobileAppReleaseService();
-  get(routes.mobileAppReleases, async (context) => {
-    context.header("cache-control", "no-store");
-    return context.json(await mobileAppReleases());
-  });
 
   get(routes.attention, (context) =>
     context.json({ hasAttention: hasActiveThreadAttention(deps.db) }),
@@ -677,8 +670,7 @@ export function registerSystemRoutes(
   get(routes.appUpdate, async (context, query) =>
     context.json(
       await deps.appUpdate.getStatus({
-        forceRefresh:
-          query.force === "true",
+        forceRefresh: query.force === "true",
       }),
     ),
   );
@@ -709,5 +701,3 @@ export function registerSystemRoutes(
     return context.json(await deps.cliCommand.remove());
   });
 }
-
-

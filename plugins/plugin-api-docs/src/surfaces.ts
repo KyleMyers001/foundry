@@ -942,11 +942,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Send them to Settings, then reload after they save",
         ],
         apiSymbols: ["PluginStatusApi"],
-        firstParty: [
-          "Account Pooler [Experimental]",
-          "GitHub",
-          "Workflows",
-        ],
+        firstParty: ["Account Pooler [Experimental]", "GitHub", "Workflows"],
       },
     ],
   },
@@ -1279,11 +1275,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "PluginEnvironmentProviderRemoveContext",
           "PluginEnvironmentProviderRemoveResult",
         ],
-        firstParty: [
-          "Personal workspace",
-          "Project checkout",
-          "Worktree",
-        ],
+        firstParty: ["Personal workspace", "Project checkout", "Worktree"],
         experimental: true,
       },
       {
@@ -1340,6 +1332,9 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Give new machines what they need to enroll, such as a tunnel URL",
           "Appear as a choice in Machines settings and manual setup",
+        ],
+        reference: [
+          "Unsupported: PluginHosts.declareSharedPorts and PluginHosts.ensureSharedPortTunnel throw an error naming the method, because Foundry removed the bb connect shared-port tunnels behind them. They remain only until the next major release; do not call them.",
         ],
         apiSymbols: [
           "PluginServerAccess",

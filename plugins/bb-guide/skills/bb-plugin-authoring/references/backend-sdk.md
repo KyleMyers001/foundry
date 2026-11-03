@@ -75,7 +75,7 @@ signatures (see "Looking up the exact API" in distribution.md).
   `updateKeyboardSettings` `updateExperiments` `cliSkillsStatus`
   `installCliSkills` `machineEnvironment` `replaceMachineEnvironment`
   `setMachineEnvironmentVariable` `deleteMachineEnvironmentVariable`
-  `mobileAppDownloads` `mobileAppReleases` `appUpdate` `applyAppUpdate`
+  `appUpdate` `applyAppUpdate`
   `acknowledgeAppUpdate` `experimental_cliCommand`
   `experimental_installCliCommand` `experimental_removeCliCommand`; sub-area
   `uiPreferences` (`list` `set` `reset`)

@@ -219,7 +219,7 @@ export const SETTINGS_SEARCH_INDEX: Record<
     settings: [],
   },
   mobile: {
-    keywords: ["phone", "ios", "iphone", "android", "testflight", "apk"],
+    keywords: ["phone", "ios", "iphone", "android", "mobile access"],
     settings: [],
   },
   "environment-variables": {
@@ -273,7 +273,6 @@ export const SETTINGS_SEARCH_INDEX: Record<
   community: {
     keywords: ["help", "support", "feedback"],
     settings: [
-      { title: "Discord", keywords: ["chat", "support"] },
       {
         title: "GitHub",
         keywords: ["issues", "source code", "bug report", "releases"],

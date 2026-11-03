@@ -1,4 +1,3 @@
-import { mobileAppDownloads } from "@bb/domain";
 import type {
   MachineEnvironmentReplace,
   MachineEnvironmentSet,
@@ -67,6 +66,19 @@ export interface SystemUsageLimitsArgs extends Omit<
 > {
   refresh?: boolean;
   signal?: AbortSignal;
+}
+
+export interface MobileAppDownloads {
+  ios: string;
+  android: string;
+}
+
+export function mobileAppDownloadsUnsupportedError(
+  method: "mobileAppDownloads" | "mobileAppReleases",
+): Error {
+  return new Error(
+    `system.${method}() is unsupported: Foundry does not publish mobile app builds.`,
+  );
 }
 
 export interface SystemVersionArgs {
@@ -186,7 +198,7 @@ export interface SystemArea {
     args: SystemVoiceTranscriptionArgs,
   ): Promise<SystemVoiceTranscriptionResult>;
   uiPreferences: SystemUiPreferencesArea;
-  mobileAppDownloads(): typeof mobileAppDownloads;
+  mobileAppDownloads(): MobileAppDownloads;
   mobileAppReleases(): Promise<SystemMobileAppReleasesResponse>;
   updateExperiments(
     args: ExperimentUpdates,
@@ -364,12 +376,10 @@ export function createSystemArea(args: CreateSdkAreaArgs): SystemArea {
       );
     },
     async mobileAppReleases() {
-      return transport.readJson(
-        transport.api.v1.system["mobile-app-releases"].$get(),
-      );
+      throw mobileAppDownloadsUnsupportedError("mobileAppReleases");
     },
     mobileAppDownloads() {
-      return { ...mobileAppDownloads };
+      throw mobileAppDownloadsUnsupportedError("mobileAppDownloads");
     },
     async updateExperiments(input) {
       return transport.readJson(

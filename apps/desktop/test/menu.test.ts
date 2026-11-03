@@ -4,9 +4,10 @@ import type { BaseWindow, MenuItemConstructorOptions } from "electron";
 vi.mock("electron", () => ({
   app: { name: "bb" },
   Menu: { sendActionToFirstResponder: vi.fn() },
+  shell: { openExternal: vi.fn(async () => undefined) },
 }));
 
-import { Menu } from "electron";
+import { Menu, shell } from "electron";
 
 import {
   buildApplicationMenuTemplate,
@@ -94,6 +95,18 @@ describe("application menu", () => {
       expect(openLocalLogs).toHaveBeenCalledOnce();
     },
   );
+
+  it("links Help only to Foundry's license, not upstream bb pages", () => {
+    const template = buildApplicationMenuTemplate(menuArgs(() => {}));
+    const help = template.find((item) => item.role === "help");
+    const items = help?.submenu as MenuItemConstructorOptions[];
+    expect(items.map((item) => item.label)).toEqual(["View License"]);
+
+    items[0]?.click?.({} as never, undefined, {} as never);
+    expect(shell.openExternal).toHaveBeenCalledExactlyOnceWith(
+      "https://github.com/KyleMyers001/foundry/blob/main/LICENSE",
+    );
+  });
 
   it("reopens the last closed tab from the File menu", () => {
     const reopenClosedTab = vi.fn();

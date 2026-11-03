@@ -281,7 +281,7 @@ describe("bb server import", () => {
     );
     expect(output.slice(2)).toEqual([
       "Stop the original bb server before you start this one. Two servers running the same data would both drive the same machines.",
-      `Then start it with npx bb-app --data-dir ${dataDir}.`,
+      `Then start it with pnpm start --data-dir ${dataDir}.`,
     ]);
   });
 
@@ -823,7 +823,7 @@ describe("bb server unlock", () => {
       "Stop the bb server on desktop first. Two servers running the same data would both drive the same machines.",
     ]);
     expect(collectLogPayloads(vi.mocked(console.log))).toEqual([
-      `Unlocked ${dataDir}. bb on this computer starts the old server again within a few seconds; if bb isn't running, start it with npx bb-app --data-dir ${dataDir}.`,
+      `Unlocked ${dataDir}. bb on this computer starts the old server again within a few seconds; if bb isn't running, start it with pnpm start --data-dir ${dataDir}.`,
     ]);
   });
 
@@ -966,7 +966,7 @@ describe("bb server unlock", () => {
 
     expect(await readdir(dataDir)).toEqual([]);
     expect(collectLogPayloads(vi.mocked(console.log))).toEqual([
-      `Unlocked ${dataDir}. bb on this computer starts the old server again within a few seconds; if bb isn't running, start it with npx bb-app --data-dir ${dataDir}.`,
+      `Unlocked ${dataDir}. bb on this computer starts the old server again within a few seconds; if bb isn't running, start it with pnpm start --data-dir ${dataDir}.`,
     ]);
   });
 

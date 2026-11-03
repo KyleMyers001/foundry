@@ -4,7 +4,6 @@ import { useLocation } from "react-router-dom";
 import {
   findLocalPathProjectSourceForHost,
   isActiveTerminalSessionStatus,
-  mobileAppDownloads,
 } from "@bb/domain";
 import type { TerminalOutputChunk, TerminalSession } from "@bb/server-contract";
 import { useMediaQuery } from "@bb/shared-ui/hooks/use-media-query";
@@ -856,7 +855,6 @@ function DevicesStepContainer({
     >
       <DevicesStep
         otherMachineCount={otherMachineCount}
-        mobileLinks={mobileAppDownloads}
         onAddMachine={() => setAddMachineOpen(true)}
       />
       <AddMachineDialog

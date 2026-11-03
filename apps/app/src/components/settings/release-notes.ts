@@ -1,11 +1,8 @@
 import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
 
-const RELEASE_NOTES_BASE_URL = "https://getbb.app/changelog";
+export const FOUNDRY_RELEASES_INDEX_URL =
+  "https://github.com/KyleMyers001/foundry/releases";
 
-export function getReleaseNotesUrl(version: string): string {
-  return `${RELEASE_NOTES_BASE_URL}#${version.replaceAll(".", "-")}`;
-}
-
-export function openReleaseNotesOnWeb(notesVersion: string): void {
-  openUrlInExternalBrowser(getReleaseNotesUrl(notesVersion));
+export function openReleaseNotesOnWeb(): void {
+  openUrlInExternalBrowser(FOUNDRY_RELEASES_INDEX_URL);
 }

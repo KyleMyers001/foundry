@@ -421,19 +421,12 @@ Usage analytics
 Foundry sends no usage analytics. A `telemetryEnabled` setting or
 `BB_TELEMETRY` value saved by an older version is ignored.
 
-Mobile app downloads
+Mobile access
 
-Settings → Mobile links the iOS TestFlight
-(https://testflight.apple.com/join/T9MayTMb) and the Android APK from the
-public `get-bb/bb` GitHub `android-testing` release (`bb-android.apk`), and
-pairs either app through Add mobile device. `bb settings mobile-app --json` or
-SDK `system.mobileAppDownloads()` returns both links. Add `--details --json`
-or call `system.mobileAppReleases()` for the Android version, build, size, and
-upload date; `android` is `null` when that metadata is unavailable, and the
-links still work. Inside the Android app, this page compares the installed
-native build number with the published APK. Older apps without build reporting
-cannot determine update status. Installed version and build are device-local;
-CLI and SDK metadata report the published APK.
+Foundry does not publish mobile app builds. Settings → Mobile shows how to
+reach this server from a phone browser or a mobile build you install yourself.
+SDK `system.mobileAppDownloads()` and `system.mobileAppReleases()` throw an
+unsupported error and will be removed at the next major release.
 
 Server performance diagnostics
 

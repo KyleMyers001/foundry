@@ -199,7 +199,6 @@ import {
   type SystemAttentionResponse,
   type SystemConfigReloadResponse,
   type SystemConfigResponse,
-  type SystemMobileAppReleasesResponse,
   type SystemCliSkillsStatusQuery,
   type SystemCliSkillsStatusResponse,
   type SystemInstallCliSkillsRequest,
@@ -1900,12 +1899,6 @@ export const publicApiRoutes = {
       method: "get",
       request: noRequest(),
       response: jsonResponse<SystemAttentionResponse>(),
-    }),
-    mobileAppReleases: defineRoute({
-      path: "/system/mobile-app-releases",
-      method: "get",
-      request: noRequest(),
-      response: jsonResponse<SystemMobileAppReleasesResponse>(),
     }),
     config: defineRoute({
       path: "/system/config",

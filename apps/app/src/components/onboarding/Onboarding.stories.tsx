@@ -24,10 +24,6 @@ export default {
 
 const noop = () => {};
 const MACHINE_NAME = "Sawyer's MacBook Pro";
-const MOBILE_LINKS = {
-  ios: "https://testflight.apple.com/join/example",
-  android: "https://example.com/bb-android.apk",
-};
 
 type AgentId = "claude-code" | "codex" | "pi";
 type AgentStates = Record<AgentId, AgentSetupState>;
@@ -460,11 +456,7 @@ function DevicesFrame({
       onSelectStep={chrome.onSelectStep ?? noop}
       onSkipAll={chrome.onSkipAll ?? noop}
     >
-      <DevicesStep
-        otherMachineCount={otherMachineCount}
-        mobileLinks={MOBILE_LINKS}
-        onAddMachine={noop}
-      />
+      <DevicesStep otherMachineCount={otherMachineCount} onAddMachine={noop} />
     </OnboardingLayout>
   );
 }

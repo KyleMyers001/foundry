@@ -133,7 +133,10 @@ export function Rows() {
         label="provider-made, running"
         hint="a live sandbox labeled by its provider icon and host name, without a separate kind chip"
       >
-        <Row host={sandbox({ name: "Example sandbox 0af2" })} projectCount={1} />
+        <Row
+          host={sandbox({ name: "Example sandbox 0af2" })}
+          projectCount={1}
+        />
       </StoryRow>
       <StoryRow
         label="pausing"

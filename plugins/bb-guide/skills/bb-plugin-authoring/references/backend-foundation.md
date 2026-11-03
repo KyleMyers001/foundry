@@ -330,27 +330,8 @@ invoke them on `PATH`. bb provides no privileged package installer; a plugin
 that invokes a system installer owns user consent, elevation,
 platform-specific behavior, and recovery.
 
-The rest of `bb.hosts` controls shared loopback port exposure. Use
-`bb.hosts.declareSharedPorts(hostId, ports)` to replace this plugin's
-desired loopback port set for one host. `ports` contains integers from 1–65535;
-the server deduplicates and sorts them, owns the generation, and delivers the
-resulting set to the daemon. If an enrolled host is offline, the declaration
-stays dormant on the server and is delivered when a credentialed daemon
-session reconnects. The call fails with an actionable error if the host has no
-bb connect machine enrollment or its connected daemon reports that the local
-machine credential is missing.
-
-Call `await bb.hosts.ensureSharedPortTunnel(hostId)` to lazily assign and read
-the host's `{ label, baseDomain }` for constructing public URLs. The enrolled
-daemon derives both from its trusted gate; plugins cannot choose a domain or
-send tunnel identity toward a credential-bearing daemon connection.
-
-Declarations are load-scoped: reload, disable, or shutdown clears them after
-the plugin's own dispose hooks run. Plugins do not receive daemon streaming or
-socket primitives; use bounded calls, pagination, and host signals.
-
-```ts
-const tunnel = await bb.hosts.ensureSharedPortTunnel(hostId);
-bb.hosts.declareSharedPorts(hostId, [3000, 4173]);
-const url = `https://${tunnel.label}--3000.${tunnel.baseDomain}`;
-```
+`bb.hosts.declareSharedPorts` and `bb.hosts.ensureSharedPortTunnel` are
+unsupported: Foundry removed the bb connect shared-port tunnels behind them,
+so both throw an error naming the method. They stay in the SDK only until the
+next major release; do not call them. Plugins do not receive daemon streaming
+or socket primitives; use bounded calls, pagination, and host signals.

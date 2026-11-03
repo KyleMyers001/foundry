@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@bb/shared-ui/icon";
 import { OverflowFade } from "@bb/shared-ui/overflow-fade";
 import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
 import {
   CHANGELOG_ENTRIES,
-  changelogEntriesQueryOptions,
   RELEASE_META,
-  releaseMetaQueryOptions,
   type ChangelogBlock,
 } from "./changelog-preview";
 import { findReleaseEntry, nightlyBaseVersion } from "./release-notes-model";
-import { getReleaseNotesUrl, openReleaseNotesOnWeb } from "./release-notes";
+import {
+  FOUNDRY_RELEASES_INDEX_URL,
+  openReleaseNotesOnWeb,
+} from "./release-notes";
 
 const MARKDOWN_IMAGE_ONLY = /^!\[[^\]]*\]\([^)]*\)$/;
 
@@ -86,18 +86,9 @@ export interface ReleaseNotesPanelProps {
 }
 
 export function ReleaseNotesPanel({ id, version }: ReleaseNotesPanelProps) {
-  const changelogQuery = useQuery(changelogEntriesQueryOptions());
-  const entry = findReleaseEntry(
-    version,
-    changelogQuery.data,
-    CHANGELOG_ENTRIES,
-  );
+  const entry = findReleaseEntry(version, CHANGELOG_ENTRIES);
   const notesVersion = entry?.version ?? version;
-  const bundledMeta = RELEASE_META[notesVersion];
-  const metaQuery = useQuery(
-    releaseMetaQueryOptions(bundledMeta === undefined),
-  );
-  const releaseMeta = bundledMeta ?? metaQuery.data?.[notesVersion];
+  const releaseMeta = RELEASE_META[notesVersion];
   const scrollRef = useRef<HTMLDivElement>(null);
   const [moreAbove, setMoreAbove] = useState(false);
   const [moreBelow, setMoreBelow] = useState(false);
@@ -133,13 +124,7 @@ export function ReleaseNotesPanel({ id, version }: ReleaseNotesPanelProps) {
         </div>
       )}
       {entry === null ? (
-        <p>
-          {changelogQuery.isPending
-            ? "Loading the changelog…"
-            : changelogQuery.isError
-              ? "Couldn't load the changelog."
-              : `bb ${version} has no changelog in the app.`}
-        </p>
+        <p>{`bb ${version} has no changelog in the app.`}</p>
       ) : (
         <div className="relative min-w-0">
           <div
@@ -173,16 +158,16 @@ export function ReleaseNotesPanel({ id, version }: ReleaseNotesPanelProps) {
           </p>
         ) : null}
         <a
-          href={getReleaseNotesUrl(notesVersion)}
+          href={FOUNDRY_RELEASES_INDEX_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex w-fit shrink-0 cursor-pointer items-center gap-1 rounded-sm text-xs whitespace-nowrap text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           onClick={(event) => {
             event.preventDefault();
-            openReleaseNotesOnWeb(notesVersion);
+            openReleaseNotesOnWeb();
           }}
         >
-          Full changelog
+          Foundry releases
           <Icon aria-hidden name="ExternalLink" className="size-3" />
         </a>
       </div>
