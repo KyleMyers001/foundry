@@ -11,7 +11,6 @@ import type { TerminalOutputChunk, TerminalSession } from "@bb/server-contract";
 import { useMediaQuery } from "@bb/shared-ui/hooks/use-media-query";
 import { AddMachineDialog } from "@/components/dialogs/AddMachineDialog";
 import { ProjectPathDialog } from "@/components/dialogs/ProjectPathDialog";
-import { PluginSettingsSections } from "@/components/plugin/PluginSettingsSections";
 import { useSetPluginEnabled } from "@/components/plugin/useSetPluginEnabled";
 import {
   buildProviderCliIssue,
@@ -43,7 +42,6 @@ import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { terminalOutputTailQueryKey } from "@/hooks/queries/query-keys";
 import {
   useHostProviderCliStatus,
-  useSystemConfig,
   useSystemProviderStates,
   useSystemProviders,
 } from "@/hooks/queries/system-queries";
@@ -76,10 +74,8 @@ import {
   type OnboardingRepo,
 } from "./OnboardingViews";
 import {
-  CONNECT_PLUGIN_ID,
   ONBOARDING_PLUGINS,
   ONBOARDING_PLUGIN_MARKETPLACE,
-  connectAccessUrl,
   defaultSelectedRepoPaths,
   hasReadyAgent,
   parseSignInOutput,
@@ -895,9 +891,7 @@ function DevicesStepContainer({
   onFinish: () => void;
   onLeave: () => void;
 }) {
-  const configQuery = useSystemConfig();
   const hostsQuery = useHosts();
-  const [connectSetupOpen, setConnectSetupOpen] = useState(false);
   const [addMachineOpen, setAddMachineOpen] = useState(false);
   const location = useLocation();
   const [initialPathname] = useState(location.pathname);
@@ -908,30 +902,20 @@ function DevicesStepContainer({
   const otherMachineCount = (hostsQuery.data ?? []).filter(
     (host) => host.id !== hostId,
   ).length;
-  const connect = connectAccessUrl(configQuery.data?.serverAccess);
   const connectedMachineCount = hostsQuery.data?.filter(
     (host) => host.id !== hostId && host.status === "connected",
   ).length;
-  const pendingSetup = useRef<{
-    remoteAccess: boolean;
-    machinesBefore: number | null;
-  }>({ remoteAccess: false, machinesBefore: null });
+  const pendingSetup = useRef<{ machinesBefore: number | null }>({
+    machinesBefore: null,
+  });
   const recordDeviceSetup = useCallback(
-    (
-      operation: "remote_access" | "add_machine",
-      outcome: "started" | "succeeded",
-    ) =>
+    (operation: "add_machine", outcome: "started" | "succeeded") =>
       recordTelemetryEvent({
         name: "onboarding_operation",
         properties: { entry, step: "devices", operation, outcome },
       }),
     [entry],
   );
-  useEffect(() => {
-    if (connect.status !== "on" || !pendingSetup.current.remoteAccess) return;
-    pendingSetup.current.remoteAccess = false;
-    recordDeviceSetup("remote_access", "succeeded");
-  }, [connect.status, recordDeviceSetup]);
   useEffect(() => {
     const before = pendingSetup.current.machinesBefore;
     if (
@@ -956,23 +940,8 @@ function DevicesStepContainer({
       onBack={onBack}
     >
       <DevicesStep
-        connect={connect}
-        connectSetup={<PluginSettingsSections pluginId={CONNECT_PLUGIN_ID} />}
-        connectSetupOpen={connectSetupOpen}
         otherMachineCount={otherMachineCount}
         mobileLinks={mobileAppDownloads}
-        onToggleConnectSetup={() => {
-          if (
-            !connectSetupOpen &&
-            connect.status === "off" &&
-            !pendingSetup.current.remoteAccess
-          ) {
-            pendingSetup.current.remoteAccess = true;
-            recordDeviceSetup("remote_access", "started");
-          }
-          setConnectSetupOpen((open) => !open);
-        }}
-        onCopyConnectUrl={(url) => void copyToClipboardWithToast(url)}
         onAddMachine={() => {
           if (
             connectedMachineCount !== undefined &&

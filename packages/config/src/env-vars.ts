@@ -275,13 +275,6 @@ export const BB_MARKETPLACE_URL_ENV = defineEnvVar<string>({
   parse: parseOptionalUrlEnvValue,
 });
 
-export const BB_CONNECT_GATE_KEYS_URL_ENV = defineEnvVar<string>({
-  description:
-    "URL of the bb connect next gate public key set the server's tunnel ingress verifies gate assertions with. Point it at a local file server to test the ingress.",
-  name: "BB_CONNECT_GATE_KEYS_URL",
-  parse: parseRequiredUrlEnvValue,
-});
-
 export const BB_POSTHOG_API_KEY_ENV = defineEnvVar<string>({
   description:
     "PostHog project API key for anonymous usage telemetry. Telemetry is disabled when empty.",
@@ -379,15 +372,6 @@ export const BB_SERVER_HEADERS_ENV = defineEnvVar<Record<string, string>>({
   },
 });
 
-export const BB_CONNECT_MACHINE_CREDENTIAL_ENV = defineEnvVar<
-  string | undefined
->({
-  description:
-    "Daemon-managed bb connect credential for traversing the public machine gate",
-  name: "BB_CONNECT_MACHINE_CREDENTIAL",
-  parse: parseOptionalTrimmedStringEnvValue,
-});
-
 export const BB_HOST_ENROLL_KEY_ENV = defineEnvVar<string | undefined>({
   description:
     "One-time enrollment token used to bootstrap a host daemon with the bb server",
@@ -427,8 +411,6 @@ export const DEFAULT_BB_TELEMETRY = true;
 export const DEFAULT_BB_DEV_APP_HOST = "";
 export const DEFAULT_BB_MARKETPLACE_URL =
   "https://getbb.app/marketplace/v2/marketplace.json";
-export const DEFAULT_BB_CONNECT_GATE_KEYS_URL =
-  "https://getbb.app/.well-known/bb-connect-gate-keys.json";
 export const DEFAULT_BB_FF_PLACEHOLDER = defaultFeatureFlags.placeholder;
 export const DEFAULT_BB_FF_INITIATOR_TELEMETRY =
   defaultFeatureFlags.initiatorTelemetry;

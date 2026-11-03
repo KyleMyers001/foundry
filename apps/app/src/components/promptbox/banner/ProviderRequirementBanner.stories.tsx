@@ -7,7 +7,7 @@ import {
   MACHINE_SERVER_ACCESS_TITLE,
   machineServerAccessBlockedReason,
 } from "@/components/machines/machine-server-access";
-import { CONNECT_UNPAIRED } from "../../../../.ladle/machine-story-fixtures";
+import { PLUGIN_ACCESS_SETUP_REQUIRED } from "../../../../.ladle/machine-story-fixtures";
 
 export default {
   title: "promptbox/banner/Provider Requirement",
@@ -37,9 +37,9 @@ export function Requirements() {
       >
         <ResponsiveStage>
           <ProviderRequirementBanner
-            title="Modal Sandbox needs configuration"
+            title="Example Sandbox needs configuration"
             description="Set tokenId and tokenSecret in the plugin's settings."
-            action={configureAction("Modal Sandbox")}
+            action={configureAction("Example Sandbox")}
           />
         </ResponsiveStage>
       </StoryRow>
@@ -50,7 +50,7 @@ export function Requirements() {
         <ResponsiveStage>
           <ProviderRequirementBanner
             title={MACHINE_SERVER_ACCESS_TITLE}
-            description={machineServerAccessBlockedReason(CONNECT_UNPAIRED)}
+            description={machineServerAccessBlockedReason(PLUGIN_ACCESS_SETUP_REQUIRED)}
             action={
               <Button
                 type="button"

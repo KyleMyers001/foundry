@@ -29,7 +29,7 @@ import { makeSystemConfig } from "../src/test/fixtures/system-config";
 import { systemMachineProvidersQueryKey } from "../src/hooks/queries/query-keys";
 import {
   MANUAL_MACHINE_PROVIDER,
-  MODAL_MACHINE_PROVIDER,
+  SANDBOX_MACHINE_PROVIDER,
 } from "./machine-story-fixtures";
 import { makeProviderInfo } from "@bb/test-helpers/domain-fixtures";
 import {
@@ -364,7 +364,7 @@ function createSettingsStoryQueryClient(hosts: Host[] = SETTINGS_STORY_HOSTS) {
   });
   queryClient.setQueryData(systemMachineProvidersQueryKey(), [
     MANUAL_MACHINE_PROVIDER,
-    MODAL_MACHINE_PROVIDER,
+    SANDBOX_MACHINE_PROVIDER,
   ]);
   return queryClient;
 }
