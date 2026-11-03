@@ -159,7 +159,7 @@ already have `bb`. `bb settings cli-command` shows the state, and `install` or
 `remove` changes it. Install links the launcher at `~/.bb/bin/bb` into a PATH
 folder such as `~/.local/bin` (on Windows it adds `~/.bb/bin` to the user
 PATH). bb never replaces another `bb`: install is refused while one runs first
-in a new terminal. Only an installed bb (`npx bb-app` or the desktop app)
+in a new terminal. Only an installed bb, such as the Foundry desktop app,
 offers this; a source checkout does not. The launcher defaults to the install's
 server and daemon ports, while preserving caller endpoint overrides and managed
 remote-server settings.
@@ -232,9 +232,10 @@ not close a previous `0.0.0.0` listener.
 every interface for direct remote access; containers must also publish the
 port. BB accepts request hosts that are `localhost`, IP addresses (including
 LAN and Tailscale IPs), or the hostname in `BB_APP_URL`. For a custom DNS name
-or reverse proxy, run `npx bb-app config set BB_APP_URL https://bb.example.com`
-before connecting, including from the CLI or SDK; forwarded host headers cannot
-authorize an unconfigured name. BB Connect needs no additional configuration.
+or reverse proxy, run `bb-app config set BB_APP_URL https://bb.example.com`
+(`pnpm start config set …` from a source checkout) before connecting, including
+from the CLI or SDK; forwarded host headers cannot authorize an unconfigured
+name.
 
 Keyboard shortcuts
 

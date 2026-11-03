@@ -166,8 +166,7 @@ disconnected: it marks the machine's environments destroyed without on-machine
 cleanup (emitting `experimental_environment.removed` for each), then runs the
 provider's `remove` and revokes the machine. It refuses (409) while the
 machine is connected, before teardown has failed, or when no environment
-cleanup is blocking removal. `bb.sdk.hosts.get({ hostId })` also returns nullable
-`connectMachineId` from trusted gate metadata; host lists do not expose it.
+cleanup is blocking removal.
 
 ### Machine enrollment and bootstrap
 

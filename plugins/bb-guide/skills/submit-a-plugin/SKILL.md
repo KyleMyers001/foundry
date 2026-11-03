@@ -5,8 +5,11 @@ description: "Prepare and submit a BB plugin to the Community marketplace when p
 
 # Submit a plugin
 
-Submit a public plugin to the BB Community marketplace. The marketplace stores
-plugin metadata. The plugin code stays in its Git repository or npm package.
+Submit a public plugin to the upstream BB Community marketplace. The
+marketplace stores plugin metadata. The plugin code stays in its Git
+repository or npm package. Foundry does not read this catalog, so a listing
+there reaches upstream bb users only; Foundry users install the plugin from
+its Git or npm source or from another marketplace.
 
 ## Choose the task
 

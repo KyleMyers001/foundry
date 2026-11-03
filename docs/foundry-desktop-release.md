@@ -102,5 +102,6 @@ unaffected.
 
 ## Known upstream ties
 
-These are not changed by a release: the plugin marketplace and bb connect still
-default to `getbb.app`, and in-app text and the official plugin logo still say bb.
+These are not changed by a release: in-app text and the official plugin logo
+still say bb, the bundled official plugin screenshots load from `getbb.app`, and
+plugin manifests keep the upstream `getbb.app` `$schema` identifiers.

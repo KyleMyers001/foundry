@@ -14,16 +14,11 @@
 - Use the CLI to inspect state: `pnpm bb thread show <id>`, `pnpm bb project list`, `pnpm bb status`. From source, use `pnpm bb:dev`.
 
 The desktop main process also writes rotating `logs/desktop.log` immediately,
-including updater, Connect, and startup errors. View → Local Logs is available
+including updater and startup errors. View → Local Logs is available
 on every desktop platform and when attached to an existing server; it follows
 local desktop, server, and daemon files in the selected data directory.
 
 ## Desktop Browser Tab Recovery
-
-When the desktop app connects to a BB Connect server, it installs and renews
-the Connect desktop session in both the app and embedded browser cookie stores.
-This also authenticates shared-port links under the same Connect domain. The
-browser keeps its separate profile; unrelated site cookies are not copied.
 
 Desktop browser registration first uses a private local broker descriptor whose
 recorded server URL matches the selected server's origin. Otherwise it discovers
@@ -122,53 +117,6 @@ embedded browser session is not implemented by this cache.
   may log separately, so do not add their durations. Commits can include
   SQLite's automatic WAL checkpoint. SQL string literals are redacted and
   parameter values are never logged.
-- Connect's `tunnel closed` warnings include the last transport error's message
-  and code, `connectedDurationMs`, and `lastHeartbeatAckAgeMs`. A null duration
-  means the opening handshake never completed; a null acknowledgement age means
-  no heartbeat acknowledgement arrived on that connection. They also carry the
-  Cloudflare `colo` and `ray`, and `traffic`: open HTTP and WebSocket streams,
-  bytes each way, how long each direction had been quiet, and bytes still
-  buffered. `tunnel connected` and `handshake timed out` lines carry dial
-  timings in milliseconds since dialing: `lookupMs`, `connectMs`, `tlsMs`, and
-  `upgradeMs` (the gate's 101). A timed-out dial with `tlsMs` but no
-  `upgradeMs` reached Cloudflare and was waiting on the gate. They appear in the
-  server logs and `<dataDir>/plugins/connect/logs/plugin.log`.
-
-## bb Connect Gate Events
-
-The gate answers every proxied request within the response-head timeout (30 s)
-from when the Worker receives it; a miss gets a 504 naming the stuck stage:
-`routing`, `tunnel-object`, `request-body`, `response-head`, or `finishing`.
-A relayed request still waiting in `response-head` at the deadline gets another
-30 s while the tunnel object reports a heartbeat under 45 s old, up to 10
-minutes from arrival. Workers Logs keeps only about 1% of gate
-requests, so the gate also writes these to the Analytics Engine dataset
-`bb_connect_gate_events` (`bb_connect_gate_events_staging` on staging):
-
-- `blob1` `stall` (a 504) or `slow` (a tunnel dial unanswered after 3 s, or a
-  relayed request first extended past the response-head timeout);
-  `blob2` stage, `blob3` method, `blob4` host, `blob5` path; `double1` elapsed
-  ms; `double2` tunnel-object attempts (above 1 means the object restarted and
-  the dial was replayed).
-- For a stall that reached the tunnel object, `blob6` is the tunnel state
-  (`connected`, `disconnected`, or `unknown` when the object did not answer
-  within 2 s) and `double3` the age in ms of the last answered heartbeat, or
-  -1. A bb heartbeats every 20 s, so an age of minutes means a dead tunnel the
-  object still holds; a recent age means the bb's server did not answer.
-  Routing stalls and `slow` events leave `blob6` empty and `double3` at -1.
-- `blob1` `tunnel-gap` is written when a server's tunnel opens after a period
-  with none: `blob2` is how the previous tunnel ended (`closed`, `lost`, or
-  `unreported`), `blob3` is `replaced-live` when that tunnel had replaced a
-  working one, `blob4` host, `double1` ms without a tunnel, and `double2` the
-  previous tunnel's lifetime (-1 when unreported). `replaced-live` with a short
-  or unreported previous tunnel is a bb whose abandoned dial replaced its
-  working tunnel; `double1 + double2` near 300,000 means it then waited out the
-  five-minute takeover backoff.
-
-Query with the Analytics Engine SQL API and an Account Analytics Read token,
-for example `SELECT timestamp, blob1, blob2, blob5, double2 FROM
-bb_connect_gate_events WHERE blob4 = '<handle>.getbb.app' ORDER BY timestamp
-DESC`.
 
 ## Reproducing Test Order Failures
 
@@ -413,19 +361,6 @@ Ctrl-C. For desktop-only changes, start
 Use the Node version in `.nvmrc` (22.19.0). Desktop development requires
 Node 22.19 or newer in the Node 22 release line.
 
-A bb connect shared-port URL is a different browser origin from localhost. If
-QA through that URL needs the browser-local host daemon, restart the dev app
-with the share origin configured after exposing its app port:
-
-```bash
-BB_APP_URL=https://<handle>--<app-port>.getbb.app pnpm dev
-```
-
-The port remains stable for the checkout, so the existing share continues to
-work after the restart. The host daemon intentionally rejects remote origins
-that are not configured; otherwise any webpage could drive its local editor
-API.
-
 For CLI QA, `pnpm bb:dev` derives this checkout's server and daemon endpoints.
 In the test shell, clear inherited endpoint and thread context overrides first
 so commands target the dev instance. Keep these changes inside that shell.
@@ -436,66 +371,6 @@ Test agents with:
 unset BB_SERVER_URL BB_HOST_DAEMON_PORT BB_THREAD_ID BB_ENVIRONMENT_ID BB_THREAD_STORAGE BB_PROJECT_ID BB_CLI BB_CLI_REEXEC
 pnpm bb:dev thread spawn --project proj_personal --provider codex --permission-mode accept-edits --title "Smoke test" --prompt "Reply only with ok." --json
 ```
-
-## Local Cloud
-
-Run the Cloud dashboard, the Connect worker, and the AI gateway against one
-local D1 database:
-
-```bash
-pnpm cloud:dev
-```
-
-The command applies migrations and prints the dashboard URL. Create a local
-email/password account, claim a handle, create a pairing code, and run the
-displayed `bb account login --code` command against a bb started with
-`pnpm dev` (`bb connect --code` does the same and also turns remote access
-back on). A browser sign-in started with
-`bb account login` opens `<local origin>/link?code=…` on the same origin. The
-same worktree-specific local origin serves the dashboard at `bb.localhost`,
-sends `bb.localhost/api/ai/*` to the AI gateway worker, and routes
-`<handle>.bb.localhost` through the Connect worker. Email/password auth
-is enabled only for this loopback workflow; production remains GitHub-only.
-`pnpm dev` automatically sets `BB_DEV_CONNECT_BASE_URL` to that worktree's
-local Cloud origin. While the bb is signed out, Settings → bb account and
-Settings → Installed plugins → Connect therefore sign in against the local
-Cloud, and a pasted code redeems locally. An explicit `--base-url ...` (or
-`bb connect --server ...`) still wins, so the dev bb can still sign in to
-getbb.app.
-Local machine enrollment follows the same origin: local `http:` server URLs
-produce `ws:` machine tunnels and `http:` share URLs, while non-local machine
-enrollment remains HTTPS-only.
-
-For bb connect next, `pnpm cloud:dev` sets the Connect worker's and bb-web's
-`NEXT_BASE_DOMAIN` to `next.bb.localhost`. `BB_CLOUD_DEV_GATE_SECRET` sets the
-worker's `GATE_SECRET` (the account API answers 404 without it),
-`BB_CLOUD_DEV_GATE_PUBLIC_KEYS` sets bb-web's `GATE_PUBLIC_KEYS`, and
-`BB_CLOUD_DEV_STATE_DIR` moves the local D1 and Durable Object state away from
-`.wrangler/cloud-dev`. `apps/connect-next/scripts/e2e-local.sh` uses all three;
-see [connect-next.md](connect-next.md#local-end-to-end-run).
-
-The AI gateway answers `503 unavailable` until an OpenRouter key is present.
-Export `OPENROUTER_API_KEY` in the shell before `pnpm cloud:dev` to pass it
-through to the local worker; the startup banner says which mode is active.
-To exercise the whole chain without OpenRouter, export
-`BB_CLOUD_DEV_AI_UPSTREAM_BASE_URL` (for example `http://127.0.0.1:4599/api/v1`)
-pointing at a local OpenAI-compatible fake, plus any non-empty
-`OPENROUTER_API_KEY`.
-The production gateway gets the key from the repository's `OPENROUTER_API_KEY`
-Actions secret, which `deploy-ai-gateway.yml` uploads with each deploy. Set the
-staging key with `wrangler secret put OPENROUTER_API_KEY --env staging` from
-`apps/ai-gateway`. Use a dedicated OpenRouter key with account-wide zero data
-retention and a daily credit limit.
-
-Ctrl-C stops the local services. Local D1 state is kept under
-`.wrangler/cloud-dev`.
-
-To test a source bb against the deployed staging Cloud instead, start it with
-`pnpm dev --staging`. bb account and Connect then sign in, redeem codes, open
-tunnels, and call the AI gateway at `https://vibecodethis.site`; no
-`pnpm cloud:dev` is needed. The flag only changes the default origin, so a
-dev data dir already signed in elsewhere keeps its account until
-`bb account logout`.
 
 ## Record Provider Bridge Traffic
 

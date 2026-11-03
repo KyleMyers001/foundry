@@ -111,8 +111,7 @@ under `<bb-data-dir>/plugins/<id>/` (SQLite database, secrets, logs).
   bb marketplace remove <name>   Forget a marketplace. Plugins installed from
                                  it keep running as direct installs and keep
                                  updating from their recorded source.
-                                 bb-official and bb-community cannot be
-                                 removed
+                                 bb-official cannot be removed
 
 Installed plugins and their settings also appear under Settings → Installed
 plugins.
@@ -155,9 +154,9 @@ Each bundled plugin documents its commands and behavior in its own skill.
 - Thread list (builtin): owns the sidebar's layout preferences, synced to
   every window. `bb thread-list prefs list|get|set|reset`; see the
   `thread-list` skill.
-- Push notifications (builtin): notifies mobile, web, and desktop clients
-  when a thread needs attention.
-  `bb push-notifications status|list|add|remove|test|thread`; see the
+- Push notifications (builtin): notifies web and desktop clients when a
+  thread needs attention.
+  `bb push-notifications status|test|send|thread`; see the
   `push-notifications` skill.
 - Secrets (builtin): `bb secret request <NAME...> --write-env <path>` collects
   credentials through a secure form into a dotenv file without exposing them
@@ -166,8 +165,8 @@ Each bundled plugin documents its commands and behavior in its own skill.
   fenced `inline-vis` code block or a `::inline-vis{file="demo.html"}`
   workspace or thread-storage file; see the `inline-vis` skill.
 - MCP server (builtin, disabled by default): `bb plugin enable bb--mcp` lets
-  ChatGPT, Claude, or another MCP client control this bb; an approved app can
-  run any `bb` command. `bb mcp status|clients|revoke`; see the `mcp` skill.
+  an MCP client on the same machine control this bb through a local address;
+  it can run any `bb` command. `bb mcp status`; see the `mcp` skill.
 - Storage & retention (builtin, disabled by default): enable with
   `bb plugin enable bb--storage-retention`. Owns thread retention policies
   and machine storage cleanup through its sidebar panel and `bb storage`

@@ -11,7 +11,10 @@
 > [!NOTE]
 > This README is inherited from bb. Foundry does not publish this package, so
 > `npx bb-app` installs upstream bb, not Foundry. To run Foundry, follow the
-> [main README](https://github.com/KyleMyers001/foundry#run-foundry).
+> [main README](https://github.com/KyleMyers001/foundry#run-foundry). In
+> Foundry, `pnpm start` runs this launcher from source, in-app updates work only
+> for that source checkout, and the bb account, bb connect, and usage analytics
+> described for bb are gone.
 
 [![npm version](https://img.shields.io/npm/v/bb-app.svg)](https://www.npmjs.com/package/bb-app)
 
@@ -162,8 +165,7 @@ After the server moves to another machine, the old data directory keeps
 `server-moved.json`. `bb-app` there starts no server: it runs this computer's
 host daemon against the new server address in `config.json`, restarting it when
 it exits, and answers the old server port. API requests get `410 server_moved`
-with the new address; browser pages redirect to it for a direct address or link
-to it for bb connect. While a move back to this computer is in progress
+with the new address; browser pages redirect to it. While a move back to this computer is in progress
 (`server-import.json`), it frees that port for the incoming server. When
 `server-moved.json` goes away, after that move completes or `bb server unlock`,
 it starts the server and co-located daemon again. `bb-server` exits with status
@@ -260,8 +262,7 @@ npx bb-app config list
 npx bb-app config refresh
 ```
 
-For remote access, use bb connect or publish the default loopback listener with
-Tailscale Serve. Direct tailnet or LAN access to port `38886` requires the
+For remote access, publish the default loopback listener with Tailscale Serve. Direct tailnet or LAN access to port `38886` requires the
 explicit, security-sensitive `--server-bind-host 0.0.0.0` compatibility option;
 see the multiple-devices guide.
 

@@ -46,18 +46,17 @@ The native Windows host is alpha. It runs from the Windows desktop installer or
 
 [`apps/mobile`](../apps/mobile) is the iOS and Android client for a bb server.
 It runs no agents, host daemon, or plugins itself: it loads the server's web
-app and adds native screens for pairing, saved servers, device settings, and
-push registration. Install it from Settings → Mobile (iOS TestFlight or the
-Android APK; see [configuration.md](configuration.md)).
+app and adds native screens for saved servers and device settings. Foundry
+does not publish mobile builds; build one yourself from
+[`apps/mobile`](../apps/mobile/README.md).
 
 - **Direct** mode takes any `http(s)://` URL the phone can reach. It is
   unauthenticated, the same trust model as a browser on a LAN; iOS allows
   plain `http://` only for LAN IPs and `.local` names, so Tailscale hosts need
   Serve HTTPS.
-- **bb connect** mode pairs the phone as a connect machine; see
-  [multiple-devices.md](multiple-devices.md#use-the-bb-mobile-app).
-- Push notifications need the server to reach `exp.host` and a bb connect or
-  HTTPS profile; a plain-HTTP direct profile cannot register.
+- A server saved through bb connect by an older build stays listed but cannot
+  connect; add it again by its direct URL.
+- Foundry sends no mobile push notifications.
 - Phones have no host daemon, so local editor integration, "Open in …", and
   the native folder picker are unavailable; the remote path browser works.
   Provider sign-in still needs a terminal on the host.

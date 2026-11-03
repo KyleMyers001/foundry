@@ -12,9 +12,10 @@ or hand off to another agent.
 > Foundry is maintained by Kyle Myers and is not affiliated with or endorsed by
 > the bb project. It forked from `get-bb/bb` at commit
 > [`916d684ac`](https://github.com/get-bb/bb/commit/916d684ac23d0b0de82c09cfc7553a50287d2188)
-> (2026-10-30). So far the fork changes the desktop and web app's icons and main
-> logo, and how packaged desktop builds identify and update themselves, as
-> described in [What Still Says bb](#what-still-says-bb). Otherwise it still
+> (2026-10-30). The fork changes the desktop and web app's icons and main logo,
+> and how packaged desktop builds identify and update themselves, as described in
+> [What Still Says bb](#what-still-says-bb). It also removes bb's hosted
+> services; see [Removed bb Services](#removed-bb-services). Otherwise it still
 > behaves like bb.
 
 <p align="center">
@@ -71,47 +72,41 @@ A desktop app packaged from this repository is the exception, so it can run
 beside an installed bb. It is named Foundry, uses the app ID
 `io.github.kylemyers001.foundry`, and checks this repository's GitHub releases
 for updates. Unless they are already set, it defaults `BB_DATA_DIR` to
-`~/.foundry`, `BB_SERVER_PORT` to `38986`, `BB_HOST_DAEMON_PORT` to `38987`, and
-`BB_TELEMETRY` to `false`. `pnpm start` and the development loop are unaffected.
+`~/.foundry`, `BB_SERVER_PORT` to `38986`, and `BB_HOST_DAEMON_PORT` to `38987`.
+`pnpm start` and the development loop are unaffected.
 
 Most guides under `docs/` and the package READMEs were written for bb and still
 call the product bb. They describe Foundry's behavior unless they cover bb's own
 releases or hosted services.
 
-Some defaults still lead to services and releases from the bb project:
+## Removed bb Services
 
-- bb connect, the remote access service, defaults to `https://getbb.app`.
-- Settings → Mobile links to bb's iOS TestFlight and its Android APK in
-  `get-bb/bb` releases.
-- Settings → Community links to bb's Discord, which is for bb rather than Foundry.
-- In a packaged desktop app, Settings → Updates compares the running version
-  with the `bb-app` package on npm, so it can list a bb version as available. It
-  offers no command to install it.
-- Telemetry from `pnpm start` goes to the PostHog project inherited from bb.
+Foundry runs without any bb account or service. These parts of bb are gone:
 
-### Telemetry
+- the bb account, bb connect remote access, hosted bb AI, and the getbb.app
+  website, dashboard, and reviewer demo;
+- usage analytics: Foundry sends none, and a saved `telemetryEnabled` setting or
+  `BB_TELEMETRY` value is ignored;
+- the automatic upstream `bb-community` plugin catalog (bundled `bb-official`
+  and catalogs you add still work);
+- Modal sandboxes;
+- mobile push notifications through Expo (browser and desktop notifications
+  still work);
+- the upstream mobile app downloads and the npm `bb-app` update check.
 
-Source runs inherit bb's telemetry unchanged. Production runs from source,
-including `pnpm start`, send anonymous usage telemetry (app starts, thread
-creation counts, user message counts, and plugin installs) to the default PostHog
-project inherited from bb. A desktop app packaged from this repository sends none
-unless you set `BB_TELEMETRY=true`, because its `false` default also overrides the
-setting in Settings → General.
+Upgrading keeps your data. Settings, secrets, and records that belonged to the
+removed plugins stay in the data directory but never load or run. A machine or
+saved server that used bb connect needs to be reconnected by a direct or
+Tailscale URL. Direct access, Tailscale Serve, machine enrollment, additional
+machines, and browser and desktop notifications are unchanged.
 
-Each event carries the app version, how the app was installed (desktop, npm, or
-source checkout), and the OS release, CPU architecture, and Node version. Source
-checkouts report whether `origin` points to `github.com/get-bb/bb`, another
-repository, or is unavailable, so a Foundry checkout reports as another
-repository. Telemetry never includes Git commit hashes or remote URLs.
-Identification is a random per-install id stored in your data dir — no user,
-host, project, workspace, or message content is ever attached. Plugin install
-events name only public plugins (bundled plugins and `bb-community` marketplace
-entries); installs from a local path, a private git or npm source, or a
-third-party marketplace report no name. Development runs (`pnpm dev`,
-`pnpm start:worktree`) never send.
+Updates are manual unless you run from a source checkout with `pnpm start`,
+which can fast-forward `main`. Other installs link to
+[Foundry's releases](https://github.com/KyleMyers001/foundry/releases/latest).
 
-Opt out any run with `BB_TELEMETRY=false`. See
-[`apps/server/src/services/system/telemetry.ts`](./apps/server/src/services/system/telemetry.ts).
+Some external destinations remain: provider CLIs and their APIs, plugin and
+marketplace sources you choose, GitHub for releases and Git operations, and the
+bundled official plugins' screenshots, which still load from `getbb.app`.
 
 ## Development
 
@@ -127,7 +122,7 @@ a data directory under
 `~/.bb-dev/<checkout-instance>/` and deterministic high ports derived from the
 checkout path. The checkout instance id is the sanitized path to the checkout,
 relative to your home directory, plus a short hash suffix. Separate worktrees
-can run alongside each other and the packaged `npx bb-app@latest` instance.
+can run alongside each other and an installed bb or Foundry desktop app.
 
 To test the production bundle and serving path without switching to production
 data or ports, use:
@@ -140,7 +135,7 @@ This builds the same optimized frontend and runtime artifacts as `pnpm start`,
 then serves the app from the BB server on the checkout-specific dev server port.
 It keeps the normal checkout-specific dev data directory and host-daemon port.
 There is no Vite dev server or hot reload in this mode; rerun the command after
-source changes. As with `pnpm dev`, worktree starts do not send telemetry.
+source changes.
 
 For the Electron desktop shell, keep `pnpm dev` running and start the desktop
 package in a second terminal:
@@ -229,8 +224,7 @@ pnpm start
 
 That builds only the app, server, and host-daemon runtime artifacts, then runs
 the launcher directly against those workspace outputs. Use the `bb-app`
-tarball smoke task when validating the published `npx bb-app@latest` package
-layout.
+tarball smoke task when validating the `bb-app` package layout.
 
 ```bash
 pnpm bb --help            # built CLI, targets the default/prod instance
