@@ -1,5 +1,88 @@
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      rendering:
+        patterns:
+          - handlebars
+          - dompurify
+          - mermaid
+          - monaco-editor
+          - posthog-js
+      http:
+        patterns:
+          - hono
+          - "@hono/*"
+      authentication:
+        patterns:
+          - better-auth
+          - "@better-auth/*"
+          - "@better-fetch/*"
+          - better-call
+      providers:
+        patterns:
+          - "@modelcontextprotocol/*"
+          - "@anthropic-ai/*"
+          - "@agentclientprotocol/*"
+          - express
+          - proxy-addr
+          - shell-quote
+      developer-tools:
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - tinypool
+          - oxfmt
+          - oxlint
+          - tsrs
+          - typescript
+          - "@typescript/*"
+          - turbo
+      security-rendering:
+        applies-to: security-updates
+        patterns:
+          - handlebars
+          - dompurify
+          - mermaid
+          - monaco-editor
+          - posthog-js
+      security-http:
+        applies-to: security-updates
+        patterns:
+          - hono
+          - "@hono/*"
+      security-authentication:
+        applies-to: security-updates
+        patterns:
+          - better-auth
+          - "@better-auth/*"
+          - "@better-fetch/*"
+          - better-call
+      security-providers:
+        applies-to: security-updates
+        patterns:
+          - "@modelcontextprotocol/*"
+          - "@anthropic-ai/*"
+          - "@agentclientprotocol/*"
+          - express
+          - proxy-addr
+          - shell-quote
+      security-developer-tools:
+        applies-to: security-updates
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - tinypool
+          - oxfmt
+          - oxlint
+          - tsrs
+          - typescript
+          - "@typescript/*"
+          - turbo
   - package-ecosystem: github-actions
     directories:
       - /
