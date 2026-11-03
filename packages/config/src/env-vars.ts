@@ -268,13 +268,6 @@ export const BB_EXTERNAL_URL_ENV = defineEnvVar<string>({
   parse: parseOptionalUrlEnvValue,
 });
 
-export const BB_MARKETPLACE_URL_ENV = defineEnvVar<string>({
-  description:
-    "Manifest URL of the reserved bb-community plugin marketplace, which lists as BB Community. Point it at a local file server to test catalog refreshes.",
-  name: "BB_MARKETPLACE_URL",
-  parse: parseOptionalUrlEnvValue,
-});
-
 export const BB_PERF_DIAGNOSTICS_ENV = defineEnvVar<boolean>({
   description:
     "Permit server performance diagnostics when the performanceDiagnostics experiment is on. Requires restart.",
@@ -385,8 +378,6 @@ export const DEFAULT_BB_APP_URL = "";
 export const DEFAULT_BB_SERVER_BIND_HOST: ServerBindHost = BB_LOOPBACK_HOST;
 export const DEFAULT_BB_EXTERNAL_URL = "";
 export const DEFAULT_BB_DEV_APP_HOST = "";
-export const DEFAULT_BB_MARKETPLACE_URL =
-  "https://getbb.app/marketplace/v2/marketplace.json";
 export const DEFAULT_BB_FF_PLACEHOLDER = defaultFeatureFlags.placeholder;
 export const DEFAULT_BB_FF_TIMELINE_WINDOW_EVENT_BUDGET =
   defaultFeatureFlags.timelineWindowEventBudget;

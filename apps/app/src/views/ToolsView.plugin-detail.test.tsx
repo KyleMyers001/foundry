@@ -820,42 +820,7 @@ describe("PluginDetail official catalog lifecycle", () => {
     ).not.toHaveLength(0);
   });
 
-  it("copies the public marketplace link for a BB Community catalog entry", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
-    const entry = {
-      ...GITHUB_CATALOG_ENTRY,
-      entryId: "acme github",
-      pluginId: "acme-github",
-      marketplace: "bb-community",
-      marketplaceDisplayName: "BB Community",
-      official: false,
-    } satisfies PluginCatalogSearchEntry;
-    renderWithQueryClient(
-      <CatalogPluginDetail
-        entry={entry}
-        onInstall={() => {}}
-        catalogEntries={[entry]}
-        onOpenPlugin={() => undefined}
-      />,
-    );
-
-    fireEvent.pointerDown(
-      screen.getByRole("button", { name: "GitHub actions" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: "Copy marketplace link" }),
-    );
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        "https://getbb.app/marketplace/acme%20github",
-      ),
-    );
-  });
-
-  it("copies the marketplace link for an installed BB Community plugin without a loaded catalog entry", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+  it("offers no upstream marketplace link for a plugin installed from the retired BB Community catalog", async () => {
     const { wrapper: QueryClientWrapper } = createQueryClientTestHarness();
     render(
       <MemoryRouter>
@@ -884,14 +849,10 @@ describe("PluginDetail official catalog lifecycle", () => {
     fireEvent.pointerDown(
       screen.getByRole("button", { name: "GitHub actions" }),
     );
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: "Copy marketplace link" }),
-    );
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        "https://getbb.app/marketplace/acme-github",
-      ),
-    );
+    await screen.findByRole("menuitem", { name: "Uninstall" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Copy marketplace link" }),
+    ).toBeNull();
   });
 
   it("offers no marketplace link for plugins outside BB Community", async () => {

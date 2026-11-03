@@ -288,7 +288,7 @@ export const pluginInstallRequestSchema = z
 
 export const PLUGIN_MARKETPLACE_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/u;
 
-export const CURATED_PLUGIN_MARKETPLACE_NAME = "bb-community";
+export const RETIRED_COMMUNITY_MARKETPLACE_NAME = "bb-community";
 
 export const pluginMarketplaceNameSchema = z
   .string()

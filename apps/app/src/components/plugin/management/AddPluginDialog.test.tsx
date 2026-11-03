@@ -240,30 +240,11 @@ describe("AddPluginDialog", () => {
     ).not.toBeNull();
     unmount();
 
-    const git = renderDialog({
-      entryId: "thread-hover-cards",
-      pluginId: "thread-hover-cards",
-      marketplace: "bb-community",
-      publisherLabel: "BB Community",
-      displayName: "Thread Hover Cards",
-      icon: "Github",
-      iconUrl: null,
-      iconTinted: false,
-      source: "git:https://github.com/brsbl/bb-plugins@b173b67",
-    });
-    expect(
-      screen.getByText(
-        "Install this BB Community plugin from its listed source repository.",
-      ),
-    ).not.toBeNull();
-    expect(screen.queryByText(/bundled with BB/)).toBeNull();
-    git.unmount();
-
     renderDialog({
       entryId: "widgets",
       pluginId: "widgets",
-      marketplace: "bb-community",
-      publisherLabel: "BB Community",
+      marketplace: "acme-plugins",
+      publisherLabel: "Acme Plugins",
       displayName: "Widgets",
       icon: "Zap",
       iconUrl: null,
@@ -272,9 +253,10 @@ describe("AddPluginDialog", () => {
     });
     expect(
       screen.getByText(
-        "Install this BB Community plugin from its listed npm package.",
+        "Install this plugin from the source its marketplace lists.",
       ),
     ).not.toBeNull();
+    expect(screen.queryByText(/bundled with BB/)).toBeNull();
   });
 
   it("shows the exact source, including a pinned npm registry", () => {

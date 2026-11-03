@@ -739,7 +739,6 @@ describe("plugin update service and routes", () => {
     const catalog = createPluginCatalogService({
       db,
       appVersion: "1.0.0",
-      marketplaceUrl: "https://marketplace.test/marketplace.json",
       dataDir: join(workDir, "data"),
       plugins: service,
     });

@@ -162,7 +162,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
   const runtimeConfig: ServerRuntimeConfig = {
     appVersion: serverConfig.BB_APP_VERSION,
     builtinSkillsRootPath: resolveBuiltinSkillsRootPath(),
-    marketplaceUrl: serverConfig.BB_MARKETPLACE_URL,
     customModels: [],
     dataDir: serverConfig.BB_DATA_DIR,
     featureFlags: serverConfig.featureFlags,

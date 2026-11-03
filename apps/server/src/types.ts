@@ -31,7 +31,6 @@ export interface ServerRuntimeConfig {
   inheritedSkillsRootPaths: string[];
   isDevelopment: boolean;
   performanceDiagnosticsAvailable: boolean;
-  marketplaceUrl: string;
   serverPort: number;
   sharedSkillRoots: ProviderNativeSkillRoots;
   appUrl?: string;

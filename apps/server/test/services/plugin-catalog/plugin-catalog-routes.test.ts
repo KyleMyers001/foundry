@@ -8,8 +8,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { registerPluginCatalogRoutes } from "../../../src/routes/plugin-catalog.js";
 import { createPluginInstallJobs } from "../../../src/services/plugins/plugin-install-jobs.js";
 import { createPluginCatalogService } from "../../../src/services/plugin-catalog/plugin-catalog-service.js";
-import { refreshCuratedMarketplace } from "../../helpers/plugin-catalog.js";
-import { BUNDLED_CURATED_MARKETPLACE } from "../../../src/services/plugin-catalog/curated-marketplace.js";
 import {
   BUILTIN_PLUGINS,
   BUNDLED_PLUGINS,
@@ -17,7 +15,6 @@ import {
 } from "../../../src/services/plugins/builtin-registry.js";
 
 const MANIFEST_URL = "https://marketplace.test/marketplace.json";
-const SEED_ENTRY_COUNT = BUNDLED_CURATED_MARKETPLACE.plugins.length;
 const VALID_SVG = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h16v16H0z"/></svg>',
 );
@@ -43,7 +40,6 @@ describe("plugin catalog routes", () => {
     const catalog = createPluginCatalogService({
       db,
       appVersion: "1.0.0",
-      marketplaceUrl: MANIFEST_URL,
       dataDir,
       plugins: {
         installOfficialPlugin: async () => {
@@ -74,9 +70,9 @@ describe("plugin catalog routes", () => {
     const status = await app.request("/plugin-catalog");
     await expect(status.json()).resolves.toMatchObject({
       catalog: {
-        pluginCount: BUNDLED_PLUGINS.length + SEED_ENTRY_COUNT,
+        pluginCount: BUNDLED_PLUGINS.length,
         includedPluginCount: BUILTIN_PLUGINS.length,
-        optionalPluginCount: OFFICIAL_PLUGINS.length + SEED_ENTRY_COUNT,
+        optionalPluginCount: OFFICIAL_PLUGINS.length,
       },
     });
     const search = await app.request(
@@ -148,8 +144,8 @@ describe("plugin catalog routes", () => {
         ? new Response(
             JSON.stringify({
               schemaVersion: 1,
-              name: "bb-community",
-              displayName: "BB Community",
+              name: "acme-plugins",
+              displayName: "Acme Plugins",
               plugins: [
                 {
                   id: "widgets",
@@ -170,12 +166,12 @@ describe("plugin catalog routes", () => {
           )
         : new Response(VALID_SVG, { status: 200 }),
     );
-    await refreshCuratedMarketplace(catalog, 1_000);
-    const hash = (await catalog.icon("bb-community", "widgets"))?.hash;
+    await catalog.addMarketplace({ source: MANIFEST_URL, subdirectory: null });
+    const hash = (await catalog.icon("acme-plugins", "widgets"))?.hash;
     expect(hash).toBeDefined();
 
     const hashed = await app.request(
-      `/plugin-catalog/icons/bb-community/widgets?h=${hash}`,
+      `/plugin-catalog/icons/acme-plugins/widgets?h=${hash}`,
     );
     expect(hashed.status).toBe(200);
     expect(hashed.headers.get("content-type")).toBe("image/svg+xml");
@@ -183,12 +179,12 @@ describe("plugin catalog routes", () => {
     expect(await hashed.text()).toBe(VALID_SVG.toString());
 
     const stale = await app.request(
-      "/plugin-catalog/icons/bb-community/widgets?h=stale",
+      "/plugin-catalog/icons/acme-plugins/widgets?h=stale",
     );
     expect(stale.headers.get("cache-control")).toBe("no-store");
 
     const missing = await app.request(
-      "/plugin-catalog/icons/bb-community/nothing",
+      "/plugin-catalog/icons/acme-plugins/nothing",
     );
     expect(missing.status).toBe(404);
   });
@@ -253,7 +249,6 @@ describe("plugin catalog routes", () => {
       await expect(listed.json()).resolves.toMatchObject({
         marketplaces: [
           { name: "bb-official", official: true, sourceKind: "path" },
-          { name: "bb-community" },
           { name: "acme-plugins" },
         ],
       });
@@ -319,7 +314,7 @@ describe("plugin catalog routes", () => {
       );
       expect(longPlan.status).toBe(422);
 
-      const reserved = await app.request("/marketplaces/bb-community", {
+      const reserved = await app.request("/marketplaces/bb-official", {
         method: "DELETE",
       });
       expect(reserved.status).toBe(422);

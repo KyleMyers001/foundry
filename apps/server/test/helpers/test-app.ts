@@ -238,7 +238,6 @@ export async function createTestAppHarness(
     featureFlags: defaultFeatureFlags,
     performanceDiagnosticsAvailable: false,
     hostDaemonPort: 3001,
-    marketplaceUrl: "https://marketplace.invalid/marketplace.json",
     inheritedSkillsRootPaths: [],
     isDevelopment: true,
     serverPort: 3334,
