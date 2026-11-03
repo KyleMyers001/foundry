@@ -1491,7 +1491,7 @@ export async function scaffoldPlugin(args: ScaffoldPluginArgs): Promise<void> {
           "@types/react-dom": "^19.0.0",
           "better-sqlite3": "^12.0.0",
           "cron-parser": "^5.5.0",
-          hono: "^4.11.9",
+          hono: "^4.13.11",
           typescript: "^5.7.0",
           ...PLUGIN_SHIMMED_TYPE_DEPENDENCIES,
         },
