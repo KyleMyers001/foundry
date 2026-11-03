@@ -400,7 +400,7 @@ describe("account session refresh", () => {
       baseURL,
       database: drizzleAdapter(db, {
         provider: "sqlite",
-        schema: { session, user },
+        schema,
       }),
       session: {
         expiresIn: CONNECT_SESSION_EXPIRES_IN_SECONDS,
