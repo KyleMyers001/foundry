@@ -7,6 +7,7 @@ settings:
 overrides:
   zod: 4.6.5
   '@expo/metro-config>lightningcss': 1.30.1
+  dompurify: 3.4.17
 
 patchedDependencies:
   '@better-auth/api-key@1.6.23':
@@ -30,6 +31,9 @@ patchedDependencies:
   mermaid@11.15.0:
     hash: azn7m6vm5duxopmv73vhtxokh4
     path: patches/mermaid@11.15.0.patch
+  monaco-editor@0.56.0:
+    hash: vcwlaeh6wqoft2qbgxsvd7gnde
+    path: patches/monaco-editor@0.56.0.patch
   oniguruma-to-es@4.3.4:
     hash: f5db5z5xon23qqwgpdyyzpga5u
     path: patches/oniguruma-to-es@4.3.4.patch
@@ -3242,8 +3246,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       handlebars:
-        specifier: ^4.7.8
-        version: 4.7.8
+        specifier: ^4.7.10
+        version: 4.7.10
       semver:
         specifier: ^7.7.4
         version: 7.8.5
@@ -4944,7 +4948,7 @@ importers:
         version: link:../../packages/shared-ui
       monaco-editor:
         specifier: ^0.56.0
-        version: 0.56.0
+        version: 0.56.0(patch_hash=vcwlaeh6wqoft2qbgxsvd7gnde)
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -7960,7 +7964,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@58.1.15':
     resolution: {integrity: sha512-+gBvfvmttvNqs8ceJe1SdiWBa6reocb/ZC8jMxsF8qFlCijAUQNqFMGCPkT/6zasFkQLUL8ZOFhf/9DKj2XaLg==}
@@ -10323,6 +10327,7 @@ packages:
   '@smithy/core@3.29.8':
     resolution: {integrity: sha512-rpCbCV+TimOBi3VLNBMmtTvgfOWcFIEAru3+TFlG87SL2F+te4jOnnNR+cf3uR4eJ5Qf4LnT80fqnBKgPRS6zA==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.4.13':
     resolution: {integrity: sha512-X+2HNZhWi5i3rJsCas0LPf6fTQUaKyJ40zd8aTO/bwpRfpU3biYaqLr7C1WMibL7PVKJalpi1PyybjGPNoHC8Q==}
@@ -12898,11 +12903,8 @@ packages:
   domino@2.1.8:
     resolution: {integrity: sha512-qLkTcPRkqvifAB0bweVznkWgAu2hwin8An+HbLy0bH1ZtMyJzwXiHKMhynwR1Wq4PgBvEyg2Y749j4JJnlfDKg==}
 
-  dompurify@3.4.8:
-    resolution: {integrity: sha512-yb1cEmaOum7wFvOCSQxyfgVlv5D47Rc30iZWoMpbDIWTnJ6grDDQyu2KFJzB2k7u0pMuJcQ1zphH//fFnw2tjQ==}
-
-  dompurify@3.4.9:
-    resolution: {integrity: sha512-4dPSRMRDqHvs0V4YDFCsaIZo4if5u0xM+llyxiM2fwuZFdKArUBAF3VtI2+n8NKg9P870WMdYk0UhqQNoWXbfQ==}
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -13999,8 +14001,8 @@ packages:
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
 
-  handlebars@4.7.8:
-    resolution: {integrity: sha512-vafaFqs8MZkRrSX7sFVUdo3ap/eNiLnb4IakshzvP56X5Nr1iGKAIqdX6tMlm6HcNRIkr6AxO5jFEoJzzpT8aQ==}
+  handlebars@4.7.10:
+    resolution: {integrity: sha512-P5VJMVM7qgBn6vjXMw8WG9uVI+ncf2pi72j4de4yz5ZULLj2RGqLYaKOYGsgyrViQ0tePOVlN1tDCCXXtFqXKg==}
     engines: {node: '>=0.4.7'}
     hasBin: true
 
@@ -14155,6 +14157,7 @@ packages:
   http-call@5.3.0:
     resolution: {integrity: sha512-ahwimsC23ICE4kPl9xTBjKB4inbRaeLyZeRunC/1Jy/Z6X8tv22MEAjK+KBOMSVLaqXPTTmd8638waVIKLGx2w==}
     engines: {node: '>=8.0.0'}
+    deprecated: Renamed to @heroku/http-call — please install @heroku/http-call instead.
 
   http-errors@1.8.1:
     resolution: {integrity: sha512-Kpk9Sm7NmI+RHhnj6OIWDI1d6fIoFAtFt9RLaTMRlg/8w49juAStsrBgp0Dp4OdxdVbRIeKhtCUvoi/RuAhO4g==}
@@ -25276,11 +25279,7 @@ snapshots:
 
   domino@2.1.8: {}
 
-  dompurify@3.4.8:
-    optionalDependencies:
-      '@types/trusted-types': 2.0.7
-
-  dompurify@3.4.9:
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -26630,7 +26629,7 @@ snapshots:
 
   hachure-fill@0.5.2: {}
 
-  handlebars@4.7.8:
+  handlebars@4.7.10:
     dependencies:
       minimist: 1.2.8
       neo-async: 2.6.2
@@ -27824,7 +27823,7 @@ snapshots:
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
       dayjs: 1.11.21
-      dompurify: 3.4.9
+      dompurify: 3.4.17
       es-toolkit: 1.47.1
       katex: 0.16.47
       khroma: 2.1.0
@@ -28402,9 +28401,9 @@ snapshots:
   moment@2.31.0:
     optional: true
 
-  monaco-editor@0.56.0:
+  monaco-editor@0.56.0(patch_hash=vcwlaeh6wqoft2qbgxsvd7gnde):
     dependencies:
-      dompurify: 3.4.8
+      dompurify: 3.4.17
       marked: 14.0.0
 
   ms@2.0.0: {}
@@ -29000,7 +28999,7 @@ snapshots:
       '@posthog/core': 1.32.3
       '@posthog/types': 1.386.3
       core-js: 3.49.0
-      dompurify: 3.4.9
+      dompurify: 3.4.17
       fflate: 0.4.8
       preact: 10.29.2
       query-selector-shadow-dom: 1.0.1
