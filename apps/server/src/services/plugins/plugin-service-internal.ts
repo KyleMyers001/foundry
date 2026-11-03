@@ -1,4 +1,3 @@
-import type { TunnelIngressLease } from "../connect-next/tunnel-ingress.js";
 import type { EnvironmentRemoval } from "@bb/domain";
 import type { MachineEnrollmentService } from "../machines/machine-services.js";
 import type { AiServiceRegistry } from "../ai/ai-service-registry.js";
@@ -10,7 +9,6 @@ import type {
   ThreadQueuedMessage,
 } from "@bb/domain";
 import type {
-  HostDaemonConnectTunnelIdentity,
   HostDaemonContributedEnvEntry,
 } from "@bb/host-daemon-contract";
 import type {
@@ -31,7 +29,6 @@ import type {
   PluginBackgroundServiceRecord,
   PluginMentionTrigger,
 } from "./plugin-api.js";
-import type { HostSharedPortCoordinator } from "../../ws/host-shared-ports.js";
 import type { ProviderRegistryService } from "../providers/provider-registry.js";
 import type { PluginHostArtifactRegistry } from "./plugin-host-artifact-registry.js";
 
@@ -70,19 +67,6 @@ export interface PluginHostArtifactSnapshot {
 export interface PluginServiceDeps {
   machineEnrollments?: MachineEnrollmentService;
   db: DbConnection;
-  sharedPorts?: Pick<
-    HostSharedPortCoordinator,
-    | "declareSharedPorts"
-    | "validateSharedPortDeclaration"
-    | "replaceDeclarationsForOwner"
-    | "clearDeclarationsForOwner"
-    | "setNextTunnelConfig"
-    | "listNextTunnelStatuses"
-    | "onNextTunnelStatusChange"
-  >;
-  ensureSharedPortTunnel?: (
-    hostId: string,
-  ) => Promise<HostDaemonConnectTunnelIdentity>;
   providerRegistry?: ProviderRegistryService;
   pluginHostArtifacts?: PluginHostArtifactRegistry;
   aiServices: AiServiceRegistry;
@@ -169,7 +153,6 @@ export interface PluginServiceDeps {
     pluginId: string;
     generation: string;
   }) => Promise<void>;
-  openTunnelIngress?: (audience: string) => Promise<TunnelIngressLease>;
 }
 
 export interface PluginAgentToolContribution {

@@ -103,36 +103,6 @@ describe("server", () => {
     );
     expect(unset.bb.server.experimental_appUrl).toBeNull();
   });
-
-  it("records tunnel ingress handles, shares an audience, and closes them on dispose", async () => {
-    const { bb, harness } = createFakePluginHost();
-    const first = await bb.server.internal_DO_NOT_USE_openTunnelIngress({
-      audience: "server:srv_1",
-    });
-    const shared = await bb.server.internal_DO_NOT_USE_openTunnelIngress({
-      audience: "server:srv_1",
-    });
-    const other = await bb.server.internal_DO_NOT_USE_openTunnelIngress({
-      audience: "server:srv_2",
-    });
-    expect(shared.baseUrl).toBe(first.baseUrl);
-    expect(other.baseUrl).not.toBe(first.baseUrl);
-    await expect(
-      bb.server.internal_DO_NOT_USE_openTunnelIngress({ audience: "" }),
-    ).rejects.toThrow(/non-empty audience/);
-
-    await first.close();
-    expect(
-      harness.internal_DO_NOT_USE_tunnelIngresses.map((entry) => entry.closed),
-    ).toEqual([true, false, false]);
-
-    await harness.dispose();
-    expect(
-      harness.internal_DO_NOT_USE_tunnelIngresses.every(
-        (entry) => entry.closed,
-      ),
-    ).toBe(true);
-  });
 });
 
 describe("ui.requestInput", () => {
@@ -258,30 +228,19 @@ describe("host control plane", () => {
     ).rejects.toThrow(/validation failed/u);
   });
 
-  it("uses validated current-state replacements and read-only tunnel identity", async () => {
+  it("rejects the removed shared-port tunnel calls instead of recording them", async () => {
     const { bb, harness } = createFakePluginHost({
       sharedPortTunnelIdentities: {
-        "host-1": { label: "sawyer-air", baseDomain: "getbb.app" },
+        "host-1": { label: "laptop", baseDomain: "example.test" },
       },
     });
 
-    await expect(bb.hosts.ensureSharedPortTunnel("host-1")).resolves.toEqual({
-      label: "sawyer-air",
-      baseDomain: "getbb.app",
-    });
-    bb.hosts.declareSharedPorts("host-1", [8080, 3000, 8080]);
-    bb.hosts.declareSharedPorts("host-2", [4173]);
-    bb.hosts.declareSharedPorts("host-1", [3000]);
-
-    expect(harness.sharedPortDeclarations).toEqual([
-      { hostId: "host-1", ports: [3000] },
-      { hostId: "host-2", ports: [4173] },
-    ]);
-    expect(() => bb.hosts.declareSharedPorts("host-3", [0])).toThrow(
-      /between 1 and 65535/,
+    await expect(bb.hosts.ensureSharedPortTunnel("host-1")).rejects.toThrow(
+      /ensureSharedPortTunnel is not supported/u,
     );
-
-    await harness.dispose();
+    expect(() => bb.hosts.declareSharedPorts("host-1", [3000])).toThrow(
+      /declareSharedPorts is not supported/u,
+    );
     expect(harness.sharedPortDeclarations).toEqual([]);
   });
 });

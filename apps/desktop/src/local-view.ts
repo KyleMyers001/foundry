@@ -5,9 +5,9 @@ import { z } from "zod";
 export const STARTUP_ACTION_CHANNEL = "bb-desktop:startup-action";
 
 export const startupActionIdSchema = z.enum([
+  "add-server",
   "choose-server",
   "open-moved-server",
-  "reconnect-connect",
   "retry",
 ]);
 

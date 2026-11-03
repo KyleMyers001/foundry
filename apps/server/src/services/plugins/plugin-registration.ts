@@ -19,6 +19,7 @@ import {
 import {
   BUILTIN_PLUGIN_ID_PREFIX,
   BUNDLED_PLUGINS,
+  DISCONTINUED_BUILTIN_PLUGINS,
   builtinPluginSource,
   type BundledPluginRegistration,
 } from "./builtin-registry.js";
@@ -144,6 +145,14 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
   );
 
   function refuseBuiltinShadow(pluginId: string): void {
+    const discontinued = DISCONTINUED_BUILTIN_PLUGINS.find(
+      (plugin) => plugin.pluginId === pluginId,
+    );
+    if (discontinued !== undefined) {
+      throw new Error(
+        `install refused: plugin id "${pluginId}" belonged to the discontinued plugin "${discontinued.displayName}", whose saved settings and secrets Foundry keeps; rename the package so its id differs`,
+      );
+    }
     const bundledName = bundledPluginNamesById.get(pluginId);
     if (bundledName === undefined) {
       if (!pluginId.startsWith(BUILTIN_PLUGIN_ID_PREFIX)) return;

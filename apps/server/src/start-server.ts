@@ -55,14 +55,12 @@ import type { ServerLogger, ServerRuntimeConfig } from "./types.js";
 import { NotificationHub } from "./ws/hub.js";
 import { startDaemonLivenessChecks } from "./ws/daemon-protocol.js";
 import { WatchInterestCoordinator } from "./ws/watch-interests.js";
-import { HostSharedPortCoordinator } from "./ws/host-shared-ports.js";
 import { disconnectImportedDaemonSessions } from "./internal/session-owner-side-effects.js";
 import {
   applyServerImportAtBoot,
   refuseInterruptedServerImport,
   repairLastServerMoveHostName,
 } from "./services/server-move/pending-boot.js";
-import { createConnectHold } from "./services/server-move/connect-hold.js";
 import { isServerMoveFrozen } from "./services/server-move/freeze-state.js";
 import { reconcileServerMoveRunAtBoot } from "./services/server-move/reconcile.js";
 import {
@@ -88,8 +86,7 @@ export function startHttpListener(args: StartHttpListenerArgs) {
 }
 
 export interface StartServerPluginsArgs {
-  dataDir: string;
-  logger: Pick<ServerLogger, "error" | "warn">;
+  logger: Pick<ServerLogger, "error">;
   pluginService: Pick<PluginService, "start" | "startPeriodicUpdateChecks">;
   providerRegistry: Pick<ProviderRegistryService, "markRegistrationsSettled">;
 }
@@ -98,9 +95,7 @@ export function startServerPlugins(
   args: StartServerPluginsArgs,
 ): Promise<void> {
   return args.pluginService
-    .start({
-      hold: createConnectHold({ dataDir: args.dataDir, logger: args.logger }),
-    })
+    .start()
     .catch((error: unknown) => {
       args.logger.error({ err: error }, "Plugin startup failed");
     })
@@ -159,7 +154,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       : null;
   const hub = new NotificationHub();
   const watchInterests = new WatchInterestCoordinator({ db, hub });
-  const sharedPorts = new HostSharedPortCoordinator({ db, hub });
   const lifecycleDedupers = createLifecycleDedupers();
   const appUrl = toOptionalString(serverConfig.BB_APP_URL);
 
@@ -173,7 +167,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     appVersion: serverConfig.BB_APP_VERSION,
     builtinSkillsRootPath: resolveBuiltinSkillsRootPath(),
     marketplaceUrl: serverConfig.BB_MARKETPLACE_URL,
-    connectGateKeysUrl: serverConfig.BB_CONNECT_GATE_KEYS_URL,
     customModels: [],
     dataDir: serverConfig.BB_DATA_DIR,
     featureFlags: serverConfig.featureFlags,
@@ -310,7 +303,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     pluginCatalogService,
     pluginService,
     serverMove,
-    tunnelIngress,
   } = createApp(
     {
       appUpdate,
@@ -333,7 +325,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       telemetry,
       terminalSessions,
       watchInterests,
-      sharedPorts,
     },
     {
       serverMove: {
@@ -389,7 +380,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     providerRegistry,
     pluginHostArtifacts,
     aiServices,
-    sharedPorts,
     skillTreeRegistry,
     telemetry,
     terminalSessions,
@@ -457,7 +447,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       providerRegistry.markRegistrationsSettled();
     } else {
       void startServerPlugins({
-        dataDir: serverConfig.BB_DATA_DIR,
         logger,
         pluginService,
         providerRegistry,
@@ -511,7 +500,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
           resolve();
         });
       });
-      await tunnelIngress.closeAll();
       await closeWebSockets();
       await closeServer;
     })();

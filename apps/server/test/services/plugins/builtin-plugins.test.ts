@@ -37,6 +37,7 @@ import {
   accountPoolDefaultEnabled,
   BUILTIN_PLUGINS,
   DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+  DISCONTINUED_BUILTIN_PLUGINS,
   OFFICIAL_PLUGINS,
   resolveBuiltinPluginRootPath,
   type DiscontinuedBuiltinPlugin,
@@ -272,7 +273,6 @@ describe("builtin plugin reconciliation", () => {
   it("keeps official plugins bundled but out of the auto-install builtins", () => {
     const optionalNames = OFFICIAL_PLUGINS.map((plugin) => plugin.name);
     expect(optionalNames).toEqual([
-      "environment-modal-sandbox",
       "browser-automation",
       "github",
       "docs",
@@ -435,7 +435,13 @@ describe("builtin plugin reconciliation", () => {
         db,
         dataDir,
         includeBuiltin: false,
-        discontinued: [{ name: "fixture", displayName: "Fixture cloud" }],
+        discontinued: [
+          {
+            name: "fixture",
+            pluginId: "builtin-fixture",
+            displayName: "Fixture cloud",
+          },
+        ],
       });
       await service.start();
       await service.sweepDueSchedules(Date.now());
@@ -479,7 +485,13 @@ describe("builtin plugin reconciliation", () => {
       db,
       dataDir,
       includeBuiltin: false,
-      discontinued: [{ name: "fixture", displayName: "Fixture cloud" }],
+      discontinued: [
+          {
+            name: "fixture",
+            pluginId: "builtin-fixture",
+            displayName: "Fixture cloud",
+          },
+        ],
     });
     await service.start();
 
@@ -503,7 +515,9 @@ describe("builtin plugin reconciliation", () => {
       db,
       dataDir,
       includeBuiltin: false,
-      discontinued: [{ name: "another", displayName: "Another" }],
+      discontinued: [
+        { name: "another", pluginId: "another", displayName: "Another" },
+      ],
     });
     await service.start();
 
@@ -698,6 +712,26 @@ describe("builtin plugin reconciliation", () => {
     expect(service.list()).toMatchObject([
       { id: "builtin-fixture", enabled: false, status: "disabled" },
     ]);
+  });
+
+  it("discontinues the bb cloud plugins and no longer bundles them", () => {
+    expect(DISCONTINUED_BUILTIN_PLUGINS.map((plugin) => plugin.name)).toEqual([
+      "bb-account",
+      "bb-ai",
+      "connect",
+      "connect-next",
+      "environment-modal-sandbox",
+    ]);
+    const bundled = new Set(
+      [...BUILTIN_PLUGINS, ...OFFICIAL_PLUGINS].flatMap((plugin) => [
+        plugin.name,
+        plugin.pluginId,
+      ]),
+    );
+    for (const plugin of DISCONTINUED_BUILTIN_PLUGINS) {
+      expect(bundled.has(plugin.name)).toBe(false);
+      expect(bundled.has(plugin.pluginId)).toBe(false);
+    }
   });
 
   it("ships each product builtin with its deliberate default", () => {

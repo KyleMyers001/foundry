@@ -183,153 +183,131 @@ describe("server target store", () => {
     expect(store.getTarget()).toEqual({ kind: "builtin" });
   });
 
-  it("selects, persists, and refreshes a connect server target", async () => {
-    const { fs } = createMemoryFs();
+  const retiredConnectFile = {
+    connectServer: {
+      handle: "laptop",
+      name: "Laptop",
+      url: "https://laptop.getbb.app",
+    },
+    connectServerNames: { laptop: "Work laptop" },
+    customServerUrl: "https://desk.example.ts.net",
+    customServerUrls: ["https://desk.example.ts.net"],
+    target: "connect",
+  };
+
+  it("loads a saved bb connect target as retired without offering it as a server", async () => {
+    const raw = JSON.stringify(retiredConnectFile);
+    const { files, fs } = createMemoryFs({ "/tmp/t.json": raw });
     const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
     await store.load();
-    expect(await store.setTarget("connect")).toBe(false);
 
-    await store.setConnectServer({
+    expect(store.getTarget()).toEqual({
+      kind: "retired-connect",
+      server: { name: "Work laptop", url: "https://laptop.getbb.app" },
+    });
+    expect(store.getCustomServerUrls()).toEqual([
+      "https://desk.example.ts.net",
+    ]);
+    expect(files.get("/tmp/t.json")).toBe(raw);
+  });
+
+  it("keeps the retired bb connect target and its saved details through unrelated saves and restarts", async () => {
+    const { files, fs } = createMemoryFs({
+      "/tmp/t.json": JSON.stringify(retiredConnectFile),
+    });
+    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
+    await store.load();
+    await store.setShowBuiltinServer(false);
+
+    expect(JSON.parse(files.get("/tmp/t.json") ?? "")).toMatchObject({
+      connectServer: retiredConnectFile.connectServer,
+      connectServerNames: retiredConnectFile.connectServerNames,
+      target: "connect",
+    });
+    const reloaded = createServerTargetStore({
+      fs,
+      storagePath: "/tmp/t.json",
+    });
+    await reloaded.load();
+    expect(reloaded.getTarget().kind).toBe("retired-connect");
+  });
+
+  it.each([
+    {
+      name: "the local server",
+      select: (store: ReturnType<typeof createServerTargetStore>) =>
+        store.setTarget("builtin"),
+      expected: { kind: "builtin" },
+      target: "builtin",
+    },
+    {
+      name: "a saved direct server",
+      select: (store: ReturnType<typeof createServerTargetStore>) =>
+        store.setCustomServerUrl("https://desk.example.ts.net"),
+      expected: { kind: "custom", url: "https://desk.example.ts.net" },
+      target: "custom",
+    },
+  ])(
+    "switches from a retired bb connect target to $name and keeps the saved bb connect details",
+    async ({ select, expected, target }) => {
+      const { files, fs } = createMemoryFs({
+        "/tmp/t.json": JSON.stringify(retiredConnectFile),
+      });
+      const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
+      await store.load();
+      await select(store);
+
+      expect(store.getTarget()).toEqual(expected);
+      const saved = JSON.parse(files.get("/tmp/t.json") ?? "");
+      expect(saved).toMatchObject({
+        connectServer: retiredConnectFile.connectServer,
+        connectServerNames: retiredConnectFile.connectServerNames,
+        target,
+      });
+      const reloaded = createServerTargetStore({
+        fs,
+        storagePath: "/tmp/t.json",
+      });
+      await reloaded.load();
+      expect(reloaded.getTarget()).toEqual(expected);
+    },
+  );
+
+  it("falls back to the local server, never bb connect, when the last direct server is removed", async () => {
+    const { fs } = createMemoryFs({
+      "/tmp/t.json": JSON.stringify({ ...retiredConnectFile, target: "custom" }),
+    });
+    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
+    await store.load();
+    await store.setShowBuiltinServer(false);
+    await store.setCustomServerUrl(null);
+
+    expect(store.getTarget()).toEqual({ kind: "builtin" });
+  });
+
+  it("records a bb connect server move as retired without making it selectable", async () => {
+    const { files, fs } = createMemoryFs();
+    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
+    await store.load();
+    await store.setRetiredConnectTarget({
       handle: "laptop",
       name: "Laptop",
       url: "https://laptop.getbb.app",
     });
+
     expect(store.getTarget()).toEqual({
-      kind: "connect",
-      server: {
+      kind: "retired-connect",
+      server: { name: "Laptop", url: "https://laptop.getbb.app" },
+    });
+    expect(store.getCustomServerUrls()).toEqual([]);
+    expect(JSON.parse(files.get("/tmp/t.json") ?? "")).toMatchObject({
+      connectServer: {
         handle: "laptop",
         name: "Laptop",
         url: "https://laptop.getbb.app",
       },
+      target: "connect",
     });
-
-    expect(await store.setTarget("builtin")).toBe(true);
-    expect(
-      await store.refreshConnectServer({
-        handle: "laptop",
-        name: "Laptop Renamed",
-        url: "https://laptop-new.getbb.app",
-      }),
-    ).toBe(true);
-    expect(
-      await store.refreshConnectServer({
-        handle: "unknown",
-        name: "Nope",
-        url: "https://nope.getbb.app",
-      }),
-    ).toBe(false);
-    expect(store.getTarget()).toEqual({ kind: "builtin" });
-    expect(store.getConnectServer()?.name).toBe("Laptop Renamed");
-
-    const reloaded = createServerTargetStore({
-      fs,
-      storagePath: "/tmp/t.json",
-    });
-    await reloaded.load();
-    expect(reloaded.getTarget()).toEqual({ kind: "builtin" });
-    expect(reloaded.getConnectServer()).toEqual({
-      handle: "laptop",
-      name: "Laptop Renamed",
-      url: "https://laptop-new.getbb.app",
-    });
-  });
-
-  it("keeps a connect target while clearing the custom URL", async () => {
-    const { fs } = createMemoryFs();
-    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
-    await store.load();
-    await store.setCustomServerUrl("https://example.com");
-    await store.setConnectServer({
-      handle: "laptop",
-      name: "Laptop",
-      url: "https://laptop.getbb.app",
-    });
-    await store.setCustomServerUrl(null);
-    expect(store.getTarget().kind).toBe("connect");
-    expect(store.getCustomServerUrl()).toBeNull();
-  });
-
-  it("replaces saved custom URLs with the matching account servers", async () => {
-    const { files, fs } = createMemoryFs();
-    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
-    await store.load();
-    const brsbl = {
-      handle: "brsbl",
-      name: "default",
-      url: "https://brsbl.getbb.app",
-    };
-    const bbox = {
-      handle: "brsbl-bbox",
-      name: "brsbl-bbox",
-      url: "https://brsbl-bbox.getbb.app",
-    };
-    await store.setConnectServer(brsbl);
-    await store.setCustomServerUrl("https://brsbl.getbb.app/");
-    await store.setCustomServerUrl("https://example.com", { name: "Example" });
-    await store.setCustomServerUrl("https://brsbl-bbox.getbb.app", {
-      name: "Devbox",
-    });
-
-    expect(await store.adoptConnectServers([brsbl, bbox])).toBe(true);
-    expect(store.getTarget()).toEqual({ kind: "connect", server: bbox });
-    expect(store.getCustomServers()).toEqual([
-      { url: "https://example.com", name: "Example" },
-    ]);
-    expect(store.getConnectServerName("brsbl-bbox")).toBe("Devbox");
-    expect(JSON.parse(files.get("/tmp/t.json") ?? "")).toMatchObject({
-      customServerNames: { "https://example.com": "Example" },
-      connectServerNames: { "brsbl-bbox": "Devbox" },
-    });
-    expect(store.getCustomServerUrl()).toBe("https://example.com");
-    expect(await store.adoptConnectServers([brsbl, bbox])).toBe(false);
-
-    const reloaded = createServerTargetStore({
-      fs,
-      storagePath: "/tmp/t.json",
-    });
-    await reloaded.load();
-    expect(reloaded.getTarget()).toEqual({ kind: "connect", server: bbox });
-    expect(reloaded.getCustomServers()).toEqual([
-      { url: "https://example.com", name: "Example" },
-    ]);
-  });
-
-  it("keeps the current target when adopting an inactive custom URL", async () => {
-    const { fs } = createMemoryFs();
-    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
-    await store.load();
-    await store.setCustomServerUrl("https://laptop.getbb.app");
-    await store.setTarget("builtin");
-
-    expect(
-      await store.adoptConnectServers([
-        { handle: "laptop", name: "Laptop", url: "https://laptop.getbb.app" },
-      ]),
-    ).toBe(false);
-    expect(store.getTarget()).toEqual({ kind: "builtin" });
-    expect(store.getCustomServerUrls()).toEqual([]);
-    expect(store.getCustomServerUrl()).toBeNull();
-    expect(await store.setTarget("custom")).toBe(false);
-  });
-
-  it("keeps custom URLs that differ from an account server by protocol, port, path, or query", async () => {
-    const { fs } = createMemoryFs();
-    const store = createServerTargetStore({ fs, storagePath: "/tmp/t.json" });
-    await store.load();
-    const urls = [
-      "http://laptop.getbb.app",
-      "https://laptop.getbb.app:8443",
-      "https://laptop.getbb.app/other",
-      "https://laptop.getbb.app/?deployment=other",
-    ];
-    for (const url of urls) await store.setCustomServerUrl(url);
-
-    expect(
-      await store.adoptConnectServers([
-        { handle: "laptop", name: "Laptop", url: "https://laptop.getbb.app" },
-      ]),
-    ).toBe(false);
-    expect(store.getCustomServerUrls()).toEqual(urls);
   });
 
   it("falls back to builtin when the persisted file is corrupt or dangling", async () => {

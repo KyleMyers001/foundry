@@ -887,7 +887,6 @@ export const publicApiRoutes = {
       request: noRequest<PathId>(),
       response: jsonResponse<
         Host & {
-          connectMachineId: string | null;
           threadStorageRootPath: string | null;
         }
       >(),

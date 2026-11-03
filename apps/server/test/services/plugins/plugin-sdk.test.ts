@@ -34,6 +34,8 @@ import {
 import { PluginHostArtifactRegistry } from "../../../src/services/plugins/plugin-host-artifact-registry.js";
 import { startTestServer, testLogger } from "../../helpers/test-app.js";
 import { defineRpcContract } from "@get-bb/plugin-sdk";
+import { sharedPortTunnelsUnsupportedError } from "@get-bb/plugin-sdk/internal/host-policy";
+import { createFakePluginHost } from "@get-bb/plugin-sdk/testing";
 import { z } from "zod";
 import { createNoopTelemetryService } from "../../../src/services/system/telemetry.js";
 
@@ -111,35 +113,6 @@ describe("plugin bb.sdk bind gate", () => {
   let service: PluginService;
   let pluginHostArtifacts: PluginHostArtifactRegistry;
   let appUrl: string | null;
-  const sharedPorts = {
-    declareSharedPorts: vi.fn(),
-    validateSharedPortDeclaration: vi.fn(
-      (_hostId: string, ports: readonly number[]) => [...ports],
-    ),
-    replaceDeclarationsForOwner: vi.fn(),
-    clearDeclarationsForOwner: vi.fn(),
-    setNextTunnelConfig: vi.fn(),
-    listNextTunnelStatuses: vi.fn(() => [
-      {
-        hostId: "host-1",
-        hostName: "Sawyer Air",
-        status: {
-          state: "connected" as const,
-          label: "sawyer-air",
-          lastError: null,
-          nextRetryAt: null,
-          since: 1,
-          shares: [],
-        },
-      },
-    ]),
-    onNextTunnelStatusChange: vi.fn((_listener: () => void) => nextUnsubscribe),
-  };
-  const nextUnsubscribe = vi.fn();
-  const ensureSharedPortTunnel = vi.fn().mockResolvedValue({
-    label: "sawyer-air",
-    baseDomain: "getbb.app",
-  });
   const callPluginHost = vi.fn(
     async (
       _args: Parameters<NonNullable<PluginServiceDeps["callPluginHost"]>>[0],
@@ -188,14 +161,6 @@ describe("plugin bb.sdk bind gate", () => {
   beforeEach(async () => {
     db = createMigratedConnection();
     workDir = await mkdtemp(join(tmpdir(), "bb-plugin-sdk-test-"));
-    sharedPorts.declareSharedPorts.mockClear();
-    sharedPorts.validateSharedPortDeclaration.mockClear();
-    sharedPorts.replaceDeclarationsForOwner.mockClear();
-    sharedPorts.clearDeclarationsForOwner.mockClear();
-    sharedPorts.setNextTunnelConfig.mockClear();
-    sharedPorts.onNextTunnelStatusChange.mockClear();
-    nextUnsubscribe.mockClear();
-    ensureSharedPortTunnel.mockClear();
     callPluginHost.mockClear();
     disposePluginHost.mockClear();
     appUrl = "https://bb.example.test";
@@ -205,8 +170,6 @@ describe("plugin bb.sdk bind gate", () => {
       telemetry: createNoopTelemetryService(),
       db,
       pluginHostArtifacts,
-      sharedPorts,
-      ensureSharedPortTunnel,
       hub: {
         getDaemonSessionIdForHost: () => null,
         notifyPluginChanged: () => {},
@@ -368,73 +331,49 @@ describe("plugin bb.sdk bind gate", () => {
     expect(api.server.experimental_appUrl).toBeNull();
   });
 
-  it("delivers shared-port declarations through the server control plane", async () => {
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-shares",
-      serverSource: `export default function plugin() {}`,
-    });
-    await service.installPath(rootDir);
-    const api = requireApi(service, "shares");
+  it.each(["real", "fake"] as const)(
+    "rejects the removed shared-port tunnel calls on the %s plugin host",
+    async (kind) => {
+      let api: BbPluginApi;
+      if (kind === "real") {
+        await service.installPath(
+          await writePlugin(workDir, {
+            name: "bb-plugin-shares",
+            serverSource: `export default function plugin() {}`,
+          }),
+        );
+        api = requireApi(service, "shares");
+      } else {
+        api = createFakePluginHost().bb;
+      }
 
-    await expect(api.hosts.ensureSharedPortTunnel("host-1")).resolves.toEqual({
-      label: "sawyer-air",
-      baseDomain: "getbb.app",
-    });
-    api.hosts.declareSharedPorts("host-1", [8080, 3000]);
+      await expect(api.hosts.ensureSharedPortTunnel("host-1")).rejects.toThrow(
+        sharedPortTunnelsUnsupportedError("ensureSharedPortTunnel").message,
+      );
+      expect(() => api.hosts.declareSharedPorts("host-1", [3000])).toThrow(
+        sharedPortTunnelsUnsupportedError("declareSharedPorts").message,
+      );
+    },
+  );
 
-    expect(ensureSharedPortTunnel).toHaveBeenCalledWith("host-1");
-
-    expect(sharedPorts.declareSharedPorts).toHaveBeenCalledWith({
-      ownerId: "shares",
-      hostId: "host-1",
-      ports: [8080, 3000],
-    });
-
-    await service.stop();
-    expect(sharedPorts.clearDeclarationsForOwner).toHaveBeenCalledWith(
-      "shares",
+  it("reports a plugin that still declares shared ports at load instead of loading it silently", async () => {
+    await service.installPath(
+      await writePlugin(workDir, {
+        name: "bb-plugin-legacy-shares",
+        serverSource: `
+          export default function plugin(bb: any) {
+            bb.hosts.declareSharedPorts("host-1", [3000]);
+          }
+        `,
+      }),
     );
-  });
 
-  it("routes next machine tunnels through the server control plane under the plugin's id", async () => {
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-next",
-      serverSource: `export default function plugin() {}`,
+    expect(
+      service.list().find((plugin) => plugin.id === "legacy-shares"),
+    ).toMatchObject({
+      status: "error",
+      statusDetail: expect.stringContaining("declareSharedPorts is not supported"),
     });
-    await service.installPath(rootDir);
-    const api = requireApi(service, "next");
-    const config = {
-      domain: "next.getbb.app",
-      server: {
-        protocol: "wss" as const,
-        host: "tunnel.next.getbb.app",
-        port: 443,
-      },
-    };
-    api.hosts.internal_DO_NOT_USE_setNextTunnels(config);
-    expect(sharedPorts.setNextTunnelConfig).toHaveBeenCalledWith(
-      "next",
-      config,
-    );
-    expect(api.hosts.internal_DO_NOT_USE_nextTunnelStatuses()).toEqual([
-      {
-        hostId: "host-1",
-        hostName: "Sawyer Air",
-        state: "connected",
-        label: "sawyer-air",
-        lastError: null,
-        nextRetryAt: null,
-        since: 1,
-        shares: [],
-      },
-    ]);
-    const listener = vi.fn();
-    api.hosts.internal_DO_NOT_USE_onNextTunnelStatusChange(listener);
-    expect(sharedPorts.onNextTunnelStatusChange).toHaveBeenCalledWith(listener);
-
-    await service.stop();
-    expect(nextUnsubscribe).toHaveBeenCalled();
-    expect(sharedPorts.clearDeclarationsForOwner).toHaveBeenCalledWith("next");
   });
 
   it("binds typed host calls and ignores worker exits from stale generations", async () => {
@@ -569,38 +508,6 @@ describe("plugin bb.sdk bind gate", () => {
       "host plugin calls are unavailable during factory registration",
     );
     expect(callPluginHost).not.toHaveBeenCalled();
-  });
-
-  it("does not publish candidate host declarations when reload fails", async () => {
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-atomic-shares",
-      serverSource: `
-        export default function plugin(bb: any) {
-          bb.hosts.declareSharedPorts("host-1", [3000]);
-        }
-      `,
-    });
-    await service.installPath(rootDir);
-    const previousApi = requireApi(service, "atomic-shares");
-    expect(sharedPorts.replaceDeclarationsForOwner).toHaveBeenCalledWith(
-      "atomic-shares",
-      [{ hostId: "host-1", ports: [3000] }],
-    );
-    sharedPorts.replaceDeclarationsForOwner.mockClear();
-
-    await writeFile(
-      join(rootDir, "server.ts"),
-      `
-        export default function plugin(bb: any) {
-          bb.hosts.declareSharedPorts("host-1", [4000]);
-          throw new Error("candidate failed");
-        }
-      `,
-    );
-    await service.reload("atomic-shares");
-
-    expect(service.getApi("atomic-shares")).toBe(previousApi);
-    expect(sharedPorts.replaceDeclarationsForOwner).not.toHaveBeenCalled();
   });
 });
 

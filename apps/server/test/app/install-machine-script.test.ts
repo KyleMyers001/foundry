@@ -15,6 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { createServer as createNetServer } from "node:net";
 import { delimiter, dirname, join } from "node:path";
+import { LEGACY_CONNECT_ENROLLMENT_MESSAGE } from "@bb/config/bb-app-managed-config";
 import { killProcessesReferencingPath } from "@bb/test-helpers";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -1181,8 +1182,8 @@ fs.writeFileSync(path.join(process.env.BB_DATA_DIR, "config.json"), JSON.stringi
     writeFileSync(
       join(fixture.dataDir, "config.json"),
       JSON.stringify({
-        serverUrl: "https://machine.getbb.app/",
-        serverHeaders: { "x-bb-connect-machine": "machine-credential" },
+        serverUrl: "https://desk.example.ts.net/",
+        serverHeaders: { "x-proxy-auth": "proxy-credential" },
       }),
     );
     writeServerInstallTools(fixture, 200);
@@ -1192,7 +1193,7 @@ fs.writeFileSync(path.join(process.env.BB_DATA_DIR, "config.json"), JSON.stringi
       `#!/bin/sh
 if [ "$1" = bootstrap ]; then
   port=$(sed -n '1p' "${join(fixture.dataDir, "host-daemon-port")}")
-  BB_DATA_DIR="${fixture.dataDir}" "${join(fixture.dataDir, "npm/bin/bb-app")}" host-daemon --host-daemon-port "$port" --server-url https://machine.getbb.app >/dev/null 2>&1 &
+  BB_DATA_DIR="${fixture.dataDir}" "${join(fixture.dataDir, "npm/bin/bb-app")}" host-daemon --host-daemon-port "$port" --server-url https://desk.example.ts.net >/dev/null 2>&1 &
   echo $! >"${join(fixture.dataDir, "service-daemon.pid")}"
 fi
 `,
@@ -1206,18 +1207,18 @@ fi
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain(
-      "Setting up this machine as host-test for https://machine.getbb.app",
+      "Setting up this machine as host-test for https://desk.example.ts.net",
     );
     expect(result.stdout).toContain("already joined");
     expect(result.stdout).toContain("  ●  bb machine is ready");
     expect(existsSync(join(fixture.dataDir, "enrollment-argv"))).toBe(false);
     expect(
       readFileSync(join(fixture.dataDir, "curl-config.log"), "utf8"),
-    ).toContain('header = "x-bb-connect-machine: machine-credential"');
+    ).toContain('header = "x-proxy-auth: proxy-credential"');
     const plist = readFileSync(
       join(
         fixture.homeDir,
-        "Library/LaunchAgents/app.getbb.host-daemon.machine-getbb-app-host-test.plist",
+        "Library/LaunchAgents/app.getbb.host-daemon.desk-example-ts-net-host-test.plist",
       ),
       "utf8",
     );
@@ -1225,39 +1226,47 @@ fi
       `<key>BB_DATA_DIR</key><string>${fixture.dataDir}</string>`,
     );
     expect(plist).toContain("<string>--auto-update</string>");
-    expect(plist).toContain("<string>https://machine.getbb.app</string>");
+    expect(plist).toContain("<string>https://desk.example.ts.net</string>");
   });
 
-  it("sends a legacy machine credential when adopting a data directory", () => {
-    const fixture = createFixture();
-    writeFileSync(
-      join(fixture.dataDir, "auth.json"),
-      JSON.stringify({ hostId: "host-test", hostKey: "secret" }),
-    );
-    writeFileSync(
-      join(fixture.dataDir, "config.json"),
-      JSON.stringify({
+  it.each([
+    { name: "a saved bb connect credential", fields: { machineCredential: "legacy-credential" } },
+    { name: "a bb connect machine id", fields: { connectMachineId: "machine-1" } },
+    {
+      name: "a bb connect machine header",
+      fields: { serverHeaders: { "x-bb-connect-machine": "legacy-credential" } },
+    },
+  ])(
+    "refuses to adopt a data directory enrolled through bb connect with $name",
+    ({ fields }) => {
+      const fixture = createFixture();
+      writeFileSync(
+        join(fixture.dataDir, "auth.json"),
+        JSON.stringify({ hostId: "host-test", hostKey: "secret" }),
+      );
+      const config = JSON.stringify({
         serverUrl: "https://machine.getbb.app",
-        machineCredential: "legacy-credential",
-      }),
-    );
-    writeServerInstallTools(fixture, 200);
+        ...fields,
+      });
+      writeFileSync(join(fixture.dataDir, "config.json"), config);
+      writeServerInstallTools(fixture, 200);
 
-    const result = runScript(
-      ["--adopt", "--data-dir", fixture.dataDir],
-      fixture,
-      { BB_ENROLLMENT: undefined, BB_INSTALL_SKIP_SERVICE: "1" },
-    );
+      const result = runScript(
+        ["--adopt", "--data-dir", fixture.dataDir],
+        fixture,
+        { BB_ENROLLMENT: undefined, BB_INSTALL_SKIP_SERVICE: "1" },
+      );
 
-    expect(result.status, result.stderr).toBe(0);
-    process.kill(
-      Number(readFileSync(join(fixture.dataDir, "install-daemon.pid"), "utf8")),
-      "SIGTERM",
-    );
-    expect(
-      readFileSync(join(fixture.dataDir, "curl-config.log"), "utf8"),
-    ).toContain('header = "x-bb-connect-machine: legacy-credential"');
-  });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+      expect(result.stderr).not.toContain("legacy-credential");
+      expect(existsSync(join(fixture.dataDir, "npm.log"))).toBe(false);
+      expect(existsSync(join(fixture.dataDir, "curl-config.log"))).toBe(false);
+      expect(readFileSync(join(fixture.dataDir, "config.json"), "utf8")).toBe(
+        config,
+      );
+    },
+  );
 
   it.each([
     { name: "without a data directory", args: ["--adopt"] },

@@ -44,16 +44,15 @@ describe("old server daemon config", () => {
 
     const backup = await writeOldServerDaemonConfig({
       dataDir,
-      headers: { "x-bb-connect-machine": "bbcm_laptop" },
-      serverUrl: "https://laptop.getbb.test",
+      headers: { "x-proxy-auth": "laptop" },
+      serverUrl: "https://desktop.tailnet.test",
     });
 
     expect(JSON.parse(await readFile(path, "utf8"))).toEqual({
       config: { BB_LOG_LEVEL: "debug" },
       customModels: [{ providerId: "codex", model: "gpt-test" }],
-      connectMachineId: "machine-1",
-      serverUrl: "https://laptop.getbb.test",
-      serverHeaders: { "x-bb-connect-machine": "bbcm_laptop" },
+      serverUrl: "https://desktop.tailnet.test",
+      serverHeaders: { "x-proxy-auth": "laptop" },
     });
     if (process.platform !== "win32") {
       expect((await stat(path)).mode & 0o777).toBe(0o600);
@@ -109,27 +108,12 @@ describe("server moved targets", () => {
     { id: "host-sandbox", type: "ephemeral" as const },
   ];
 
-  it("tells only the old server's own machine in connect mode", () => {
+  it("tells every persistent machine except the new server machine", () => {
     expect(
-      listServerMovedTargets({
-        connectedHosts,
-        mode: "connect",
-        sourceServerHostId: "host-old",
-        targetHostId: "host-new",
-      }),
-    ).toEqual(["host-old"]);
-    expect(
-      listServerMovedTargets({
-        connectedHosts: connectedHosts.slice(1),
-        mode: "connect",
-        sourceServerHostId: "host-old",
-        targetHostId: "host-new",
-      }),
-    ).toEqual([]);
+      listServerMovedTargets({ connectedHosts, targetHostId: "host-new" }),
+    ).toEqual(["host-old", "host-worker"]);
   });
-});
 
-describe("old copy entries", () => {
   it("keeps the daemon's config and env and passes the lock file schema", () => {
     const entries = listOldCopyEntries([
       { path: "bb.db" },

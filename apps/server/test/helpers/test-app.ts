@@ -52,7 +52,6 @@ import {
   NotificationHub as NotificationHubImpl,
 } from "../../src/ws/hub.js";
 import { WatchInterestCoordinator } from "../../src/ws/watch-interests.js";
-import { HostSharedPortCoordinator } from "../../src/ws/host-shared-ports.js";
 import {
   PluginToolCallRegistry,
   setPluginToolCallRegistry,
@@ -103,7 +102,6 @@ export type TestAppHarnessConfigOverrides = Partial<ServerRuntimeConfig> & {
   nativeRootsClock?: () => number;
   liveCommandsClock?: () => number;
   seedFirstPartyProviders?: boolean;
-  tunnelIngressNow?: () => number;
   extraProviders?: readonly {
     declaration: PluginProviderDeclaration;
     pluginId: string;
@@ -170,7 +168,6 @@ export async function createTestAppHarness(
     nativeRootsClock,
     liveCommandsClock,
     seedFirstPartyProviders = true,
-    tunnelIngressNow: _tunnelIngressNow,
     ...configOverrides
   } = overrides;
   const logger = createTestLogger();
@@ -182,7 +179,6 @@ export async function createTestAppHarness(
   });
   const hub = new NotificationHubImpl();
   const watchInterests = new WatchInterestCoordinator({ db, hub });
-  const sharedPorts = new HostSharedPortCoordinator({ db, hub });
   const providerRegistry = createProviderRegistryService({
     readUserProviderPreferences: () => {
       const settings = getAppSettings(db);
@@ -244,7 +240,6 @@ export async function createTestAppHarness(
     performanceDiagnosticsAvailable: false,
     hostDaemonPort: 3001,
     marketplaceUrl: "https://marketplace.invalid/marketplace.json",
-    connectGateKeysUrl: "https://gate-keys.invalid/bb-connect-gate-keys.json",
     inheritedSkillsRootPaths: [],
     isDevelopment: true,
     serverPort: 3334,
@@ -342,7 +337,6 @@ export async function createTestAppHarness(
     telemetry,
     terminalSessions,
     watchInterests,
-    sharedPorts,
   };
   const { app, pluginCatalogService, pluginService, serverMove } =
     createApp(deps);
@@ -411,13 +405,7 @@ export async function startTestServer(
     injectWebSocket,
     pluginService,
     serverMove,
-    tunnelIngress,
-  } = createApp(
-    harness.deps,
-    overrides.tunnelIngressNow === undefined
-      ? undefined
-      : { tunnelIngressNow: overrides.tunnelIngressNow },
-  );
+  } = createApp(harness.deps);
   const server = serve(
     {
       hostname: TEST_SERVER_HOST,
@@ -452,7 +440,6 @@ export async function startTestServer(
           resolve();
         });
       });
-      await tunnelIngress.closeAll();
       await closeWebSockets();
       await closeServer;
       await harness.cleanup();

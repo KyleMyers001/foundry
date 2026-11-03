@@ -3639,7 +3639,7 @@ switch starts, and in `recovery_required` it rolls the switch back.
 copy. All of them refuse machine credentials. Everything except status and
 cancel requires the default-off `serverMove` experiment (403
 `server_move_experiment_disabled`). CLI:
-`bb server move|export|import|unlock|allow-connect|delete-old-copy|install-machine-service`.
+`bb server move|export|import|unlock|delete-old-copy|install-machine-service`.
 
 Before stabilization, audit: authorization for plugin backends (`bb.sdk` runs
 with owner access, so a plugin can export every secret or move the server);

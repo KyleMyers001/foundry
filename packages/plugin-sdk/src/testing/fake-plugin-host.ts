@@ -49,6 +49,7 @@ import {
   validateRpcValue,
   validateScheduleRegistration,
   validateSettingsUpdate,
+  sharedPortTunnelsUnsupportedError,
   type NormalizedPluginProviderDeclaration,
 } from "../internal/host-policy.js";
 import type { MachineBootstrapApi } from "../machine-bootstrap.js";
@@ -83,8 +84,6 @@ import type {
   PluginHttpHandler,
   PluginHosts,
   PluginSharedPortTunnelIdentity,
-  InternalDoNotUsePluginHostNextTunnelStatus,
-  InternalDoNotUsePluginNextTunnelConfig,
   PluginInteractionRequest,
   PluginInteractionResult,
   PluginKvStorage,
@@ -330,14 +329,6 @@ export interface FakePluginRegistrations {
   aiServiceRegistrations: PluginAiServiceDeclaration[];
 }
 
-/** One handle opened through `bb.server.internal_DO_NOT_USE_openTunnelIngress`. */
-export interface InternalDoNotUseFakeTunnelIngress {
-  readonly audience: string;
-  readonly baseUrl: string;
-  /** True once the plugin closed the handle or the host disposed it. */
-  readonly closed: boolean;
-}
-
 /** Read-only state for assertions after a plugin registers or handles work. */
 export interface FakePluginInspectionState {
   readonly pluginId: string;
@@ -358,21 +349,15 @@ export interface FakePluginInspectionState {
   /** Recorded `bb.sdk` calls + stub control. */
   readonly sdk: FakeSdkHarness;
   readonly registrations: FakePluginRegistrations;
-  /** Every `bb.server.internal_DO_NOT_USE_openTunnelIngress` handle, in order. */
-  readonly internal_DO_NOT_USE_tunnelIngresses: readonly InternalDoNotUseFakeTunnelIngress[];
-  readonly sharedPortDeclarations: Array<{
+  /**
+   * Always empty: `bb.hosts.declareSharedPorts` throws because Foundry removed
+   * bb connect shared-port tunnels. Kept for compatibility until the next major
+   * Plugin SDK release removes it.
+   */
+  readonly sharedPortDeclarations: ReadonlyArray<{
     hostId: string;
     ports: number[];
   }>;
-  /** The last `bb.hosts.internal_DO_NOT_USE_setNextTunnels` config, or null. */
-  readonly internal_DO_NOT_USE_nextTunnelConfig: InternalDoNotUsePluginNextTunnelConfig | null;
-  /**
-   * Replace what `bb.hosts.internal_DO_NOT_USE_nextTunnelStatuses` returns and call
-   * every `internal_DO_NOT_USE_onNextTunnelStatusChange` listener.
-   */
-  internal_DO_NOT_USE_setNextTunnelStatuses(
-    statuses: readonly InternalDoNotUsePluginHostNextTunnelStatus[],
-  ): void;
   /** Calls made through bb.hosts.experimental_client, after input validation. */
   readonly experimental_hostRpcCalls: readonly ExperimentalFakeHostRpcCall[];
   readonly pendingInteractions: readonly (PluginInteractionRequest & {
@@ -575,7 +560,11 @@ export interface CreateFakePluginHostOptions {
   sdk?: FakeSdkOverrides;
   /** Static manifest skill ids available to configure() in this fake host. */
   agentSkillIds?: readonly string[];
-  /** Read-only identities returned by bb.hosts.ensureSharedPortTunnel. */
+  /**
+   * Has no effect: `bb.hosts.ensureSharedPortTunnel` always rejects because
+   * Foundry removed bb connect shared-port tunnels. Kept for compatibility until
+   * the next major Plugin SDK release removes it.
+   */
   sharedPortTunnelIdentities?: Record<string, PluginSharedPortTunnelIdentity>;
   /**
    * Whether the plugin's manifest declares a `bb.host` entry. Production
@@ -674,7 +663,6 @@ interface FakePluginPersistentState {
   storedSettings: Map<string, PluginSettingValue>;
 }
 
-const FAKE_TUNNEL_INGRESS_FIRST_PORT = 41_000;
 
 const fakeHostDisposers = new WeakMap<
   FakePluginHarness,
@@ -1183,39 +1171,7 @@ function createFakePluginHostInternal(
       assertLive();
       return dataDir;
     },
-    async internal_DO_NOT_USE_openTunnelIngress(ingressOptions) {
-      assertLive();
-      const audience: unknown = ingressOptions?.audience;
-      if (typeof audience !== "string" || audience.length === 0) {
-        throw new Error(
-          "bb.server.internal_DO_NOT_USE_openTunnelIngress needs a non-empty audience",
-        );
-      }
-      const shared = tunnelIngresses.find(
-        (entry) => entry.audience === audience && !entry.closed,
-      );
-      const entry = {
-        audience,
-        baseUrl:
-          shared?.baseUrl ??
-          `http://127.0.0.1:${FAKE_TUNNEL_INGRESS_FIRST_PORT + tunnelIngresses.length}`,
-        closed: false,
-      };
-      tunnelIngresses.push(entry);
-      const close = async (): Promise<void> => {
-        entry.closed = true;
-        const index = disposeHooks.indexOf(close);
-        if (index !== -1) disposeHooks.splice(index, 1);
-      };
-      disposeHooks.push(close);
-      return { baseUrl: entry.baseUrl, close };
-    },
   };
-  const tunnelIngresses: Array<{
-    audience: string;
-    baseUrl: string;
-    closed: boolean;
-  }> = [];
 
   // --- sdk ---
   const { sdk, harness: sdkHarness } = createFakeSdk({
@@ -1318,11 +1274,6 @@ function createFakePluginHostInternal(
     });
   }
 
-  const sharedPortDeclarations: FakePluginHarness["sharedPortDeclarations"] =
-    [];
-  let nextTunnelConfig: InternalDoNotUsePluginNextTunnelConfig | null = null;
-  let nextTunnelStatuses: InternalDoNotUsePluginHostNextTunnelStatus[] = [];
-  const nextTunnelListeners = new Set<() => void>();
   const hostRpcCalls: ExperimentalFakeHostRpcCall[] = [];
   const hostWorkerExitSubscriptions: FakeHostWorkerExitSubscription[] = [];
   const hostSignalSubscriptions: FakeHostSignalSubscription[] = [];
@@ -1430,67 +1381,15 @@ function createFakePluginHostInternal(
         },
       };
     },
-    async ensureSharedPortTunnel(hostId) {
+    async ensureSharedPortTunnel() {
       assertLive();
-      if (hostId.trim().length === 0) {
-        throw new Error("shared-port hostId must be non-empty");
-      }
-      const identity = options.sharedPortTunnelIdentities?.[hostId];
-      if (!identity) {
-        throw new Error(`host ${hostId} has no shared-port tunnel identity`);
-      }
-      return { ...identity };
+      throw sharedPortTunnelsUnsupportedError("ensureSharedPortTunnel");
     },
-    declareSharedPorts(hostId, ports) {
+    declareSharedPorts() {
       assertLive();
-      if (hostId.trim().length === 0) {
-        throw new Error("shared-port hostId must be non-empty");
-      }
-      const normalizedPorts = [...new Set(ports)].sort((a, b) => a - b);
-      for (const port of normalizedPorts) {
-        if (!Number.isInteger(port) || port < 1 || port > 65535) {
-          throw new Error(
-            `shared port ${String(port)} must be an integer between 1 and 65535`,
-          );
-        }
-      }
-      const replacement = {
-        hostId,
-        ports: normalizedPorts,
-      };
-      const existingIndex = sharedPortDeclarations.findIndex(
-        (declaration) => declaration.hostId === hostId,
-      );
-      if (existingIndex === -1) {
-        sharedPortDeclarations.push(replacement);
-      } else {
-        sharedPortDeclarations[existingIndex] = replacement;
-      }
-    },
-    internal_DO_NOT_USE_setNextTunnels(config) {
-      assertLive();
-      nextTunnelConfig =
-        config === null
-          ? null
-          : { domain: config.domain, server: { ...config.server } };
-    },
-    internal_DO_NOT_USE_nextTunnelStatuses() {
-      assertLive();
-      return structuredClone(nextTunnelStatuses);
-    },
-    internal_DO_NOT_USE_onNextTunnelStatusChange(listener) {
-      assertLive();
-      nextTunnelListeners.add(listener);
-      return () => {
-        nextTunnelListeners.delete(listener);
-      };
+      throw sharedPortTunnelsUnsupportedError("declareSharedPorts");
     },
   };
-  disposeHooks.push(() => {
-    sharedPortDeclarations.length = 0;
-    nextTunnelConfig = null;
-    nextTunnelListeners.clear();
-  });
 
   const events: PluginEvents = {
     on(event, handler) {
@@ -1742,15 +1641,7 @@ function createFakePluginHostInternal(
     get recheckCount() {
       return requestedDrains;
     },
-    internal_DO_NOT_USE_tunnelIngresses: tunnelIngresses,
-    sharedPortDeclarations,
-    get internal_DO_NOT_USE_nextTunnelConfig() {
-      return nextTunnelConfig;
-    },
-    internal_DO_NOT_USE_setNextTunnelStatuses(statuses) {
-      nextTunnelStatuses = structuredClone([...statuses]);
-      for (const listener of [...nextTunnelListeners]) listener();
-    },
+    sharedPortDeclarations: [],
     experimental_hostRpcCalls: hostRpcCalls,
     sdk: sdkHarness,
     registrations: {

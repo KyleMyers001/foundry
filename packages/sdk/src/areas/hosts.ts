@@ -100,7 +100,6 @@ export type HostDeleteResult = { ok: true };
 export type HostDirectoryResult = HostDirectoryListing;
 export type HostDiscoverReposResult = HostDiscoveredReposResponse;
 export type HostGetResult = Host & {
-  connectMachineId: string | null;
   threadStorageRootPath: string | null;
 };
 export type HostEnrollmentCommandResult = HostEnrollmentCommandResponse;

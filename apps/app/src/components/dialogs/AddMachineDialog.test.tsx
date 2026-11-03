@@ -179,7 +179,6 @@ it("retrieves the enrollment command after asynchronous access preparation", asy
       });
     vi.mocked(sdk.hosts.get).mockResolvedValue({
       ...reservedHost,
-      connectMachineId: null,
       threadStorageRootPath: null,
     });
   });
@@ -203,7 +202,6 @@ it("marks a previously available command as used when the server withdraws it", 
       .mockResolvedValue(null);
     vi.mocked(sdk.hosts.get).mockResolvedValue({
       ...reservedHost,
-      connectMachineId: null,
       threadStorageRootPath: null,
     });
   });
@@ -229,7 +227,6 @@ it("accepts a connection before an enrollment command is returned", async () => 
     );
     vi.mocked(sdk.hosts.get).mockResolvedValue({
       ...reservedHost,
-      connectMachineId: null,
       threadStorageRootPath: null,
       status: "connected",
       lifecycle: { ...reservedHost.lifecycle, phase: "active" },

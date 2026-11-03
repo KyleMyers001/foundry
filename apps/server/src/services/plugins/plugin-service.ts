@@ -174,7 +174,6 @@ import { createPluginRegistration } from "./plugin-registration.js";
 import {
   createPluginRuntime,
   forgetMutableRoot,
-  type PluginLoadHold,
 } from "./plugin-runtime.js";
 import {
   nextCronRunAt,
@@ -247,10 +246,6 @@ export function superviseBuiltinPluginSourceWatcher(args: {
   });
 }
 
-export interface PluginStartOptions {
-  hold: PluginLoadHold;
-}
-
 export interface PluginService {
   isBuiltin(id: string): boolean;
   events: PluginThreadEventEmitter;
@@ -264,7 +259,7 @@ export interface PluginService {
    * listener is up, before start(): bb.sdk throws until this runs.
    */
   bindSdk(args: { baseUrl: string }): void;
-  start(options?: PluginStartOptions): Promise<void>;
+  start(): Promise<void>;
   stop(): Promise<void>;
   handleUncaughtException(error: unknown): boolean;
   list(): InstalledPlugin[];
@@ -708,7 +703,6 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     brandingAssets,
     safeModeActivationRefusal,
     setDevBuildProblem,
-    setLoadHold,
     setStatus,
     sourceKind,
     stabilizingPluginIds,
@@ -1519,8 +1513,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
 
     bindSdk: bindRuntimeSdk,
 
-    async start(options) {
-      setLoadHold(options?.hold ?? null);
+    async start() {
       loadPassActive = true;
       try {
         await backfillNormalizedPluginRegistrations();

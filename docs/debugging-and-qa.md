@@ -827,8 +827,9 @@ directory; check them when a server refuses to start or keeps redirecting:
 - `server-move-run.json`: the old server's durable move state, reconciled at
   boot.
 - `last-server-move.json`: the new server's record of the move.
-- `server-connect-hold.json`: an imported server starts without bb connect
-  until `bb server allow-connect`.
+- `server-connect-hold.json`: written by older bb versions to keep bb connect
+  off in an imported server. Foundry ignores it; the daemon still removes a
+  stale one during a move.
 
 During a move, `/health` on the new server reports
 `serverMove: { moveId, state }` with `pending`, `activating`, or `ready`.

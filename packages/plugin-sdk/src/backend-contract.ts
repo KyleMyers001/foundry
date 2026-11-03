@@ -1941,40 +1941,6 @@ export interface PluginServerApi {
    */
   readonly experimental_dataDir: string;
 
-  /**
-   * Internal to bb's own connect plugins. Do not use: it is not part of the
-   * plugin API and may change or disappear in any release.
-   *
-   * Open (or share) this server's tunnel ingress for `audience`, a private
-   * listener on 127.0.0.1 with an ephemeral port. For a plugin that runs a
-   * tunnel client for bb connect next: point the client at `baseUrl`.
-   *
-   * Every HTTP request and WebSocket upgrade must carry an
-   * `x-bb-gate-assertion` signed by the bb connect gate for `audience`
-   * (`server:<serverId>`), the request method and the exact path and query;
-   * anything else is answered 401. A verified request reaches the same app
-   * as `loopbackBaseUrl`, authenticated only by the gate's claims.
-   *
-   * Opening the same audience again shares the listener; it stops when every
-   * handle is closed. Handles close when the plugin is disabled or unloaded.
-   */
-  internal_DO_NOT_USE_openTunnelIngress(
-    options: InternalDoNotUsePluginTunnelIngressOptions,
-  ): Promise<InternalDoNotUsePluginTunnelIngress>;
-}
-
-/** Options for `bb.server.internal_DO_NOT_USE_openTunnelIngress`. */
-export interface InternalDoNotUsePluginTunnelIngressOptions {
-  /** The gate assertion audience this ingress accepts, e.g. `server:<id>`. */
-  audience: string;
-}
-
-/** A handle on an open tunnel ingress. */
-export interface InternalDoNotUsePluginTunnelIngress {
-  /** Base URL of the ingress listener, e.g. "http://127.0.0.1:41234". */
-  readonly baseUrl: string;
-  /** Release this handle; idempotent. */
-  close(): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -2067,53 +2033,16 @@ export interface PluginAiServices {
 // Host control plane.
 // ---------------------------------------------------------------------------
 
+/**
+ * Unsupported: Foundry removed bb connect shared-port tunnels, so no host ever
+ * returns this identity. Kept for compatibility until the next major Plugin SDK
+ * release removes it.
+ */
 export interface PluginSharedPortTunnelIdentity {
   /** Gate routing label assigned to this machine. */
   label: string;
-  /** Gate apex without a scheme, e.g. "getbb.app". */
+  /** Gate apex without a scheme. */
   baseDomain: string;
-}
-
-/** The frp server a machine's next tunnel dials. */
-export interface InternalDoNotUsePluginNextTunnelServer {
-  /** `wss` for TLS, `websocket` for plain `ws://` (local runs only). */
-  protocol: "wss" | "websocket";
-  /** Host name without a port, e.g. "tunnel.next.getbb.app". */
-  host: string;
-  port: number;
-}
-
-/** Where every eligible machine serves its port shares through bb connect next. */
-export interface InternalDoNotUsePluginNextTunnelConfig {
-  /**
-   * Next domain without a scheme, with a port only for local runs, e.g.
-   * "next.getbb.app". A share answers at `<machine-label>--<port>.<domain>`.
-   */
-  domain: string;
-  server: InternalDoNotUsePluginNextTunnelServer;
-}
-
-/** One machine's next tunnel, as its daemon last reported it. */
-export interface InternalDoNotUsePluginHostNextTunnelStatus {
-  hostId: string;
-  hostName: string;
-  /**
-   * `idle` while the machine shares no port or next is off, `refused` when
-   * the gate refused the machine credential (retried after five minutes),
-   * `offline` when the gate cannot be reached (retried with backoff),
-   * `error` when the daemon could not start frpc or refused the configuration.
-   */
-  state: "idle" | "connecting" | "connected" | "refused" | "offline" | "error";
-  /** The machine's gate label, or null before the daemon learned it. */
-  label: string | null;
-  lastError: string | null;
-  nextRetryAt: number | null;
-  since: number;
-  shares: Array<{
-    port: number;
-    state: "pending" | "active" | "refused";
-    error: string | null;
-  }>;
 }
 
 export interface PluginHosts {
@@ -2127,56 +2056,20 @@ export interface PluginHosts {
   }): ExperimentalHostClient<Contract, Signals>;
 
   /**
-   * Ensure this enrolled host has a gate label and return its read-only public
-   * identity. The daemon chooses the trusted gate and desired label; plugins
-   * cannot influence either credential-bearing destination.
+   * Unsupported: Foundry removed bb connect shared-port tunnels. Always
+   * rejects with an error saying so. Kept for compatibility until the next
+   * major Plugin SDK release removes it.
    */
   ensureSharedPortTunnel(
     hostId: string,
   ): Promise<PluginSharedPortTunnelIdentity>;
 
   /**
-   * Replace this plugin's desired shared-loopback ports for one host. The
-   * server aggregates declarations, owns generations, and delivers the
-   * resulting set to that host's daemon. When an enrolled host is offline,
-   * the server retains the declaration and delivers it on the next
-   * credentialed daemon session. A connected daemon that reports no machine
-   * credential is rejected. Tunnel identity is deliberately not accepted
-   * here: it is owned by the daemon's trusted enrollment.
+   * Unsupported: Foundry removed bb connect shared-port tunnels. Always throws
+   * an error saying so instead of recording the ports. Kept for compatibility
+   * until the next major Plugin SDK release removes it.
    */
   declareSharedPorts(hostId: string, ports: readonly number[]): void;
-
-  /**
-   * Internal to bb's own connect plugins. Do not use: it is not part of the
-   * plugin API and may change or disappear in any release.
-   *
-   * Turn bb connect next machine tunnels on (a config) or off (`null`). The
-   * server sends the config to every connected daemon that holds a bb connect
-   * machine credential and speaks a protocol that knows next tunnels; each
-   * such daemon runs frpc with one proxy per port declared with
-   * `declareSharedPorts`, at `<machine-label>--<port>.<domain>`. The daemon
-   * refuses a domain or tunnel server outside its trusted enrollment's
-   * domain. One plugin owns the setting at a time; another plugin's call
-   * throws while it is set. Cleared when the owning plugin is disabled.
-   */
-  internal_DO_NOT_USE_setNextTunnels(
-    config: InternalDoNotUsePluginNextTunnelConfig | null,
-  ): void;
-
-  /** Internal to bb's own connect plugins; do not use. The last next-tunnel status of every connected daemon that reported one. */
-  internal_DO_NOT_USE_nextTunnelStatuses(): InternalDoNotUsePluginHostNextTunnelStatus[];
-
-  /**
-   * Internal to bb's own connect plugins. Do not use: it is not part of the
-   * plugin API and may change or disappear in any release.
-   *
-   * Call `listener` whenever a daemon reports a changed next-tunnel status or
-   * its session ends. Returns an unsubscribe function; plugin disposal also
-   * unsubscribes.
-   */
-  internal_DO_NOT_USE_onNextTunnelStatusChange(
-    listener: () => void,
-  ): () => void;
 }
 
 // ---------------------------------------------------------------------------

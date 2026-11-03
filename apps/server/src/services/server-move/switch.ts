@@ -5,7 +5,6 @@ import {
   parseBbAppManagedConfig,
 } from "@bb/config/bb-app-managed-config";
 import { mutateManagedJsonFile } from "@bb/config/managed-json-file";
-import type { ServerMoveMode } from "@bb/domain";
 import { SERVER_MOVED_FILE_NAME } from "@bb/server-archive";
 import { parseManagedConfigObject, readOptionalText } from "./managed-files.js";
 
@@ -32,8 +31,6 @@ export interface ServerMovedTargetHost {
 
 export interface ListServerMovedTargetsArgs {
   connectedHosts: readonly ServerMovedTargetHost[];
-  mode: ServerMoveMode;
-  sourceServerHostId: string;
   targetHostId: string;
 }
 
@@ -44,6 +41,7 @@ export interface OldCopyInventoryEntry {
 function nextOldServerDaemonConfig(
   {
     machineCredential: _machineCredential,
+    connectMachineId: _connectMachineId,
     serverHeaders: _serverHeaders,
     ...current
   }: Record<string, unknown>,
@@ -120,13 +118,6 @@ export async function unlockOldServerDataDir(dataDir: string): Promise<void> {
 export function listServerMovedTargets(
   args: ListServerMovedTargetsArgs,
 ): string[] {
-  if (args.mode === "connect") {
-    return args.connectedHosts.some(
-      (host) => host.id === args.sourceServerHostId,
-    )
-      ? [args.sourceServerHostId]
-      : [];
-  }
   return args.connectedHosts
     .filter(
       (host) => host.type === "persistent" && host.id !== args.targetHostId,

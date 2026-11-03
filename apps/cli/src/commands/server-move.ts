@@ -131,7 +131,7 @@ export function printServerMoveCheck(check: ServerMoveCheckResponse): void {
 }
 
 export function missingAddressGuidance(check: ServerMoveCheckResponse): string {
-  return `This bb server uses a direct address, so the new server needs one too. Re-run with --address <url>: the URL every machine and app will use to reach bb on ${check.targetHostName}, such as a Tailscale Serve URL.`;
+  return `The new server needs an address. Re-run with --address <url>: the URL every machine and app will use to reach bb on ${check.targetHostName}, such as a Tailscale Serve URL.`;
 }
 
 export function existingDataGuidance(check: ServerMoveCheckResponse): string {
@@ -210,7 +210,7 @@ export function serverMoveAbandonWarning(status: ServerMoveStatus): string[] {
   const name = status.targetHostName;
   return [
     `The move to ${name} wasn't confirmed. Abandoning rolls back the switch and keeps the server on this computer.`,
-    `If ${name} already took over, two servers will run with the same data and bb connect credential. Stop the server on ${name} first.`,
+    `If ${name} already took over, two servers will run with the same data. Stop the server on ${name} first.`,
   ];
 }
 

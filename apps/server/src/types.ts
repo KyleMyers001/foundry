@@ -13,7 +13,6 @@ import type { TerminalSessionLifecycle } from "./services/terminals/terminal-ses
 import type { LifecycleDedupers } from "./lifecycle-dedupers.js";
 import type { NotificationHub } from "./ws/hub.js";
 import type { WatchInterestCoordinator } from "./ws/watch-interests.js";
-import type { HostSharedPortCoordinator } from "./ws/host-shared-ports.js";
 import type { SkillTreeRegistry } from "./services/skills/injected-skills.js";
 import type { ProviderRegistryService } from "./services/providers/provider-registry.js";
 import type { AiServiceRegistry } from "./services/ai/ai-service-registry.js";
@@ -34,7 +33,6 @@ export interface ServerRuntimeConfig {
   isDevelopment: boolean;
   performanceDiagnosticsAvailable: boolean;
   marketplaceUrl: string;
-  connectGateKeysUrl: string;
   serverPort: number;
   sharedSkillRoots: ProviderNativeSkillRoots;
   appUrl?: string;
@@ -59,7 +57,6 @@ export interface AppDeps {
   telemetry: TelemetryService;
   terminalSessions: TerminalSessionLifecycle;
   watchInterests: WatchInterestCoordinator;
-  sharedPorts: HostSharedPortCoordinator;
 }
 
 export interface ServerAppDeps extends AppDeps {
