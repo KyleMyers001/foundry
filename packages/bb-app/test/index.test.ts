@@ -1005,6 +1005,39 @@ describe("bb-app launcher", () => {
         "https://laptop.connect.example",
       );
 
+      for (const replayedUrl of [
+        "https://laptop.connect.example",
+        "https://laptop.connect.example/",
+      ]) {
+        const oldInstallerService = await resolve(
+          parseLauncherArgs([
+            "host-daemon",
+            "--auto-update",
+            "--host-daemon-port",
+            "39911",
+            "--server-url",
+            replayedUrl,
+          ]).options,
+        );
+        expect(() =>
+          assertNoLegacyConnectEnrollment(oldInstallerService),
+        ).toThrow(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+      }
+      const replayedByEnv = await resolveBbAppRuntimeState({
+        entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+          .href,
+        env: {
+          BB_DATA_DIR: dataDir,
+          BB_SERVER_URL: "https://laptop.connect.example",
+        },
+        homeDir: "/home/tester",
+        options: parseLauncherArgs([]).options,
+        serverUrlMode: "managed",
+      });
+      expect(() => assertNoLegacyConnectEnrollment(replayedByEnv)).toThrow(
+        LEGACY_CONNECT_ENROLLMENT_MESSAGE,
+      );
+
       const direct = await resolve(
         parseLauncherArgs(["--server-url", "https://laptop.tailnet.example"])
           .options,

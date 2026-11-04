@@ -1084,6 +1084,37 @@ export function assertNoLegacyConnectEnrollment(
   }
 }
 
+class RetiredConnectDestinationError extends Error {
+  override readonly name = "RetiredConnectDestinationError";
+}
+
+function isSameServerUrl(left: string, right: string): boolean {
+  try {
+    return (
+      normalizeServerUrlForComparison(left) ===
+      normalizeServerUrlForComparison(right)
+    );
+  } catch {
+    return left === right;
+  }
+}
+
+function dialsLegacyConnectAddress(args: {
+  config: ManagedConfig;
+  serverUrl: string | undefined;
+}): boolean {
+  if (!hasLegacyConnectEnrollment(args.config)) return false;
+  return (
+    args.serverUrl === undefined ||
+    (args.config.serverUrl !== undefined &&
+      isSameServerUrl(args.serverUrl, args.config.serverUrl))
+  );
+}
+
+function formatRetiredConnectMoveMessage(movedFile: ServerMovedFile): string {
+  return `This bb server moved to ${movedFile.toHostName} at a bb connect address (${movedFile.serverUrl}), which Foundry no longer supports, so this computer will not connect to it. Its saved identity is kept. Add this computer again from ${movedFile.toHostName} with a direct or Tailscale URL (Settings → Machines → Add machine) and run the command shown there on this computer.`;
+}
+
 function withoutLegacyConnectEnrollment(
   config: ManagedConfigForWrite,
 ): ManagedConfigForWrite {
@@ -1485,7 +1516,10 @@ export async function resolveBbAppRuntimeState(
       homeDir: args.homeDir,
     }),
     env: finalEnv,
-    legacyConnectEnrollment: legacyConnect && explicitServerUrl === undefined,
+    legacyConnectEnrollment: dialsLegacyConnectAddress({
+      config,
+      serverUrl: explicitServerUrl,
+    }),
     serverEnv: stripThreadContextEnv(
       applyRuntimePolicy(
         createServerBaseEnv({
@@ -2665,6 +2699,17 @@ export async function resolveMovedDaemonLaunch(
       : { worktreePolicy: args.worktreePolicy }),
   });
   const serverUrl = runtime.config.serverUrl ?? args.movedFile.serverUrl;
+  if (dialsLegacyConnectAddress({ config: runtime.config, serverUrl })) {
+    throw new RetiredConnectDestinationError(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+  }
+  if (
+    args.movedFile.mode === "connect" &&
+    isSameServerUrl(serverUrl, args.movedFile.serverUrl)
+  ) {
+    throw new RetiredConnectDestinationError(
+      formatRetiredConnectMoveMessage(args.movedFile),
+    );
+  }
   return {
     context: runtime.context,
     env: createDaemonEnv({
@@ -3635,6 +3680,14 @@ export async function runMovedMode(
     }
   };
 
+  const waitForMovedModeToEnd = async (): Promise<void> => {
+    while (!isMovedModeOver()) {
+      await args.delayMilliseconds({
+        ms: MOVED_MODE_MARKER_POLL_INTERVAL_MS,
+      });
+    }
+  };
+
   await syncResponder();
   const watcher = watchMarkers();
   try {
@@ -3646,13 +3699,10 @@ export async function runMovedMode(
         green("●"),
         `A background service runs this computer as a machine (${machineService}); not starting another host daemon`,
       );
-      while (!isMovedModeOver()) {
-        await args.delayMilliseconds({
-          ms: MOVED_MODE_MARKER_POLL_INTERVAL_MS,
-        });
-      }
+      await waitForMovedModeToEnd();
     } else if (!isMovedModeOver()) {
       beginStep("Starting host daemon");
+      let retiredDestination = false;
       try {
         await args.startDaemon();
         endStep(green("✓"), "Host daemon running");
@@ -3660,23 +3710,32 @@ export async function runMovedMode(
           context: args.context,
           movedFile: args.movedFile,
         });
-      } catch {
+      } catch (error) {
+        retiredDestination = error instanceof RetiredConnectDestinationError;
         if (!isMovedModeOver()) {
           endStep(red("✗"), "Host daemon failed to start");
-          logManagedProcessStartupFailureContext({
-            context: args.context,
-            processName: "daemon",
-          });
+          if (error instanceof RetiredConnectDestinationError) {
+            log(yellow("!"), error.message);
+          } else {
+            logManagedProcessStartupFailureContext({
+              context: args.context,
+              processName: "daemon",
+            });
+          }
         }
       }
-      await superviseMovedDaemonProcess({
-        context: args.context,
-        delayMilliseconds: args.delayMilliseconds,
-        isMovedModeOver,
-        isServerUnlocked,
-        processes: args.processes,
-        startDaemon: args.startDaemon,
-      });
+      if (retiredDestination) {
+        await waitForMovedModeToEnd();
+      } else {
+        await superviseMovedDaemonProcess({
+          context: args.context,
+          delayMilliseconds: args.delayMilliseconds,
+          isMovedModeOver,
+          isServerUnlocked,
+          processes: args.processes,
+          startDaemon: args.startDaemon,
+        });
+      }
     }
   } finally {
     stopWatching();

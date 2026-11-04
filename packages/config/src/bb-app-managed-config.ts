@@ -218,7 +218,9 @@ export function hasLegacyConnectEnrollment(
     config.machineCredential !== undefined ||
     config.connectMachineId !== undefined ||
     (config.serverHeaders !== undefined &&
-      Object.hasOwn(config.serverHeaders, LEGACY_CONNECT_MACHINE_HEADER))
+      Object.keys(config.serverHeaders).some(
+        (name) => name.toLowerCase() === LEGACY_CONNECT_MACHINE_HEADER,
+      ))
   );
 }
 

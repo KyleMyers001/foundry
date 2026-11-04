@@ -1236,6 +1236,10 @@ fi
       name: "a bb connect machine header",
       fields: { serverHeaders: { "x-bb-connect-machine": "legacy-credential" } },
     },
+    {
+      name: "a mixed-case bb connect machine header",
+      fields: { serverHeaders: { "X-BB-Connect-Machine": "legacy-credential" } },
+    },
   ])(
     "refuses to adopt a data directory enrolled through bb connect with $name",
     ({ fields }) => {
