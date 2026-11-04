@@ -995,8 +995,10 @@ Plugin state lives under the data dir:
 
 Marketplace catalogs live in the bb database. Foundry does not include the
 upstream `bb-community` catalog: a copy saved by an older version stays in the
-database but is not listed, searched, refreshed, or used for installs, and
-plugins installed from it stay installed. A `git:` marketplace reads
+database but is not listed, searched, refreshed, or used for installs or plugin
+details, and plugins installed from it stay installed.
+`bb marketplace remove bb-community` deletes that copy and keeps its plugins as
+direct installs. A `git:` marketplace reads
 `marketplace.json` from the repository root, or from the directory saved with
 `bb marketplace add --subdirectory <relative-path>`. The server checks installed
 plugins for updates every 6 hours but never applies them.

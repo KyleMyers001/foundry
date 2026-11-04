@@ -111,7 +111,8 @@ under `<bb-data-dir>/plugins/<id>/` (SQLite database, secrets, logs).
   bb marketplace remove <name>   Forget a marketplace. Plugins installed from
                                  it keep running as direct installs and keep
                                  updating from their recorded source.
-                                 bb-official cannot be removed
+                                 bb-official cannot be removed; a saved
+                                 bb-community copy can
 
 Installed plugins and their settings also appear under Settings → Installed
 plugins.
@@ -228,7 +229,9 @@ update also updates the bundled copy.
 
 Foundry does not include the upstream `bb-community` catalog. A copy saved by
 an older version is kept but not listed, searched, refreshed, or used for
-installs; plugins installed from it stay installed. Builtins show "Built in".
+installs or plugin details; plugins installed from it stay installed.
+`bb marketplace remove bb-community` deletes that copy and keeps its plugins as
+direct installs. Builtins show "Built in".
 `bb plugin search --json` returns the raw `installs` (always null),
 `installedByDefault`, and long-form `overview` fields.
 

@@ -25,7 +25,10 @@ import {
 import { createMigratedConnection } from "@bb/db/testing";
 import { PLUGIN_SDK_VERSION, type SystemChangeKind } from "@bb/domain";
 import type { Logger } from "@bb/logger";
-import { pluginListResponseSchema } from "@bb/server-contract";
+import {
+  pluginListResponseSchema,
+  RETIRED_COMMUNITY_MARKETPLACE_NAME,
+} from "@bb/server-contract";
 import { createAiServiceRegistry } from "../../../src/services/ai/ai-service-registry.js";
 import {
   createPluginService,
@@ -963,6 +966,101 @@ describe("plugin service", () => {
     expect(
       service.list().find((entry) => entry.id === "installed-tool")?.category,
     ).toBe("Updated Acme tools");
+  });
+
+  it("ignores the metadata of a stored retired bb-community catalog", () => {
+    upsertPluginMarketplace(db, {
+      name: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+      sourceKind: "https",
+      manifestUrl: "https://getbb.app/marketplace/v2/marketplace.json",
+      sourceGitRef: null,
+      sourceGitSubdirectory: null,
+      sourceGitCommit: null,
+      manifestJson: JSON.stringify({
+        schemaVersion: 2,
+        name: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+        displayName: "Community Picks",
+        categories: [
+          {
+            id: "community-tools",
+            displayName: "Community tools",
+            description: "Tools from the community.",
+          },
+        ],
+        collections: [
+          {
+            id: "featured",
+            displayName: "Featured",
+            pluginIds: ["community-tool"],
+          },
+        ],
+        plugins: [
+          {
+            id: "community-tool",
+            displayName: "Community tool",
+            description: "A community tool.",
+            icon: "Zap",
+            category: "community-tools",
+            screenshots: ["./screenshots/community-tool.png"],
+            publishedAt: "2026-08-20T11:47:04-07:00",
+            author: { name: "Someone" },
+            source: { npm: { package: "bb-plugin-community-tool" } },
+          },
+        ],
+      }),
+      statsJson: null,
+      etag: null,
+      lastModified: null,
+      lastSuccessfulRefreshAt: 1,
+      lastAttemptedRefreshAt: 1,
+      lastError: null,
+    });
+    upsertInstalledPlugin(db, {
+      id: "community-tool",
+      source: "npm:bb-plugin-community-tool",
+      provenance: {
+        kind: "catalog",
+        marketplace: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+        entryId: "community-tool",
+      },
+      sourceIntent: {
+        kind: "npm",
+        packageName: "bb-plugin-community-tool",
+        registry: "https://registry.npmjs.org/",
+        requestedSpec: "",
+        specKind: "default",
+      },
+      exactResolution: {
+        kind: "npm",
+        version: "1.0.0",
+        integrity: "sha512-community",
+      },
+      updateState: {
+        lastCheckAt: null,
+        availableCompatibleVersion: null,
+        newestIncompatibleVersion: null,
+        statusDetail: null,
+      },
+      activeArtifactId: null,
+      rootDir: "/managed/community-tool",
+      version: "1.0.0",
+      enabled: false,
+      enabledFollowsDefault: false,
+    });
+
+    const entry = service
+      .list()
+      .find((plugin) => plugin.id === "community-tool");
+    expect(entry).toMatchObject({
+      provenance: "catalog",
+      catalogEntryId: "community-tool",
+      publisherLabel: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+      screenshots: [],
+      collections: [],
+    });
+    expect(entry).not.toHaveProperty("category");
+    expect(entry).not.toHaveProperty("categoryId");
+    expect(entry).not.toHaveProperty("publishedAt");
   });
 
   it("times out a hung factory and reports error", async () => {

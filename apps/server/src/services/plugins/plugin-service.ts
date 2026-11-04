@@ -52,6 +52,7 @@ import {
 } from "../plugin-catalog/marketplace-publishers.js";
 import { deleteSecretFile, readOrCreateSecretFile } from "@bb/secret-storage";
 import {
+  RETIRED_COMMUNITY_MARKETPLACE_NAME,
   ROOT_PLUGIN_SOURCE_SELECTION,
   type InstalledPlugin,
   type PluginCapabilitySummary,
@@ -1203,7 +1204,9 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       marketplaceManifestCache.clear();
       return { metadataByPluginId, publisherLabels };
     }
-    const marketplaces = listPluginMarketplaces(deps.db);
+    const marketplaces = listPluginMarketplaces(deps.db).filter(
+      (marketplace) => marketplace.name !== RETIRED_COMMUNITY_MARKETPLACE_NAME,
+    );
     const marketplaceByName = new Map(
       marketplaces.map((marketplace) => [marketplace.name, marketplace]),
     );

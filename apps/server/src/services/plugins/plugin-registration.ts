@@ -144,7 +144,7 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     if (
       provenance.kind === "catalog" &&
       (row.catalogEntryId !== provenance.entryId ||
-        catalogMarketplaceOf(row) !== provenance.marketplace)
+        row.catalogMarketplaceName !== provenance.marketplace)
     ) {
       return false;
     }
@@ -516,18 +516,14 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     return { version: row.version, label: row.version, display: row.source };
   }
 
-  function catalogMarketplaceOf(row: InstalledPluginRow): string {
-    return row.catalogMarketplaceName ?? RETIRED_COMMUNITY_MARKETPLACE_NAME;
-  }
-
   function provenanceForRow(row: InstalledPluginRow): PluginProvenance {
     if (row.provenance !== "catalog") return { kind: row.provenance };
-    if (row.catalogEntryId === null) {
+    if (row.catalogEntryId === null || row.catalogMarketplaceName === null) {
       throw new Error(`plugin "${row.id}" has corrupt catalog provenance`);
     }
     return {
       kind: "catalog",
-      marketplace: catalogMarketplaceOf(row),
+      marketplace: row.catalogMarketplaceName,
       entryId: row.catalogEntryId,
     };
   }
@@ -611,8 +607,8 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
   ): PluginProvenance {
     if (
       existing?.provenance === "catalog" &&
-      (catalogMarketplaceOf(existing) === RETIRED_COMMUNITY_MARKETPLACE_NAME ||
-        catalogMarketplaceOf(existing) === BUNDLED_MARKETPLACE_NAME)
+      (existing.catalogMarketplaceName === RETIRED_COMMUNITY_MARKETPLACE_NAME ||
+        existing.catalogMarketplaceName === BUNDLED_MARKETPLACE_NAME)
     ) {
       return {
         kind: "catalog",

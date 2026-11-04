@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  getInstalledPlugin,
   getPluginMarketplace,
   listPluginMarketplaceIcons,
   markInstalledPluginRemoved,
@@ -476,7 +477,7 @@ describe("plugin catalog service", () => {
       ]);
     });
 
-    it("keeps a stored bb-community catalog without listing, searching, refreshing, or installing from it", async () => {
+    it("keeps a stored bb-community catalog without listing, searching, refreshing, or installing from it until it is removed", async () => {
       const stored = {
         name: RETIRED_COMMUNITY_MARKETPLACE_NAME,
         sourceKind: "https" as const,
@@ -527,6 +528,55 @@ describe("plugin catalog service", () => {
       expect(getPluginMarketplace(db, RETIRED_COMMUNITY_MARKETPLACE_NAME)).toMatchObject(
         { manifestJson: stored.manifestJson, lastAttemptedRefreshAt: 1_000 },
       );
+
+      upsertInstalledPlugin(db, {
+        id: "community-widgets",
+        source: "npm:bb-plugin-community-widgets@^1.0.0",
+        provenance: {
+          kind: "catalog",
+          marketplace: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+          entryId: "community-widgets",
+        },
+        sourceIntent: {
+          kind: "npm",
+          packageName: "bb-plugin-community-widgets",
+          registry: "https://registry.npmjs.org/",
+          requestedSpec: "^1.0.0",
+          specKind: "range",
+        },
+        exactResolution: {
+          kind: "npm",
+          version: "1.0.0",
+          integrity: "sha512-community",
+        },
+        updateState: {
+          lastCheckAt: null,
+          availableCompatibleVersion: null,
+          newestIncompatibleVersion: null,
+          statusDetail: null,
+        },
+        activeArtifactId: null,
+        rootDir: "/plugins/community-widgets",
+        version: "1.0.0",
+        enabled: true,
+        enabledFollowsDefault: false,
+      });
+      await expect(
+        catalog.removeMarketplace(RETIRED_COMMUNITY_MARKETPLACE_NAME),
+      ).resolves.toEqual({ convertedPluginIds: ["community-widgets"] });
+      expect(getPluginMarketplace(db, RETIRED_COMMUNITY_MARKETPLACE_NAME)).toBe(
+        undefined,
+      );
+      expect(getInstalledPlugin(db, "community-widgets")).toMatchObject({
+        provenance: "direct",
+        catalogEntryId: null,
+        catalogMarketplaceName: null,
+        sourceKind: "npm",
+        enabled: true,
+      });
+      await expect(
+        catalog.removeMarketplace(RETIRED_COMMUNITY_MARKETPLACE_NAME),
+      ).rejects.toThrow('unknown marketplace "bb-community"');
     });
 
     it("tints a catalog SVG but keeps a raster icon's own colors", async () => {

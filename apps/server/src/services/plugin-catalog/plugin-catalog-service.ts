@@ -998,7 +998,9 @@ export function createPluginCatalogService(deps: {
         if (isReservedMarketplace(name)) {
           throw new Error(`marketplace "${name}" cannot be removed`);
         }
-        requireRow(name);
+        if (getPluginMarketplace(deps.db, name) === undefined) {
+          throw new Error(`unknown marketplace "${name}"`);
+        }
         const convertedPluginIds = deps.db.transaction((tx) => {
           const converted: string[] = [];
           for (const plugin of listInstalledPluginsFromMarketplace(tx, name)) {
