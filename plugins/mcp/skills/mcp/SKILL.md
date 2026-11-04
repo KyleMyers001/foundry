@@ -1,6 +1,6 @@
 ---
 name: mcp
-description: Connect an MCP client on the same machine, such as Claude or Codex, to this bb through its local MCP address.
+description: Connect an MCP client, such as Claude or Codex, to this bb through its MCP address on the bb server's port.
 ---
 
 # bb MCP server
@@ -9,19 +9,21 @@ The MCP server plugin lets an MCP client control this bb. It is off by default. 
 
 ## Address
 
-`bb mcp status [--json]` prints the local address:
-`http://127.0.0.1:<port>/api/v1/plugins/bb--mcp/http/mcp`. Apps on the same
-machine can use it without signing in. It has the same trust as the `bb` CLI on
-that machine. Requests from web pages and requests carrying bb connect gate
-headers are refused.
+`bb mcp status [--json]` prints the loopback address:
+`http://127.0.0.1:<port>/api/v1/plugins/bb--mcp/http/mcp`. The endpoint needs
+no sign-in and has the same trust as the `bb` CLI. It refuses requests from web
+pages (any `Origin` header) and requests carrying bb connect gate headers, and
+checks nothing else: anything that can reach the bb server's port can use it,
+including other computers when the server listens beyond loopback.
 
-Foundry has no remote MCP address. The bb account and bb connect that signed in
-remote apps such as ChatGPT or Claude on the web are gone, and so are the
-`bb mcp clients` and `bb mcp revoke` commands that listed and disconnected them.
+Foundry has no signed-in remote MCP address. The bb account and bb connect that
+signed in remote apps such as ChatGPT or Claude on the web are gone, and so are
+the `bb mcp clients` and `bb mcp revoke` commands that listed and disconnected
+them.
 
 ## What connecting an app grants
 
-Access is all or nothing. An app that can reach the local address can run any
+Access is all or nothing. An app that can reach the address can run any
 `bb` command: it can see everything in this bb, and it can start and message
 agents and open terminals, which run commands and change files on the machines
 this bb controls. Connect only apps you trust.

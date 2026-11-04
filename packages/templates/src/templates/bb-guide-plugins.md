@@ -166,8 +166,10 @@ Each bundled plugin documents its commands and behavior in its own skill.
   fenced `inline-vis` code block or a `::inline-vis{file="demo.html"}`
   workspace or thread-storage file; see the `inline-vis` skill.
 - MCP server (builtin, disabled by default): `bb plugin enable bb--mcp` lets
-  an MCP client on the same machine control this bb through a local address;
-  it can run any `bb` command. `bb mcp status`; see the `mcp` skill.
+  an MCP client control this bb through an address on the bb server's port; it
+  can run any `bb` command. It needs no sign-in and refuses only web-page and
+  bb connect gate requests, so anything that can reach the server port can use
+  it. `bb mcp status`; see the `mcp` skill.
 - Storage & retention (builtin, disabled by default): enable with
   `bb plugin enable bb--storage-retention`. Owns thread retention policies
   and machine storage cleanup through its sidebar panel and `bb storage`

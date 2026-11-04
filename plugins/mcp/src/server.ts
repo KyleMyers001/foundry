@@ -49,9 +49,9 @@ export default async function mcpPlugin(bb: BbPluginApi): Promise<void> {
   bb.cli.register(
     defineCli({
       name: "mcp",
-      summary: "Let MCP clients on this machine control this bb",
+      summary: "Let MCP clients control this bb",
       description:
-        "While this plugin is enabled, bb serves a Model Context Protocol endpoint on its loopback address for apps on this machine. Foundry has no remote MCP address.",
+        "While this plugin is enabled, bb serves a Model Context Protocol endpoint on the bb server's port, and `status` prints its loopback address. It needs no sign-in and refuses only requests from web pages and bb connect gate requests, so anything that can reach the server port can use it. Foundry has no signed-in remote MCP address.",
       commands: {
         status: cliCommand({
           summary: "Show the MCP address for this bb",

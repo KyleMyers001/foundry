@@ -292,7 +292,8 @@ untouched; retrying the same commit resumes the draft without replacing any
 published assets. See [Foundry's release process](../../docs/foundry-desktop-release.md).
 
 Upstream bb uses `desktop-v<version>` for immutable releases and `desktop-latest`
-for its moving pointer. Its `build-desktop.yml` builds macOS, Linux, and Windows in parallel jobs, then
+for its moving pointer. Its `build-desktop.yml`, which this repository does not
+include, builds macOS, Linux, and Windows in parallel jobs, then
 publishes all three from one job. The moving release resets all of its assets
 on each publish, so a single publisher is what keeps one platform from deleting
 another's binaries. Each platform has its own update feed file inside the same release
@@ -311,7 +312,10 @@ wait on the Apple signing secrets.
 
 ## Nightly channel
 
-The scheduled `publish-bb-app.yml` workflow runs from `main` every day at
+Foundry does not publish a nightly channel. This section describes upstream
+bb's, whose `publish-bb-app.yml` workflow this repository does not include.
+
+Upstream's scheduled `publish-bb-app.yml` workflow runs from `main` every day at
 3:00 AM Pacific (`America/Los_Angeles`, including daylight-saving changes). It
 derives a unique version such as `0.34.1-nightly.<run-id>.<attempt>` without
 committing that version, publishes `bb-app` with the npm `nightly` dist-tag,
@@ -340,9 +344,9 @@ The nightly desktop is a separate installation:
   (Windows)
 - icon: `assets/icon-nightly.icns` and `assets/icon-nightly.png`
 
-Download it from
+Download upstream's from
 [`desktop-nightly`](https://github.com/get-bb/bb/releases/tag/desktop-nightly)
-or run the CLI build with:
+or run its CLI build with:
 
 ```bash
 npx bb-app@nightly
@@ -399,7 +403,8 @@ GitHub Actions secrets:
 
 Foundry requires every signing secret before publishing a release through
 `release-desktop-macos.yml`; see [its release process](../../docs/foundry-desktop-release.md).
-The following describes upstream bb's workflow, which does not run in this fork.
+The following describes upstream bb's `build-desktop.yml`, which this repository
+does not include.
 
 Once those secrets are present, the next `Build Desktop` workflow run with
 `publish=true` and `release_channel=stable` signs the `.app`, notarizes it, and
@@ -424,8 +429,8 @@ The toast becomes "ready to install" only after a signed update has downloaded.
 Local dev builds skip Electron auto-update unless `BB_DESKTOP_AUTO_UPDATE=1` is
 set.
 
-`bb Nightly` follows the equivalent isolated `desktop-nightly` release and
-`nightly-mac.yml`; it never reads or moves the stable feed. The scheduled
+Upstream's `bb Nightly` follows the equivalent isolated `desktop-nightly` release and
+`nightly-mac.yml`; it never reads or moves the stable feed. Upstream's scheduled
 workflow requires the complete signing/notarization secret set before
 publishing nightly desktop assets.
 

@@ -1270,10 +1270,12 @@ isolated development smoke tests only, `DEV_BROWSER_SMOKE_BINARY` and
 
 The bundled MCP server plugin is disabled by default; enable it with
 `bb plugin enable bb--mcp`. It serves a Model Context Protocol endpoint at
-`/api/v1/plugins/bb--mcp/http/mcp` on loopback (`bb mcp status` prints it). The
-address needs no sign-in and has the same trust as the local `bb` CLI; an app
-that uses it can run any `bb` command. Foundry has no remote MCP address. See
-the `mcp` skill.
+`/api/v1/plugins/bb--mcp/http/mcp` on the bb server's port (`bb mcp status`
+prints the loopback address). The endpoint needs no sign-in and has the same
+trust as the `bb` CLI; an app that uses it can run any `bb` command. It refuses
+requests from web pages and bb connect gate requests and checks nothing else, so
+anything that can reach the server port can use it. Foundry has no signed-in
+remote MCP address. See the `mcp` skill.
 
 ## Desktop browser cookie discovery
 

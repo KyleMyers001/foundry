@@ -1,9 +1,9 @@
 # Releasing Foundry Desktop
 
 Foundry ships one thing: a signed, notarized macOS (Apple silicon) app on
-GitHub Releases. It is not published to npm. `docs/bb-release-process.md`,
-`build-desktop.yml`, and `publish-bb-app.yml` describe upstream bb's process and
-do not apply here.
+GitHub Releases. It is not published to npm. `docs/bb-release-process.md`
+describes upstream bb's process, including its `build-desktop.yml` and
+`publish-bb-app.yml` workflows, which this repository does not include.
 
 ## Set up signing once
 
