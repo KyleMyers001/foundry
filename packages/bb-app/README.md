@@ -294,6 +294,6 @@ behavior, see the
 
 - [Main README](https://github.com/KyleMyers001/foundry#readme)
 - [Platform support](https://github.com/KyleMyers001/foundry/blob/main/docs/platform-support.md)
-- [Configuration](https://github.com/get-bb/bb/blob/main/docs/configuration.md)
+- [Configuration](https://github.com/KyleMyers001/foundry/blob/main/docs/configuration.md)
 - [Using bb on multiple devices](https://github.com/KyleMyers001/foundry/blob/main/docs/multiple-devices.md)
 - [Worktree setup and teardown scripts](https://github.com/KyleMyers001/foundry/blob/main/docs/worktrees.md)

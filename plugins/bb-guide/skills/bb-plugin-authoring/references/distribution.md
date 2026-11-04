@@ -39,7 +39,7 @@ does not cover:
      rewrites `@bb/plugin-sdk` imports; rerunning is a no-op, and you run
      `npm install` after. Never migrate a plugin the user did not ask you to
      migrate.
-3. **`git clone --depth 1 https://github.com/get-bb/bb`** for host behavior or
+3. **`git clone --depth 1 https://github.com/KyleMyers001/foundry`** for host behavior or
    a reference implementation: `packages/plugin-sdk/src/`,
    `apps/server/src/services/plugins/`, `plugins/`, and the provider contract
    in `docs/provider-plugin-api.md` and `docs/provider-bridge-protocol.md`.
