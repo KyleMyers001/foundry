@@ -50,6 +50,7 @@ import {
   validateScheduleRegistration,
   validateSettingsUpdate,
   sharedPortTunnelsUnsupportedError,
+  SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE,
   type NormalizedPluginProviderDeclaration,
 } from "../internal/host-policy.js";
 import type { MachineBootstrapApi } from "../machine-bootstrap.js";
@@ -350,9 +351,9 @@ export interface FakePluginInspectionState {
   readonly sdk: FakeSdkHarness;
   readonly registrations: FakePluginRegistrations;
   /**
-   * Always empty: `bb.hosts.declareSharedPorts` throws because Foundry removed
-   * bb connect shared-port tunnels. Kept for compatibility until the next major
-   * Plugin SDK release removes it.
+   * Always empty: `bb.hosts.declareSharedPorts` ignores its ports because
+   * Foundry removed bb connect shared-port tunnels. Kept for compatibility
+   * until the next major Plugin SDK release removes it.
    */
   readonly sharedPortDeclarations: ReadonlyArray<{
     hostId: string;
@@ -1277,6 +1278,7 @@ function createFakePluginHostInternal(
   const hostRpcCalls: ExperimentalFakeHostRpcCall[] = [];
   const hostWorkerExitSubscriptions: FakeHostWorkerExitSubscription[] = [];
   const hostSignalSubscriptions: FakeHostSignalSubscription[] = [];
+  let sharedPortDeclarationsWarned = false;
   const hosts: PluginHosts = {
     experimental_client({ contract, experimental_signals }) {
       return {
@@ -1387,7 +1389,9 @@ function createFakePluginHostInternal(
     },
     declareSharedPorts() {
       assertLive();
-      throw sharedPortTunnelsUnsupportedError("declareSharedPorts");
+      if (sharedPortDeclarationsWarned) return;
+      sharedPortDeclarationsWarned = true;
+      log.warn(SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE);
     },
   };
 
@@ -1522,6 +1526,9 @@ function createFakePluginHostInternal(
   };
 
   const bb: BbPluginApi = {
+    internal_DO_NOT_USE_recordPluginUse() {
+      assertLive();
+    },
     pluginId,
     log,
     settings,

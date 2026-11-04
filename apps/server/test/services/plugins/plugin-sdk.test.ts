@@ -34,7 +34,10 @@ import {
 import { PluginHostArtifactRegistry } from "../../../src/services/plugins/plugin-host-artifact-registry.js";
 import { startTestServer, testLogger } from "../../helpers/test-app.js";
 import { defineRpcContract } from "@get-bb/plugin-sdk";
-import { sharedPortTunnelsUnsupportedError } from "@get-bb/plugin-sdk/internal/host-policy";
+import {
+  SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE,
+  sharedPortTunnelsUnsupportedError,
+} from "@get-bb/plugin-sdk/internal/host-policy";
 import { createFakePluginHost } from "@get-bb/plugin-sdk/testing";
 import { z } from "zod";
 
@@ -330,7 +333,7 @@ describe("plugin bb.sdk bind gate", () => {
   });
 
   it.each(["real", "fake"] as const)(
-    "rejects the removed shared-port tunnel calls on the %s plugin host",
+    "keeps the retired shared-port and usage calls as stubs on the %s plugin host",
     async (kind) => {
       let api: BbPluginApi;
       if (kind === "real") {
@@ -348,19 +351,21 @@ describe("plugin bb.sdk bind gate", () => {
       await expect(api.hosts.ensureSharedPortTunnel("host-1")).rejects.toThrow(
         sharedPortTunnelsUnsupportedError("ensureSharedPortTunnel").message,
       );
-      expect(() => api.hosts.declareSharedPorts("host-1", [3000])).toThrow(
-        sharedPortTunnelsUnsupportedError("declareSharedPorts").message,
-      );
+      expect(api.hosts.declareSharedPorts("host-1", [3000])).toBeUndefined();
+      expect(api.internal_DO_NOT_USE_recordPluginUse()).toBeUndefined();
     },
   );
 
-  it("reports a plugin that still declares shared ports at load instead of loading it silently", async () => {
+  it("loads a plugin that still declares shared ports and warns once that they are ignored", async () => {
+    const warn = vi.spyOn(logger, "warn");
     await service.installPath(
       await writePlugin(workDir, {
         name: "bb-plugin-legacy-shares",
         serverSource: `
           export default function plugin(bb: any) {
             bb.hosts.declareSharedPorts("host-1", [3000]);
+            bb.hosts.declareSharedPorts("host-1", [3000, 3001]);
+            bb.internal_DO_NOT_USE_recordPluginUse();
           }
         `,
       }),
@@ -368,10 +373,12 @@ describe("plugin bb.sdk bind gate", () => {
 
     expect(
       service.list().find((plugin) => plugin.id === "legacy-shares"),
-    ).toMatchObject({
-      status: "error",
-      statusDetail: expect.stringContaining("declareSharedPorts is not supported"),
-    });
+    ).toMatchObject({ status: "running", statusDetail: null });
+    expect(
+      warn.mock.calls.filter(([message]) =>
+        String(message).includes(SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE),
+      ),
+    ).toHaveLength(1);
   });
 
   it("binds typed host calls and ignores worker exits from stale generations", async () => {

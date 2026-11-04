@@ -228,7 +228,7 @@ describe("host control plane", () => {
     ).rejects.toThrow(/validation failed/u);
   });
 
-  it("rejects the removed shared-port tunnel calls instead of recording them", async () => {
+  it("rejects the removed shared-port tunnel call and ignores declared ports with one warning", async () => {
     const { bb, harness } = createFakePluginHost({
       sharedPortTunnelIdentities: {
         "host-1": { label: "laptop", baseDomain: "example.test" },
@@ -238,10 +238,18 @@ describe("host control plane", () => {
     await expect(bb.hosts.ensureSharedPortTunnel("host-1")).rejects.toThrow(
       /ensureSharedPortTunnel is not supported/u,
     );
-    expect(() => bb.hosts.declareSharedPorts("host-1", [3000])).toThrow(
-      /declareSharedPorts is not supported/u,
-    );
+    bb.hosts.declareSharedPorts("host-1", [3000]);
+    bb.hosts.declareSharedPorts("host-1", [3000, 3001]);
     expect(harness.sharedPortDeclarations).toEqual([]);
+    expect(
+      harness.logEntries.filter((entry) => entry.level === "warn"),
+    ).toEqual([
+      {
+        level: "warn",
+        message:
+          "bb.hosts.declareSharedPorts is ignored: Foundry removed bb connect, which provided shared-port tunnels",
+      },
+    ]);
   });
 });
 

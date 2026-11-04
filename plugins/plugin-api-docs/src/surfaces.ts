@@ -1334,7 +1334,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Appear as a choice in Machines settings and manual setup",
         ],
         reference: [
-          "Unsupported: PluginHosts.declareSharedPorts and PluginHosts.ensureSharedPortTunnel throw an error naming the method, because Foundry removed the bb connect shared-port tunnels behind them. They remain only until the next major release; do not call them.",
+          "Unsupported, because Foundry removed the bb connect shared-port tunnels behind them: PluginHosts.ensureSharedPortTunnel rejects with an error naming the method, and PluginHosts.declareSharedPorts ignores its ports and logs one warning. They remain only until the next major release; do not call them.",
         ],
         apiSymbols: [
           "PluginServerAccess",

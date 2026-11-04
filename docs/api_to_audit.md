@@ -504,9 +504,21 @@ Kept only as unsupported stubs until the next major, because Foundry removed
 the hosted services behind them:
 
 - `bb.hosts.declareSharedPorts` and `bb.hosts.ensureSharedPortTunnel`
-  (`@get-bb/plugin-sdk`). bb connect shared-port tunnels are gone, so both
-  throw an unsupported error naming the method, in the server and in the fake
-  plugin host. Nothing in this repository calls them.
+  (`@get-bb/plugin-sdk`). bb connect shared-port tunnels are gone.
+  `ensureSharedPortTunnel` rejects with an unsupported error naming the
+  method, because a caller needs the identity it would return.
+  `declareSharedPorts` ignores its ports and logs one warning per plugin load,
+  so a plugin that declares ports at load keeps loading. The server and the
+  fake plugin host behave the same. Nothing in this repository calls them.
+- `bb.internal_DO_NOT_USE_recordPluginUse()` (`@get-bb/plugin-sdk`). Foundry
+  sends no usage data, so it does nothing in the server and the fake plugin
+  host. It stays because forks of the first-party plugins that called it
+  (`monaco-editor`, `prompt-library`, `agent-annotations`) inherit the call.
+  Nothing in this repository calls it.
+- `system.experimental_recordTelemetryEvent()` on the SDK (`bb.sdk.system` for
+  plugins). Foundry sends no usage data and the
+  `/api/v1/system/telemetry/events` route is gone, so it resolves `{ ok: true }`
+  without contacting the server. Nothing in this repository calls it.
 - `system.mobileAppDownloads()` and `system.mobileAppReleases()` on the SDK
   (`bb.sdk.system` for plugins). Foundry publishes no mobile app builds, so
   both throw an unsupported error without contacting the server, and the

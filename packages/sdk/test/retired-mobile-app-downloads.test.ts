@@ -17,6 +17,17 @@ function sdkWithFetchLog() {
   return { requests, sdk };
 }
 
+it("accepts a usage event without sending it anywhere", async () => {
+  const { requests, sdk } = sdkWithFetchLog();
+  await expect(
+    sdk.system.experimental_recordTelemetryEvent({
+      name: "plugin_creation_started",
+      properties: {},
+    }),
+  ).resolves.toEqual({ ok: true });
+  expect(requests).toEqual([]);
+});
+
 it("refuses upstream mobile download links without contacting the server", () => {
   const { requests, sdk } = sdkWithFetchLog();
   expect(() => sdk.system.mobileAppDownloads()).toThrow(

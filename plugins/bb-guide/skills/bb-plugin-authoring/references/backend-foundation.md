@@ -331,7 +331,9 @@ that invokes a system installer owns user consent, elevation,
 platform-specific behavior, and recovery.
 
 `bb.hosts.declareSharedPorts` and `bb.hosts.ensureSharedPortTunnel` are
-unsupported: Foundry removed the bb connect shared-port tunnels behind them,
-so both throw an error naming the method. They stay in the SDK only until the
-next major release; do not call them. Plugins do not receive daemon streaming
+unsupported: Foundry removed the bb connect shared-port tunnels behind them.
+`ensureSharedPortTunnel` rejects with an error naming the method, and
+`declareSharedPorts` ignores its ports and logs one warning to the plugin's
+log. They stay in the SDK only until the next major release; do not call
+them. Plugins do not receive daemon streaming
 or socket primitives; use bounded calls, pagination, and host signals.

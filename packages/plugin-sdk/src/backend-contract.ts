@@ -2065,9 +2065,9 @@ export interface PluginHosts {
   ): Promise<PluginSharedPortTunnelIdentity>;
 
   /**
-   * Unsupported: Foundry removed bb connect shared-port tunnels. Always throws
-   * an error saying so instead of recording the ports. Kept for compatibility
-   * until the next major Plugin SDK release removes it.
+   * Unsupported: Foundry removed bb connect shared-port tunnels. Ignores the
+   * ports and logs a warning to the plugin's log the first time it is called.
+   * Kept for compatibility until the next major Plugin SDK release removes it.
    */
   declareSharedPorts(hostId: string, ports: readonly number[]): void;
 }
@@ -2126,6 +2126,11 @@ export type PluginBbSdk = Omit<BbSdk, "threads"> & {
  * against.
  */
 export interface BbPluginApi {
+  /**
+   * Internal to bb's first-party plugins; do not use. Does nothing: Foundry
+   * sends no usage data. Kept so plugins and forks that call it keep working.
+   */
+  internal_DO_NOT_USE_recordPluginUse(): void;
   /** The plugin's own id (namespaces storage, routes, commands). */
   readonly pluginId: string;
   /** Leveled, plugin-scoped logger. */

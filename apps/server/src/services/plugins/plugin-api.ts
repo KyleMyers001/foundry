@@ -112,6 +112,7 @@ import {
   validatePluginAiServiceDeclaration,
   validatePluginProviderDeclaration,
   sharedPortTunnelsUnsupportedError,
+  SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE,
 } from "@get-bb/plugin-sdk/internal/host-policy";
 import type {
   NormalizedPluginAiService,
@@ -1050,6 +1051,7 @@ export function createPluginApi(options: {
     },
   };
 
+  let sharedPortDeclarationsWarned = false;
   const hosts: PluginHosts = {
     experimental_client({ contract, experimental_signals }) {
       assertLive();
@@ -1141,7 +1143,9 @@ export function createPluginApi(options: {
     },
     declareSharedPorts() {
       assertLive();
-      throw sharedPortTunnelsUnsupportedError("declareSharedPorts");
+      if (sharedPortDeclarationsWarned) return;
+      sharedPortDeclarationsWarned = true;
+      log.warn(SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE);
     },
   };
   const events: PluginEvents = {
@@ -1343,6 +1347,9 @@ export function createPluginApi(options: {
   };
 
   const api: BbPluginApi = {
+    internal_DO_NOT_USE_recordPluginUse() {
+      assertLive();
+    },
     pluginId,
     log,
     settings,
