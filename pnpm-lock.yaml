@@ -8,6 +8,8 @@ overrides:
   zod: 4.6.5
   '@expo/metro-config>lightningcss': 1.30.1
   dompurify@<3.4.17: ^3.4.17
+  proxy-addr@>=2.0.0 <2.0.8: ^2.0.8
+  shell-quote@>=1.0.0 <1.11.0: ^1.11.0
 
 patchedDependencies:
   '@better-auth/api-key@1.6.23':
@@ -14374,8 +14376,8 @@ packages:
     resolution: {integrity: sha512-dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg==}
     engines: {node: '>=12.0.0'}
 
-  proxy-addr@2.0.7:
-    resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
+  proxy-addr@2.0.8:
+    resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
 
   pump@3.0.3:
@@ -15055,8 +15057,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.8.3:
-    resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
+  shell-quote@1.11.0:
+    resolution: {integrity: sha512-JdxDPD0DBTyu08pq0kPC0xSNet/qsU07qT6IsX1AS8oO2ICNRY4ldNa8OAI6PuwAH8tG3lxEhbqmyp4Dw4036g==}
     engines: {node: '>= 0.4'}
 
   shiki@3.23.0:
@@ -23138,7 +23140,7 @@ snapshots:
       on-finished: 2.4.1
       once: 1.4.0
       parseurl: 1.3.3
-      proxy-addr: 2.0.7
+      proxy-addr: 2.0.8
       qs: 6.15.3
       range-parser: 1.3.0
       router: 2.2.0
@@ -23365,7 +23367,7 @@ snapshots:
       debug: 4.4.3
       env-paths: 3.0.0
       semver: 7.8.5
-      shell-quote: 1.8.3
+      shell-quote: 1.11.0
       which: 4.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25820,7 +25822,7 @@ snapshots:
       '@types/node': 24.12.4
       long: 5.3.2
 
-  proxy-addr@2.0.7:
+  proxy-addr@2.0.8:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
@@ -25889,7 +25891,7 @@ snapshots:
 
   react-devtools-core@6.1.5:
     dependencies:
-      shell-quote: 1.8.3
+      shell-quote: 1.11.0
       ws: 7.5.13
     transitivePeerDependencies:
       - bufferutil
@@ -26716,7 +26718,7 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shell-quote@1.8.3: {}
+  shell-quote@1.11.0: {}
 
   shiki@3.23.0:
     dependencies:
