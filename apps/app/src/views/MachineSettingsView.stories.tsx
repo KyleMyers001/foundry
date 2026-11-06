@@ -3,7 +3,7 @@ import { makeHost } from "@bb/test-helpers/domain-fixtures";
 import { MachineSettingsHeader } from "./MachineSettingsView";
 import {
   MANUAL_MACHINE_PROVIDER,
-  MODAL_MACHINE_PROVIDER,
+  SANDBOX_MACHINE_PROVIDER,
 } from "../../.ladle/machine-story-fixtures";
 import { StoryCard, StoryRow } from "../../.ladle/story-card";
 
@@ -31,8 +31,8 @@ function lifecycle(
 function sandbox(overrides: Partial<Host> = {}): Host {
   return makeHost({
     id: "host_sandbox",
-    name: "Modal sandbox 3f9a",
-    machineProviderId: MODAL_MACHINE_PROVIDER.id,
+    name: "Example sandbox 3f9a",
+    machineProviderId: SANDBOX_MACHINE_PROVIDER.id,
     createdAt: now - 4 * 24 * 60 * 60_000,
     ...overrides,
   });
@@ -40,11 +40,11 @@ function sandbox(overrides: Partial<Host> = {}): Host {
 
 function Row({
   host,
-  machineProvider = MODAL_MACHINE_PROVIDER,
+  machineProvider = SANDBOX_MACHINE_PROVIDER,
   ...overrides
 }: {
   host: Host;
-  machineProvider?: typeof MODAL_MACHINE_PROVIDER | null;
+  machineProvider?: typeof SANDBOX_MACHINE_PROVIDER | null;
 } & Partial<Parameters<typeof MachineSettingsHeader>[0]>) {
   return (
     <div className="min-w-0 flex-1">
@@ -126,7 +126,7 @@ export function Header() {
         label="running"
         hint="a live sandbox from a provider that suspends, so pausing it is offered here rather than only in the list"
       >
-        <Row host={sandbox({ name: "Modal sandbox 0af2" })} />
+        <Row host={sandbox({ name: "Example sandbox 0af2" })} />
       </StoryRow>
       <StoryRow
         label="pausing"
@@ -134,7 +134,7 @@ export function Header() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 91c4",
+            name: "Example sandbox 91c4",
             lifecycle: lifecycle({
               phase: "suspending",
               message: "Saving the sandbox filesystem",
@@ -168,7 +168,7 @@ export function Header() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 7c11",
+            name: "Example sandbox 7c11",
             lifecycle: lifecycle({
               phase: "removing",
 
@@ -183,7 +183,7 @@ export function Header() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 55de",
+            name: "Example sandbox 55de",
             status: "disconnected",
             lastSeenAt: WEEKS_AGO,
             lifecycle: lifecycle({
@@ -194,7 +194,7 @@ export function Header() {
           })}
           lifecycleNotice={{
             phase: "removing",
-            message: "Machine removal failed: Modal returned HTTP 500.",
+            message: "Machine removal failed: the sandbox provider returned HTTP 500.",
           }}
         />
       </StoryRow>
@@ -203,7 +203,7 @@ export function Header() {
         hint="every lifecycle action shares one pending flag, so a second click cannot race the first"
       >
         <Row
-          host={sandbox({ name: "Modal sandbox 0af2" })}
+          host={sandbox({ name: "Example sandbox 0af2" })}
           lifecycleActionPending
         />
       </StoryRow>

@@ -176,11 +176,11 @@ Package tests split by package, because some packages use Bun or Node test
 runners that do not accept Vitest's shard arguments:
 
 - `packages-host`: host daemon, CLI, agent runtime, provider parity, and database.
-- `packages-build`: templates, bb-app, demo server, desktop, and plugin build.
+- `packages-build`: templates, bb-app, desktop, and plugin build.
 - `packages-other`: every remaining non-plugin package outside app, server, and
   integration. Negative filters automatically include new packages.
 
-The `plugins-1` group runs provider plugins, Tasks, Connect, and the thread list.
+The `plugins-1` group runs provider plugins, Tasks, and the thread list.
 `plugins-2` uses negative filters to run every other plugin, including new ones.
 All Linux groups run four concurrent
 Turbo tasks. The two server shards and integration group use four Vitest workers each; other groups

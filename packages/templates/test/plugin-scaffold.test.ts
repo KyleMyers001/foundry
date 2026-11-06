@@ -76,7 +76,7 @@ describe("scaffoldPlugin SDK dependency", () => {
       "sync this plugin's SDK surface to the running BB",
     );
     expect(readme).not.toContain("rewrite types/");
-    expect(readme).toContain("https://github.com/get-bb/bb");
+    expect(readme).toContain("https://github.com/KyleMyers001/foundry");
 
     const components = JSON.parse(
       await readFile(join(targetDir, "components.json"), "utf8"),

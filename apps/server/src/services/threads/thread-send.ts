@@ -77,14 +77,6 @@ import {
   type GroupedPrompt,
   type PromptWithGroups,
 } from "./deferred-first-turn-context.js";
-import type {
-  TelemetryEvent,
-  TelemetryInitiator,
-} from "../system/telemetry.js";
-import {
-  initiatorTelemetryProperty,
-  resolveTelemetryInitiator,
-} from "./telemetry-initiator.js";
 import { assertThreadHostAcceptsWork } from "./thread-host-admission.js";
 
 type SendThreadMessageMode = SendMessageRequest["mode"];
@@ -383,31 +375,6 @@ export async function appendPluginMentionContext(
   };
 }
 
-type UserMessageSentProperties = Extract<
-  TelemetryEvent,
-  { name: "user_message_sent" }
->["properties"];
-
-export function captureUserMessageSentTelemetry(
-  deps: Pick<LoggedPendingInteractionWorkSessionDeps, "config" | "telemetry">,
-  args: {
-    isChildThread: boolean;
-    messageSource: UserMessageSentProperties["message_source"];
-    providerId: string;
-    initiator: TelemetryInitiator;
-  },
-): void {
-  deps.telemetry.capture({
-    name: "user_message_sent",
-    properties: {
-      is_child_thread: args.isChildThread,
-      message_source: args.messageSource,
-      provider: args.providerId,
-      ...initiatorTelemetryProperty(deps.config.featureFlags, args.initiator),
-    },
-  });
-}
-
 function appendAndQueueSendThreadMessageInTransaction({
   retryOf,
   beforeAppendInTransaction,
@@ -569,20 +536,11 @@ async function sendThreadMessageWithoutContextClear(
   );
   // Agent-originated CLI sends still appear as normal turn requests in the
   // timeline, while initiator lets policy distinguish the source. A retry is
-  // `system` whatever the original was: nobody asked for it a second time, and
-  // counting it as a user message would inflate every "messages sent" figure by
-  // however many times the provider happened to be rate limited.
+  // `system` whatever the original was: nobody asked for it a second time.
   const { initiator } = resolveDispatchAuthor({
     retrying: args.retryOf !== undefined,
     senderThreadId,
     startedOnBehalfOf: null,
-  });
-  const shouldCaptureUserMessageSent =
-    args.trigger === "user" && initiator === "user" && input.length > 0;
-  const telemetryInitiator = resolveTelemetryInitiator({
-    origin: args.payload.originPluginId === undefined ? null : "plugin",
-    originPluginId: args.payload.originPluginId ?? null,
-    initiator,
   });
   const expectedSteerTurnId =
     mode === "auto" || mode === "steer"
@@ -632,14 +590,6 @@ async function sendThreadMessageWithoutContextClear(
       thread,
     })
   ) {
-    if (shouldCaptureUserMessageSent) {
-      captureUserMessageSentTelemetry(deps, {
-        isChildThread: thread.parentThreadId !== null,
-        messageSource: "thread_send",
-        providerId: thread.providerId,
-        initiator: telemetryInitiator,
-      });
-    }
     return;
   }
   const readyEnvironment = requireReadyThreadEnvironment(
@@ -759,14 +709,6 @@ async function sendThreadMessageWithoutContextClear(
         buildThreadStatusChangeMetadata(deps, queuedRequest.activeThread),
       );
     }
-    if (shouldCaptureUserMessageSent) {
-      captureUserMessageSentTelemetry(deps, {
-        isChildThread: thread.parentThreadId !== null,
-        messageSource: "thread_send",
-        providerId: thread.providerId,
-        initiator: telemetryInitiator,
-      });
-    }
     return;
   }
 
@@ -828,12 +770,4 @@ async function sendThreadMessageWithoutContextClear(
       );
     },
   });
-  if (shouldCaptureUserMessageSent) {
-    captureUserMessageSentTelemetry(deps, {
-      isChildThread: thread.parentThreadId !== null,
-      messageSource: "thread_send",
-      providerId: thread.providerId,
-      initiator: telemetryInitiator,
-    });
-  }
 }

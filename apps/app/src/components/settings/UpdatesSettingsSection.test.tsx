@@ -42,15 +42,10 @@ import {
   type UpdateInventory,
   type UpdateInventoryMachine,
 } from "@/hooks/useUpdateInventory";
-import { recordTelemetryEvent } from "@/components/onboarding/onboarding-telemetry";
 import {
   UpdateActionButton,
   UpdatesSettingsSection,
 } from "./UpdatesSettingsSection";
-
-vi.mock("@/components/onboarding/onboarding-telemetry", () => ({
-  recordTelemetryEvent: vi.fn(),
-}));
 
 vi.mock("@/components/ui/app-toast", () => ({
   appToast: {
@@ -284,10 +279,10 @@ function makeInventory(overrides: Partial<UpdateInventory>): UpdateInventory {
       latestVersion: "0.0.5",
       currentCommit: null,
       installKind: "npm",
-      source: "npm",
+      source: "foundry-releases",
       updateAvailable: false,
       isDevelopment: false,
-      upgradeCommand: "npx bb-app@latest",
+      releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
     },
     desktopInfo: null,
     appUpdateAvailable: false,
@@ -343,7 +338,7 @@ function makeAppUpdateStatus(
     current: { commit: null, version: "0.0.5" },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
     ...overrides,
   };
 }
@@ -361,9 +356,9 @@ function useWebApp(): void {
     latestVersion: "0.0.6",
     currentCommit: null,
     installKind: "npm",
-    source: "npm",
+    source: "foundry-releases",
     updateAvailable: true,
-    upgradeCommand: "npx bb-app@latest",
+    releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
   });
 }
 
@@ -484,10 +479,11 @@ describe("UpdatesSettingsSection", () => {
           latestVersion: "0.47.0",
           currentCommit: null,
           installKind: "npm",
-          source: "npm",
+          source: "foundry-releases",
           updateAvailable: true,
           isDevelopment: false,
-          upgradeCommand: "npx bb-app@latest",
+          releasesUrl:
+            "https://github.com/KyleMyers001/foundry/releases/latest",
         },
       });
 
@@ -518,7 +514,6 @@ describe("UpdatesSettingsSection", () => {
       const button = releaseNotesButton("0.47.0");
       expect(button.getAttribute("aria-expanded")).toBe("false");
       expect(releaseNotesPanel("0.47.0")).toBeNull();
-      expect(recordTelemetryEvent).not.toHaveBeenCalled();
     });
 
     it("offers the installed release's notes when no update is available", () => {
@@ -537,10 +532,11 @@ describe("UpdatesSettingsSection", () => {
             latestVersion: nightly,
             currentCommit: null,
             installKind: "npm",
-            source: "npm",
+            source: "foundry-releases",
             updateAvailable: false,
             isDevelopment: false,
-            upgradeCommand: "npx bb-app@nightly",
+            releasesUrl:
+              "https://github.com/KyleMyers001/foundry/releases/latest",
           },
         }),
       );
@@ -554,10 +550,6 @@ describe("UpdatesSettingsSection", () => {
       expect(
         within(panel).getByText("This build includes changes since 0.48.0"),
       ).toBeDefined();
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.48.2", view: "inline" },
-      });
     });
 
     it("opens the release's notes under the bb row and closes them again", () => {
@@ -587,55 +579,29 @@ describe("UpdatesSettingsSection", () => {
       expect(screen.getByRole("region", { name: "bb" }).contains(panel)).toBe(
         true,
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "inline" },
-      });
 
       fireEvent.click(button);
       expect(releaseNotesPanel("0.47.0")).toBeNull();
-      expect(recordTelemetryEvent).toHaveBeenCalledTimes(1);
     });
 
-    it("opens the full changelog in the external browser", () => {
+    it("links to Foundry's releases and never fetches a published changelog", () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
       renderSection();
       fireEvent.click(releaseNotesButton("0.47.0"));
-      vi.mocked(recordTelemetryEvent).mockClear();
 
       const link = within(releaseNotesPanel("0.47.0")!).getByRole("link", {
-        name: /Full changelog/,
+        name: /Foundry releases/,
       });
       expect(link.getAttribute("href")).toBe(
-        "https://getbb.app/changelog#0-47-0",
+        "https://github.com/KyleMyers001/foundry/releases",
       );
       fireEvent.click(link);
 
       expect(openUrlInExternalBrowserMock).toHaveBeenCalledExactlyOnceWith(
-        "https://getbb.app/changelog#0-47-0",
+        "https://github.com/KyleMyers001/foundry/releases",
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "web" },
-      });
-    });
-
-    it("prefers the published changelog over the bundled one", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          new Response(`# Changelog
-
-## 0.47.0
-
-The published lede.
-`),
-        ),
-      );
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.47.0"));
-
-      expect(await screen.findByText("The published lede.")).toBeDefined();
-      expect(screen.queryByRole("heading", { name: "Highlights" })).toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("fades the top edge once the changelog is scrolled", () => {
@@ -656,83 +622,18 @@ The published lede.
       ).not.toBeNull();
     });
 
-    function stubPublishedSources(changelog: string, metadata: string): void {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn((url: string) =>
-          Promise.resolve(
-            new Response(
-              url.endsWith("changelog-metadata.ts") ? metadata : changelog,
-            ),
-          ),
-        ),
-      );
-    }
-
-    it("says so when the changelog has no entry for the release", async () => {
-      stubPublishedSources("## 0.47.0\n\nAnother release.\n", "");
+    it("says so when the bundled changelog has no entry for the release", () => {
       useUpdateInventoryMock.mockReturnValue(makeInventory({}));
       renderSection();
       fireEvent.click(releaseNotesButton("0.0.5"));
 
       const panel = releaseNotesPanel("0.0.5")!;
       expect(
-        await within(panel).findByText("bb 0.0.5 has no changelog in the app."),
+        within(panel).getByText("bb 0.0.5 has no changelog in the app."),
       ).toBeDefined();
       expect(
         within(panel).getByRole("heading", { name: "What's new in bb 0.0.5" }),
       ).toBeDefined();
-    });
-
-    it("shows loading, not a missing changelog, while the notes load", () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(() => new Promise<Response>(() => {})),
-      );
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(within(panel).getByText("Loading the changelog…")).toBeDefined();
-      expect(within(panel).queryByText(/has no changelog/)).toBeNull();
-    });
-
-    it("says the changelog couldn't load when the fetch fails", async () => {
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(
-        await within(panel).findByText("Couldn't load the changelog."),
-      ).toBeDefined();
-      expect(within(panel).queryByText(/has no changelog/)).toBeNull();
-    });
-
-    it("takes a newer release's headline from the published metadata", async () => {
-      stubPublishedSources(
-        "## 0.0.5\n\nA tiny lede.\n",
-        `export const RELEASE_META = {
-  "0.0.5": {
-    date: "January 2, 2026",
-    headline: "A tiny release",
-  },
-};
-`,
-      );
-      useUpdateInventoryMock.mockReturnValue(makeInventory({}));
-      renderSection();
-      fireEvent.click(releaseNotesButton("0.0.5"));
-
-      const panel = releaseNotesPanel("0.0.5")!;
-      expect(
-        await within(panel).findByRole("heading", { name: "A tiny release" }),
-      ).toBeDefined();
-      expect(
-        within(panel).getByText("bb 0.0.5 · January 2, 2026"),
-      ).toBeDefined();
-      expect(within(panel).getByText("A tiny lede.")).toBeDefined();
     });
   });
 
@@ -755,6 +656,9 @@ The published lede.
           }),
         ],
       }),
+    );
+    vi.mocked(sdk.system.appUpdate).mockResolvedValue(
+      makeAppUpdateStatus({ available: null }),
     );
 
     renderSection();
@@ -854,6 +758,9 @@ The published lede.
           }),
         ],
       }),
+    );
+    vi.mocked(sdk.system.appUpdate).mockResolvedValue(
+      makeAppUpdateStatus({ available: null }),
     );
 
     renderSection();
@@ -1697,51 +1604,76 @@ The published lede.
     );
   });
 
-  it("forces the web update check and shows the upgrade command inline", async () => {
-    useDesktopUpdateInfoMock.mockReturnValue({
-      desktopApi: null,
-      desktopInfo: null,
-      isDesktop: false,
-    });
-    const availableVersion = {
-      currentVersion: "0.0.5",
-      latestVersion: "0.0.6",
-      currentCommit: null,
-      installKind: "npm" as const,
-      source: "npm" as const,
-      updateAvailable: true,
-      isDevelopment: false,
-      upgradeCommand: "npx bb-app@latest",
-    };
-    useUpdateInventoryMock.mockReturnValue(
-      makeInventory({
-        systemVersion: availableVersion,
-        appUpdateAvailable: true,
-        actionableCount: 1,
-        hasAttention: true,
+  it("links a manual install to Foundry releases instead of an upgrade command", async () => {
+    useWebApp();
+    vi.mocked(sdk.system.appUpdate).mockResolvedValue(
+      makeAppUpdateStatus({
+        available: null,
+        support: { kind: "unsupported", reason: "manual" },
       }),
     );
-    vi.mocked(sdk.system.version).mockResolvedValue(availableVersion);
 
     renderSection();
-    expect(screen.getByText("npx bb-app@latest")).toBeDefined();
-    expect(screen.getByText("0.0.6")).toBeDefined();
-    const copyButton = screen.getByRole("button", {
-      name: "Update available · Copy the upgrade command",
+
+    const releases = await screen.findByRole("button", {
+      name: "Open Foundry releases",
     });
-    expect(copyButton.textContent).toBe("");
-    expect(copyButton.className).not.toContain("bg-secondary");
+    expect(
+      screen.getByText(
+        "Foundry updates are manual. Download new releases from GitHub.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/npx bb-app/)).toBeNull();
+    expect(screen.queryByText("Up to date")).toBeNull();
+    expect(
+      document.querySelector('[data-update-state="update-available"]'),
+    ).toBeNull();
     const updateSurface = document.querySelector('[data-updates-domain="bb"]');
-    expect(updateSurface?.querySelector(".bg-card")).not.toBeNull();
-    expect(updateSurface?.querySelector(".divide-y")).not.toBeNull();
     expect(
       within(updateSurface as HTMLElement).getByText("Server"),
     ).toBeDefined();
-    expect(screen.queryByText(/^Update available/)).toBeNull();
 
+    fireEvent.click(releases);
+    expect(openUrlInExternalBrowserMock).toHaveBeenCalledWith(
+      "https://github.com/KyleMyers001/foundry/releases/latest",
+    );
     await waitFor(() => {
       expect(sdk.system.version).toHaveBeenCalledWith({ force: true });
     });
+  });
+
+  it("makes no update claim for a server the desktop app hosts", async () => {
+    useWebApp();
+    useUpdateInventoryMock.mockReturnValue(
+      makeInventory({
+        systemVersion: {
+          currentVersion: "0.0.5",
+          latestVersion: null,
+          currentCommit: null,
+          installKind: "desktop",
+          source: "foundry-releases",
+          updateAvailable: false,
+          isDevelopment: false,
+          releasesUrl:
+            "https://github.com/KyleMyers001/foundry/releases/latest",
+        },
+      }),
+    );
+    vi.mocked(sdk.system.appUpdate).mockResolvedValue(
+      makeAppUpdateStatus({
+        available: null,
+        support: { kind: "unsupported", reason: "desktop" },
+      }),
+    );
+
+    renderSection();
+
+    await screen.findByText("Server");
+    expect(
+      screen.queryByRole("button", { name: "Open Foundry releases" }),
+    ).toBeNull();
+    expect(screen.queryByText("Up to date")).toBeNull();
+    expect(screen.queryByText(/Foundry updates are manual/)).toBeNull();
   });
 
   it("checks for desktop updates through the desktop bridge", async () => {
@@ -2308,8 +2240,10 @@ The published lede.
         available: null,
         blocked: {
           reason: "fetch-failed",
-          message: "Couldn't check npm for a newer release.",
+          message: "Couldn't check for a newer desktop release.",
         },
+        desktopUpdateSupported: true,
+        support: { kind: "unsupported", reason: "desktop" },
       }),
     );
     useUpdateInventoryMock.mockReturnValue(
@@ -2317,12 +2251,13 @@ The published lede.
         systemVersion: {
           currentVersion: "0.0.5",
           currentCommit: null,
-          installKind: "npm",
-          source: "npm",
+          installKind: "desktop",
+          source: "foundry-releases",
           latestVersion: null,
           updateAvailable: false,
           isDevelopment: false,
-          upgradeCommand: "npx bb-app@latest",
+          releasesUrl:
+            "https://github.com/KyleMyers001/foundry/releases/latest",
         },
       }),
     );
@@ -2331,7 +2266,7 @@ The published lede.
       name: "Latest unknown · Retry the release check",
     });
     expect(
-      screen.getByText("Couldn't check npm for a newer release."),
+      screen.getByText("Couldn't check for a newer desktop release."),
     ).toBeDefined();
     expect(retry.querySelector('[data-icon="CircleQuestion"]')).toBeNull();
     await waitFor(() =>
@@ -2345,7 +2280,12 @@ The published lede.
     );
     vi.mocked(sdk.system.version).mockClear();
     vi.mocked(sdk.system.appUpdate).mockResolvedValue(
-      makeAppUpdateStatus({ available: null, blocked: null }),
+      makeAppUpdateStatus({
+        available: null,
+        blocked: null,
+        desktopUpdateSupported: true,
+        support: { kind: "unsupported", reason: "desktop" },
+      }),
     );
     fireEvent.click(
       screen.getByRole("button", {
@@ -2482,9 +2422,10 @@ The published lede.
           ],
           systemVersion: {
             currentVersion: "0.0.5",
-            source: "npm",
+            source: "foundry-releases",
             isDevelopment: false,
-            upgradeCommand: "npx bb-app@latest",
+            releasesUrl:
+              "https://github.com/KyleMyers001/foundry/releases/latest",
             ...version,
           },
         }),
@@ -2496,14 +2437,12 @@ The published lede.
       expect(screen.queryByText("Latest unknown")).toBeNull();
       expect(document.querySelector('[data-icon="CircleQuestion"]')).toBeNull();
       expect(screen.queryByText("Up to date")).toBeNull();
-      expect(
-        screen.queryByRole("button", {
-          name: "Update available · Copy the upgrade command",
-        }),
-      ).toBeNull();
+      expect(screen.queryByText(/npx bb-app/)).toBeNull();
       if (version.installKind === "npm") {
         expect(
-          await screen.findByText("Couldn't check npm for a newer release."),
+          await screen.findByText(
+            "Foundry updates are manual. Download new releases from GitHub.",
+          ),
         ).toBeDefined();
       }
       if (version.installKind === "source") {
@@ -2532,12 +2471,13 @@ The published lede.
           systemVersion: {
             currentVersion: "0.0.5",
             latestVersion: null,
-            source: "npm",
+            source: "foundry-releases",
             currentCommit: null,
             installKind: "source",
             updateAvailable: false,
             isDevelopment: false,
-            upgradeCommand: "npx bb-app@latest",
+            releasesUrl:
+              "https://github.com/KyleMyers001/foundry/releases/latest",
           },
         }),
       );
@@ -2760,10 +2700,6 @@ The published lede.
       expect(notesButton(bbCard, "0.0.6").getAttribute("aria-expanded")).toBe(
         "false",
       );
-      expect(recordTelemetryEvent).toHaveBeenCalledExactlyOnceWith({
-        name: "release_notes_opened",
-        properties: { release_version: "0.47.0", view: "inline" },
-      });
     });
 
     it("offers the installed desktop release when no update is available", async () => {

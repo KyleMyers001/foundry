@@ -375,7 +375,7 @@ export function createCliCommandService(
       throw new ApiError(
         409,
         "cli_command_unsupported",
-        "The bb command needs an installed bb. Start bb with npx bb-app or the desktop app.",
+        "The bb command needs an installed bb, such as the Foundry desktop app. A source checkout does not offer this.",
       );
     };
     return {

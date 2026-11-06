@@ -14,16 +14,12 @@ const UNPREFIXED_BUNDLED_PLUGIN_IDS = [
   "agent-annotations",
   "ask-user-question",
   "automations",
-  "bb-account",
-  "bb-ai",
   "bb-guide",
   "browser-automation",
   "concurrency-limit",
-  "connect",
   "custom-instructions",
   "drafts",
   "environment-git-worktree",
-  "environment-modal-sandbox",
   "environment-personal-workspace",
   "environment-project-checkout",
   "github",
@@ -73,7 +69,7 @@ describe("bundled plugin artifact resolution", () => {
   });
 
   async function writeBundle(directory: string) {
-    await mkdir(join(directory, "connect"), { recursive: true });
+    await mkdir(join(directory, "automations"), { recursive: true });
     await writeFile(join(directory, "marketplace.json"), "{}");
   }
 
@@ -85,8 +81,8 @@ describe("bundled plugin artifact resolution", () => {
     await writeBundle(prepared);
 
     expect(
-      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "connect" }),
-    ).toBe(join(prepared, "connect"));
+      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "automations" }),
+    ).toBe(join(prepared, "automations"));
     expect(resolveBundledMarketplaceDirectory(moduleDir)).toBe(prepared);
   });
 
@@ -96,14 +92,14 @@ describe("bundled plugin artifact resolution", () => {
     await writeBundle(packaged);
 
     expect(
-      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "connect" }),
-    ).toBe(join(packaged, "connect"));
+      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "automations" }),
+    ).toBe(join(packaged, "automations"));
     expect(resolveBundledMarketplaceDirectory(moduleDir)).toBe(packaged);
   });
 
   it("retains source development plugin and generated catalog resolution", async () => {
     const moduleDir = join(root, "apps/server/src/services/plugins");
-    const plugin = join(root, "plugins/connect");
+    const plugin = join(root, "plugins/automations");
     const catalog = join(
       root,
       "apps/server/src/generated/bb-official-marketplace",
@@ -113,7 +109,7 @@ describe("bundled plugin artifact resolution", () => {
     await writeFile(join(catalog, "marketplace.json"), "{}");
 
     expect(
-      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "connect" }),
+      resolveBuiltinPluginRootPathForModuleDir({ moduleDir, name: "automations" }),
     ).toBe(plugin);
     expect(resolveBundledMarketplaceDirectory(moduleDir)).toBe(catalog);
   });

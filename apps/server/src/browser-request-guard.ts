@@ -110,7 +110,7 @@ export function requestHostProblem(
   return {
     status: 403,
     error:
-      'Host must be localhost, an IP address, or the hostname configured in BB_APP_URL. To allow your custom hostname, run "npx bb-app config set BB_APP_URL https://bb.example.com" on the machine running BB (including the desktop app), replacing https://bb.example.com with your app URL, then reload this page.',
+      'Host must be localhost, an IP address, or the hostname configured in BB_APP_URL. To allow your custom hostname, set BB_APP_URL to your app URL on the machine running bb (from a Foundry source checkout, run "pnpm start config set BB_APP_URL https://bb.example.com"), then reload this page.',
   };
 }
 

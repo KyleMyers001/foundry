@@ -65,7 +65,7 @@ function ThreadChatDemoPanel({ subPath }: { subPath: string }) {
           className="h-8 cursor-pointer rounded-md border px-2 text-sm hover:bg-surface-recessed"
           onClick={() =>
             navigate.openUrl(
-              "https://github.com/get-bb/bb/tree/main/examples/plugins/thread-chat-demo",
+              "https://github.com/KyleMyers001/foundry/tree/main/examples/plugins/thread-chat-demo",
             )
           }
         >

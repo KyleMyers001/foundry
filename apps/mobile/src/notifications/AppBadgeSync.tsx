@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
-import { getPushNotificationsModule } from "./expo-push-module";
+import { useProfiles } from "@/app-shell";
+import { getAppBadgeModule } from "./expo-push-module";
 
 let desiredBadgeCount = 0;
 const listeners = new Set<() => void>();
@@ -11,13 +12,14 @@ export function updateAppBadgeCount(count: number): void {
 }
 
 export function AppBadgeSync() {
-  const notifications = getPushNotificationsModule();
+  const { connection } = useProfiles();
+  const connected = connection !== null;
 
   useEffect(() => {
+    if (!connected) return;
+    const badge = getAppBadgeModule();
     const write = () => {
-      void notifications
-        .setBadgeCount(desiredBadgeCount)
-        .catch(() => undefined);
+      void badge.setBadgeCount(desiredBadgeCount).catch(() => undefined);
     };
     listeners.add(write);
     const subscription = AppState.addEventListener("change", (state) => {
@@ -27,7 +29,7 @@ export function AppBadgeSync() {
       listeners.delete(write);
       subscription.remove();
     };
-  }, [notifications]);
+  }, [connected]);
 
   return null;
 }

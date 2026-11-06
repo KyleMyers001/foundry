@@ -19,32 +19,16 @@ describe("mcpAccessProblem", () => {
     });
   });
 
-  it.each(["session", "machine", "", "OAuth"])(
-    "refuses a gate request authenticated as %j",
-    (kind) => {
-      expect(
-        problem({ "x-bb-gate-auth": kind, "x-bb-gate-oauth-scope": "bb" }),
-      ).toMatchObject({ status: 403 });
+  it.each<Record<string, string>>([
+    { "x-bb-gate-auth": "oauth", "x-bb-gate-oauth-scope": "bb" },
+    {
+      "x-bb-gate-auth": "oauth",
+      "x-bb-gate-oauth-scope": "openid bb",
+      origin: "https://evil.example",
     },
-  );
-
-  it("lets a gate request with an OAuth token for bb through", () => {
-    expect(
-      problem({ "x-bb-gate-auth": "oauth", "x-bb-gate-oauth-scope": "bb" }),
-    ).toBeNull();
-    expect(
-      problem({
-        "x-bb-gate-auth": "oauth",
-        "x-bb-gate-oauth-scope": "openid bb",
-      }),
-    ).toBeNull();
-  });
-
-  it("refuses an OAuth request without the bb scope", () => {
-    for (const scope of ["", "openid", "bbx", "bb:all"]) {
-      expect(
-        problem({ "x-bb-gate-auth": "oauth", "x-bb-gate-oauth-scope": scope }),
-      ).toMatchObject({ status: 403 });
-    }
+    { "x-bb-gate-auth": "session" },
+    { "x-bb-gate-assertion": "anything" },
+  ])("refuses bb connect gate headers no gate can send: %j", (headers) => {
+    expect(problem(headers)).toMatchObject({ status: 403 });
   });
 });

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import metadataSource from "../../../../../changelog-metadata.ts?raw";
 import { parseChangelog } from "../../../../../changelog-parser";
-import {
-  CHANGELOG_ENTRIES,
-  parseReleaseMeta,
-  RELEASE_META,
-} from "./changelog-preview";
+import { CHANGELOG_ENTRIES, RELEASE_META } from "./changelog-preview";
 
 const SAMPLE = `# Changelog
 
@@ -116,11 +111,5 @@ describe("CHANGELOG_ENTRIES", () => {
 
   it("has presentation metadata for the newest release", () => {
     expect(RELEASE_META[CHANGELOG_ENTRIES[0]?.version ?? ""]).toBeDefined();
-  });
-});
-
-describe("parseReleaseMeta", () => {
-  it("reads every release from the repo's metadata source", () => {
-    expect(parseReleaseMeta(metadataSource)).toEqual(RELEASE_META);
   });
 });

@@ -1,6 +1,6 @@
 ---
 name: verify-bb
-description: Verify BB user journeys in an isolated source dev app using dev-browser@next and the matching source CLI. Use after BB feature changes or when asked to verify or smoke-test BB. The feature map covers core UI and agent interfaces, every repository plugin, desktop, mobile, and hosted services; select the affected recipes and platform prerequisites.
+description: Verify BB user journeys in an isolated source dev app using dev-browser@next and the matching source CLI. Use after BB feature changes or when asked to verify or smoke-test BB. The feature map covers core UI and agent interfaces, every repository plugin, desktop, and mobile; select the affected recipes and platform prerequisites.
 ---
 
 # Verify BB
@@ -8,8 +8,8 @@ description: Verify BB user journeys in an isolated source dev app using dev-bro
 Run from the repository root. Start with [the feature map](features/README.md)
 and select the affected journeys. Read `docs/debugging-and-qa.md` for the
 source development workflow. The launch below targets the source web app and
-local host daemon. Desktop, native mobile, and hosted services have additional
-setup in their feature files. A pass on one platform does not verify another.
+local host daemon. Desktop and native mobile have additional setup in their
+feature files. A pass on one platform does not verify another.
 
 ## Coverage and selection
 

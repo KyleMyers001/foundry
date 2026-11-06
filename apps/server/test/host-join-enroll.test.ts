@@ -115,24 +115,26 @@ describe("host enroll routes", () => {
     }
   });
 
-  it("rejects machine-gated enroll-key requests even from loopback", async () => {
+  it("keeps enroll keys loopback-only when a remote caller spoofs bb connect gate headers", async () => {
     const harness = await createTestAppHarness({ appUrl: undefined });
     const app = createInternalHostRouteApp({
       deps: harness.deps,
-      trustedRemoteAddress: "127.0.0.1",
+      trustedRemoteAddress: "203.0.113.7",
     });
     try {
       const response = await app.request("/hosts/enroll-key", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-bb-gate-auth": "machine",
+          "x-bb-gate-auth": "session",
+          "x-bb-gate-machine-id": "machine-spoofed",
+          "x-forwarded-for": "127.0.0.1",
         },
-        body: JSON.stringify({ hostId: "host_forbidden_machine" }),
+        body: JSON.stringify({ hostId: "host_spoofed_gate" }),
       });
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(400);
       expect(await readJson(response)).toMatchObject({
-        code: "machine_host_management_forbidden",
+        code: "unsupported_host",
       });
     } finally {
       await harness.cleanup();

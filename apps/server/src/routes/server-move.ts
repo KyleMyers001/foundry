@@ -16,10 +16,6 @@ import {
 } from "@bb/server-contract";
 import type { Hono } from "hono";
 import { ApiError } from "../errors.js";
-import {
-  getGateAuthKind,
-  type GateAuthHeaderReader,
-} from "../request-context.js";
 import { callHostOnlineRpc } from "../services/hosts/online-rpc.js";
 import {
   assertUsableHostId,
@@ -35,15 +31,6 @@ import type { AppDeps } from "../types.js";
 const SERVER_EXPORT_WORK_DIR_NAME = "server-export";
 const DELETE_OLD_SERVER_COPY_TIMEOUT_MS = 5 * 60_000;
 
-function assertServerManagementAllowed(context: GateAuthHeaderReader): void {
-  if (getGateAuthKind(context) === "machine") {
-    throw new ApiError(
-      403,
-      "machine_host_management_forbidden",
-      "Machine credentials cannot move, export, or clean up the server",
-    );
-  }
-}
 
 export const SERVER_MOVE_EXPERIMENT_DISABLED_MESSAGE =
   'Moving the server is off. Turn on the "Server move" experiment in Settings → Experiments, or run bb settings experiment serverMove true, then try again.';
@@ -85,19 +72,16 @@ export function registerServerMoveRoutes(
   const routes = publicApiRoutes.server;
 
   post(routes.checkMove, async (context, payload) => {
-    assertServerManagementAllowed(context);
     assertServerMoveExperimentEnabled(deps);
     return context.json(await serverMove.check(payload));
   });
 
   post(routes.startMove, async (context, payload) => {
-    assertServerManagementAllowed(context);
     assertServerMoveExperimentEnabled(deps);
     return context.json(await serverMove.start(payload));
   });
 
   get(routes.moveStatus, async (context) => {
-    assertServerManagementAllowed(context);
     return context.json({
       move: serverMove.getStatus(),
       lastMove: await readLastServerMove(deps.config.dataDir),
@@ -105,12 +89,10 @@ export function registerServerMoveRoutes(
   });
 
   post(routes.cancelMove, (context) => {
-    assertServerManagementAllowed(context);
     return context.json(serverMove.cancel());
   });
 
   post(routes.export, async (context) => {
-    assertServerManagementAllowed(context);
     assertServerMoveExperimentEnabled(deps);
     if (isServerMoveInFlight(serverMove.getStatus())) {
       throw new ApiError(
@@ -168,7 +150,6 @@ export function registerServerMoveRoutes(
   });
 
   del(publicApiRoutes.hosts.deleteOldServerCopy, async (context) => {
-    assertServerManagementAllowed(context);
     assertServerMoveExperimentEnabled(deps);
     const hostId = context.req.param("id");
     assertUsableHostId(deps, { hostId });

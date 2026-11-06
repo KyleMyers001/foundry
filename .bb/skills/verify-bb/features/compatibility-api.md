@@ -42,5 +42,4 @@ recipe. External writes require a disposable test target and task authorization.
 ## Maintenance notes
 
 - `status` accepts --json, not --project/--environment flags. To verify in-thread context after the source env helper clears inherited context, set BB_PROJECT_ID/BB_THREAD_ID/BB_ENVIRONMENT_ID to resolved synthetic IDs before the source CLI invocation; keep BB_CLI/BB_CLI_REEXEC unset. Source: `apps/cli/src/commands/status.ts:50`.
-- Open Settings → Remote access (plugin id `connect`). Use `bb connect` for command help; this parser rejects `bb connect --help` as an unknown flag. Use `off` to disconnect and forget credentials, or the plugin enable toggle to suspend the tunnel while retaining pairing. Source: `plugins/connect/src/cli.ts:74`.
 - Verify callback presentation with `/auth/callback?status=error` and success/default. This view does not redeem a code or create a session; exercise actual authentication in its owning provider flow. `?error=` or an arbitrary `?code=` does not select the failure view. Source: `apps/app/src/views/AuthCallbackView.tsx:15`.

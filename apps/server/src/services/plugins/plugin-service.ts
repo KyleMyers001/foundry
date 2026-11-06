@@ -1,7 +1,3 @@
-import {
-  capturePluginUse,
-  forgetPluginRecommendation,
-} from "./plugin-use-telemetry.js";
 import { rpcResponseTags } from "@get-bb/plugin-sdk/internal/rpc-tags";
 import type {
   PluginRpcDiscoveryQuery,
@@ -10,6 +6,7 @@ import type {
 import { watch } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { ApiError } from "../../errors.js";
 import { homedir } from "node:os";
 import type { Context } from "hono";
 import {
@@ -55,6 +52,7 @@ import {
 } from "../plugin-catalog/marketplace-publishers.js";
 import { deleteSecretFile, readOrCreateSecretFile } from "@bb/secret-storage";
 import {
+  RETIRED_COMMUNITY_MARKETPLACE_NAME,
   ROOT_PLUGIN_SOURCE_SELECTION,
   type InstalledPlugin,
   type PluginCapabilitySummary,
@@ -127,8 +125,11 @@ import {
 } from "./plugin-artifact-gc.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";
 import {
+  DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+  DISCONTINUED_BUILTIN_PLUGINS,
   RETIRED_BUNDLED_PLUGINS,
   listBundledPluginRegistrations,
+  type DiscontinuedBuiltinPlugin,
 } from "./builtin-registry.js";
 import {
   type BbPluginApi,
@@ -170,7 +171,6 @@ import { createPluginRegistration } from "./plugin-registration.js";
 import {
   createPluginRuntime,
   forgetMutableRoot,
-  type PluginLoadHold,
 } from "./plugin-runtime.js";
 import {
   nextCronRunAt,
@@ -243,10 +243,6 @@ export function superviseBuiltinPluginSourceWatcher(args: {
   });
 }
 
-export interface PluginStartOptions {
-  hold: PluginLoadHold;
-}
-
 export interface PluginService {
   isBuiltin(id: string): boolean;
   events: PluginThreadEventEmitter;
@@ -260,7 +256,7 @@ export interface PluginService {
    * listener is up, before start(): bb.sdk throws until this runs.
    */
   bindSdk(args: { baseUrl: string }): void;
-  start(options?: PluginStartOptions): Promise<void>;
+  start(): Promise<void>;
   stop(): Promise<void>;
   handleUncaughtException(error: unknown): boolean;
   list(): InstalledPlugin[];
@@ -620,6 +616,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     deps.bundledPlugins ?? listBundledPluginRegistrations();
   const retiredBundledPlugins =
     deps.retiredBundledPlugins ?? RETIRED_BUNDLED_PLUGINS;
+  const discontinuedBuiltinPlugins =
+    deps.discontinuedBuiltinPlugins ?? DISCONTINUED_BUILTIN_PLUGINS;
+  function discontinuedBuiltinFor(
+    row: InstalledPluginRow,
+  ): DiscontinuedBuiltinPlugin | undefined {
+    if (row.sourceKind !== "builtin") return undefined;
+    return discontinuedBuiltinPlugins.find(
+      (plugin) => plugin.name === row.sourceBuiltinName,
+    );
+  }
   function isOrphanedBuiltinRow(row: InstalledPluginRow): boolean {
     return (
       row.sourceKind === "builtin" &&
@@ -694,7 +700,6 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     brandingAssets,
     safeModeActivationRefusal,
     setDevBuildProblem,
-    setLoadHold,
     setStatus,
     sourceKind,
     stabilizingPluginIds,
@@ -711,6 +716,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
         .filter((plugin) => plugin.autoInstall)
         .map((plugin) => plugin.name),
     ),
+    isDiscontinuedBuiltin: (row) => discontinuedBuiltinFor(row) !== undefined,
     machineEnrollments: deps.machineEnrollments ?? null,
     settingsChanged: notifyPluginsChanged,
   });
@@ -1044,6 +1050,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     return rows
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((row) => {
+        const discontinued = discontinuedBuiltinFor(row);
         const runtime = getStatus(row);
         const stats = handlerStats.get(row.id);
         const loadedPlugin = loaded.get(row.id);
@@ -1076,12 +1083,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           isOrphanedBuiltin: isOrphanedBuiltinRow(row),
           sourceDisplay: sourceDisplayForRow(row),
           updateState: updateStateForRow(row),
-          enabled: row.enabled,
+          enabled: discontinued === undefined && row.enabled,
           description:
             loadedPlugin?.manifest.description ??
             identity?.manifest.description ??
             null,
-          name: loadedPlugin?.manifest.name ?? identity?.manifest.name ?? null,
+          name:
+            discontinued?.displayName ??
+            loadedPlugin?.manifest.name ??
+            identity?.manifest.name ??
+            null,
           ...catalogMetadata,
           icon:
             loadedPlugin?.manifest.branding.icon ??
@@ -1193,7 +1204,9 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       marketplaceManifestCache.clear();
       return { metadataByPluginId, publisherLabels };
     }
-    const marketplaces = listPluginMarketplaces(deps.db);
+    const marketplaces = listPluginMarketplaces(deps.db).filter(
+      (marketplace) => marketplace.name !== RETIRED_COMMUNITY_MARKETPLACE_NAME,
+    );
     const marketplaceByName = new Map(
       marketplaces.map((marketplace) => [marketplace.name, marketplace]),
     );
@@ -1280,7 +1293,6 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     providerIds: ReadonlySet<string>,
   ): Promise<void> {
     deps.onPluginUnregistered?.(row.id);
-    forgetPluginRecommendation(deps.db, row.id);
     forgetPluginProviders(deps.db, row.id, providerIds);
     // The uninstalled tree is no longer reloadable, so stop the module
     // resolve hook from scanning it on every later import.
@@ -1334,6 +1346,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
   async function removeUnbundledBuiltins(): Promise<void> {
     for (const row of listInstalledPlugins(deps.db)) {
       if (!isOrphanedBuiltinRow(row)) continue;
+      if (discontinuedBuiltinFor(row) !== undefined) continue;
       await deleteRemovedPluginData(row, pluginProviderIds(row));
       deleteInstalledPlugin(deps.db, row.id);
       logger.info(
@@ -1498,8 +1511,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
 
     bindSdk: bindRuntimeSdk,
 
-    async start(options) {
-      setLoadHold(options?.hold ?? null);
+    async start() {
       loadPassActive = true;
       try {
         await backfillNormalizedPluginRegistrations();
@@ -1826,9 +1838,16 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
           return true;
         };
 
-        if (getInstalledPlugin(deps.db, id) === undefined) return undefined;
+        const current = getInstalledPlugin(deps.db, id);
+        if (current === undefined) return undefined;
+        if (enabled && discontinuedBuiltinFor(current) !== undefined) {
+          throw new ApiError(
+            409,
+            "plugin_discontinued",
+            DISCONTINUED_BUILTIN_PLUGIN_DETAIL,
+          );
+        }
         if (!(await applyEnabled(id, enabled))) return undefined;
-        if (!enabled) forgetPluginRecommendation(deps.db, id);
         await syncCliSkill();
         notifyPluginsChanged();
         return list().find((p) => p.id === id);
@@ -2245,13 +2264,6 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
               "cli run() must return { exitCode: number, stdout?, stderr? }",
             );
           }
-          if (
-            result.exitCode === 0 &&
-            !argv.includes("--help") &&
-            !argv.includes("-h")
-          ) {
-            capturePluginUse(deps, id);
-          }
           return enforcePluginCliOutputLimit(
             {
               exitCode: result.exitCode,
@@ -2488,14 +2500,11 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
       const outcome = await invokeWrapped(
         owner,
         `tool ${record.name}`,
-        async () => {
-          const result = normalizeAgentToolResult(
+        async () =>
+          normalizeAgentToolResult(
             record.name,
             await record.execute(parsed.value, ctx),
-          );
-          if (result.success) capturePluginUse(deps, pluginId);
-          return result;
-        },
+          ),
       );
       if (outcome.ok) return outcome.value;
       return {

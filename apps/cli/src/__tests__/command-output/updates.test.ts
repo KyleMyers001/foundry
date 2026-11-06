@@ -55,15 +55,18 @@ const hosts: Host[] = [
   },
 ];
 
+const FOUNDRY_RELEASES_URL =
+  "https://github.com/KyleMyers001/foundry/releases/latest";
+
 const version = {
   currentVersion: "0.0.32",
-  latestVersion: "0.0.33",
+  latestVersion: null,
   currentCommit: null,
   installKind: "npm" as const,
-  source: "npm" as const,
-  updateAvailable: true,
+  source: "foundry-releases" as const,
+  updateAvailable: false,
   isDevelopment: false,
-  upgradeCommand: "npx bb-app@latest",
+  releasesUrl: FOUNDRY_RELEASES_URL,
 };
 
 function providerStatus(args: {
@@ -135,8 +138,8 @@ describe("bb updates command output", () => {
 
     const output = collectLogPayloads(vi.mocked(console.log)).join("\n");
     expect(output).toContain("bb-app");
-    expect(output).toContain("0.0.32 -> 0.0.33");
-    expect(output).toContain("Update available (run: npx bb-app@latest)");
+    expect(output).toContain(`Manual updates: ${FOUNDRY_RELEASES_URL}`);
+    expect(output).not.toContain("npx bb-app");
     expect(output).toContain("workstation · Codex");
     expect(output).toContain("0.140.0 -> 0.141.0");
     expect(output).toContain("workstation · Claude Code");
@@ -145,30 +148,22 @@ describe("bb updates command output", () => {
     expect(output).toContain("offline");
   });
 
-  it.each(["source", "npm"] as const)(
-    "reports unknown freshness for an unmanaged %s install",
-    async (installKind) => {
-      stubServerApi({
-        "v1.system.version.$get": vi.fn(async () => ({
-          ...version,
-          installKind,
-          currentCommit: installKind === "source" ? "a".repeat(40) : null,
-          latestVersion: null,
-          updateAvailable: false,
-        })),
-        "v1.hosts.$get": vi.fn(async () => []),
-      });
-      await runCommand(["updates"], register);
-      const output = collectLogPayloads(vi.mocked(console.log)).join("\n");
-      expect(output).toContain("Latest unknown");
-      expect(output).not.toContain("Up to date");
-      expect(output).not.toContain("npx bb-app@latest");
-      if (installKind === "source") {
-        expect(output).toContain("source checkout aaaaaaaaaa");
-        expect(output).toContain("update this checkout with Git");
-      }
-    },
-  );
+  it("reports unknown freshness for an unmanaged source checkout", async () => {
+    stubServerApi({
+      "v1.system.version.$get": vi.fn(async () => ({
+        ...version,
+        installKind: "source" as const,
+        currentCommit: "a".repeat(40),
+      })),
+      "v1.hosts.$get": vi.fn(async () => []),
+    });
+    await runCommand(["updates"], register);
+    const output = collectLogPayloads(vi.mocked(console.log)).join("\n");
+    expect(output).toContain("Latest unknown");
+    expect(output).not.toContain("Up to date");
+    expect(output).toContain("source checkout aaaaaaaaaa");
+    expect(output).toContain("update this checkout with Git");
+  });
 
   it("bb updates --json prints the aggregate", async () => {
     const status = providerStatus({ codexNeedsUpdate: false });
@@ -295,7 +290,7 @@ function appUpdateStatus(
     current: { commit: null, version: "0.0.32" },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
     ...overrides,
   };
 }
@@ -343,7 +338,7 @@ describe("bb updates app command output", () => {
         current: { version: "0.0.32", commit: null },
         lastResult: null,
         runningThreadCount: 0,
-        support: { kind: "supported", mode: "npm" },
+        support: { kind: "supported", mode: "source" },
       })),
     });
     await runCommand(["updates", "app"], register);
@@ -517,22 +512,30 @@ describe("bb updates app command output", () => {
     ]);
   });
 
-  it("bb updates app apply explains when bb cannot update itself", async () => {
-    stubServerApi({
-      "v1.system.app-update.$get": vi.fn(async () =>
-        appUpdateStatus({
-          support: { kind: "unsupported", reason: "unmanaged" },
-        }),
-      ),
-    });
+  it.each([
+    [
+      "unmanaged" as const,
+      "Error: In-app updates are off. Start Foundry from its source checkout with `pnpm start`, without `--no-in-app-updates`, to turn them on.",
+    ],
+    [
+      "manual" as const,
+      `Error: This install updates manually. Download the latest Foundry release from ${FOUNDRY_RELEASES_URL}.`,
+    ],
+  ])(
+    "bb updates app apply explains when bb cannot update itself (%s)",
+    async (reason, message) => {
+      stubServerApi({
+        "v1.system.app-update.$get": vi.fn(async () =>
+          appUpdateStatus({ support: { kind: "unsupported", reason } }),
+        ),
+      });
 
-    await expect(
-      runCommand(["updates", "app", "apply"], register),
-    ).rejects.toThrow("process.exit:1");
-    expect(vi.mocked(console.error)).toHaveBeenCalledWith(
-      "Error: In-app updates are off. Start bb with `npx bb-app start` or `pnpm start`, without `--no-in-app-updates`, to turn them on.",
-    );
-  });
+      await expect(
+        runCommand(["updates", "app", "apply"], register),
+      ).rejects.toThrow("process.exit:1");
+      expect(vi.mocked(console.error)).toHaveBeenCalledWith(message);
+    },
+  );
 
   it("bb updates app dismiss acknowledges an unseen result", async () => {
     const acknowledge = vi.fn(async () => appUpdateStatus());
