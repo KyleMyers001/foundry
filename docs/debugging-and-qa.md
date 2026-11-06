@@ -157,6 +157,12 @@ not repair the older adapter's failing turn.
 
 ## Machine Authentication Cache
 
+Machine authentication uses only Better Auth's user and API-key models. Its
+`advanced.database.validateSchema` is disabled because Better Auth 1.7 also
+requires session, account, and verification tables that this service never
+uses. Machine-auth tests exercise the real migrated SQLite schema, including
+key enrollment, revocation, expiry, quotas, and usage timestamps.
+
 Successful verification of an unlimited daemon host key is cached in server
 memory for 30 seconds, capped at the key's expiry. The cache holds at most
 1,024 entries and retains only token hashes. Hits neither read nor write the
