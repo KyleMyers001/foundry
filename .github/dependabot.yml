@@ -16,7 +16,6 @@ updates:
           - dompurify
           - mermaid
           - monaco-editor
-          - posthog-js
       http:
         patterns:
           - hono
@@ -53,7 +52,6 @@ updates:
           - dompurify
           - mermaid
           - monaco-editor
-          - posthog-js
       security-http:
         applies-to: security-updates
         patterns:
