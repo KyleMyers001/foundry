@@ -77,7 +77,7 @@
     "idb-keyval": "^6.3.0",
     "jotai": "^2.19.0",
     "jotai-family": "^1.0.1",
-    "katex": "^0.16.22",
+    "katex": "^0.18.2",
     "mermaid": "^11.16.1",
     "micromark-extension-directive": "^4.0.0",
     "micromark-extension-math": "^3.1.0",
