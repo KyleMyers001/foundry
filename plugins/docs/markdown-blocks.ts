@@ -1,5 +1,22 @@
 import type { Editor } from "@tiptap/core";
-import { DOMParser, type Node as ProseMirrorNode } from "@tiptap/pm/model";
+import {
+  DOMParser,
+  type Fragment,
+  type Node as ProseMirrorNode,
+} from "@tiptap/pm/model";
+import type { MarkdownStorage } from "tiptap-markdown";
+
+declare module "@tiptap/core" {
+  interface Storage {
+    markdown: MarkdownStorage & {
+      parser: {
+        md: { parse(source: string, env: object): BlockToken[] };
+        parse(content: string): string;
+      };
+      serializer: { serialize(content: ProseMirrorNode | Fragment): string };
+    };
+  }
+}
 
 interface Block {
   source: string;
@@ -40,10 +57,7 @@ function parseMarkdownBlocks(
   markdown: string,
   display: (source: string) => string,
 ): MarkdownBlocks {
-  const tokens: BlockToken[] = editor.storage.markdown.parser.md.parse(
-    markdown,
-    {},
-  );
+  const tokens = editor.storage.markdown.parser.md.parse(markdown, {});
   const offsets = [0];
   for (const match of markdown.matchAll(/\r\n?|\n/g))
     offsets.push(match.index + match[0].length);
@@ -88,9 +102,7 @@ function parseMarkdownBlocks(
       return block.source + block.after + gap;
     })
     .join(`\n<!--${marker}-->\n\n`);
-  const html: string = editor.storage.markdown.parser.parse(
-    display(leading + marked),
-  );
+  const html = editor.storage.markdown.parser.parse(display(leading + marked));
   const body = new window.DOMParser().parseFromString(
     `<body>${html}</body>`,
     "text/html",

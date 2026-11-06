@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { POINTER_COARSE_QUERY } from "@/components/ui/hooks/use-pointer-coarse";
@@ -39,7 +45,7 @@ function roundTrip(markdown: string): string {
     content: markdown,
   });
   try {
-    return editor.storage.markdown.getMarkdown() as string;
+    return editor.storage.markdown.getMarkdown();
   } finally {
     editor.destroy();
   }
@@ -70,6 +76,12 @@ describe("markdown round-trip", () => {
   ];
   it.each(cases)("preserves %s", (_name, markdown) => {
     expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("drops a link title ending in a backslash instead of emitting an unterminated title", () => {
+    expect(roundTrip('See [x](https://e.com "a\\\\").')).toBe(
+      "See [x](https://e.com).",
+    );
   });
 
   it("preserves table rows and cells", () => {
@@ -413,6 +425,52 @@ describe("TasksEditor component", () => {
     expect(onAttachFiles).toHaveBeenCalledTimes(2);
   });
 
+  it("shows the formatting toolbar for a text selection and applies its marks", async () => {
+    const rangeGeometry = ["getBoundingClientRect", "getClientRects"].map(
+      (name) =>
+        [name, Object.getOwnPropertyDescriptor(Range.prototype, name)] as const,
+    );
+    Object.defineProperties(Range.prototype, {
+      getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
+      getClientRects: { configurable: true, value: () => [] },
+    });
+    try {
+      const onChange = vi.fn();
+      let editor: Editor | null = null;
+      const screen = render(
+        <TasksEditor
+          value={"Hello world"}
+          onChange={onChange}
+          onEditorReady={(ready) => (editor = ready)}
+        />,
+      );
+      expect(screen.queryByRole("toolbar", { name: "Formatting" })).toBeNull();
+
+      editor!.chain().focus().setTextSelection({ from: 1, to: 6 }).run();
+      const toolbar = await screen.findByRole("toolbar", {
+        name: "Formatting",
+      });
+      fireEvent.click(within(toolbar).getByRole("button", { name: "Bold" }));
+
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith("**Hello** world"),
+      );
+      editor!.commands.setTextSelection(1);
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("toolbar", { name: "Formatting" }),
+        ).toBeNull(),
+      );
+      cleanup();
+    } finally {
+      for (const [name, descriptor] of rangeGeometry) {
+        if (descriptor)
+          Object.defineProperty(Range.prototype, name, descriptor);
+        else Reflect.deleteProperty(Range.prototype, name);
+      }
+    }
+  });
+
   it("replaces the document when the value prop changes externally", async () => {
     const onChange = vi.fn();
     const screen = render(
@@ -434,7 +492,7 @@ describe("TasksEditor component", () => {
     );
     editor!.chain().focus("end").insertContent("caption").run();
     await waitFor(() => {
-      const markdown = editor!.storage.markdown.getMarkdown() as string;
+      const markdown = editor!.storage.markdown.getMarkdown();
       expect(markdown).toContain("![shot](https://example.com/a.png)");
       expect(markdown).toContain("caption");
     });
