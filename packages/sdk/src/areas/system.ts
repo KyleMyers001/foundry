@@ -1,4 +1,3 @@
-import { mobileAppDownloads } from "@bb/domain";
 import type {
   MachineEnvironmentReplace,
   MachineEnvironmentSet,
@@ -37,7 +36,6 @@ import type {
   SystemVersionQuery,
   SystemVersionResponse,
   SystemVoiceTranscriptionResponse,
-  RecordTelemetryEventRequest,
   TestAiServiceRequest,
   TestAiServiceResponse,
   UiPreferenceResponse,
@@ -68,6 +66,19 @@ export interface SystemUsageLimitsArgs extends Omit<
 > {
   refresh?: boolean;
   signal?: AbortSignal;
+}
+
+export interface MobileAppDownloads {
+  ios: string;
+  android: string;
+}
+
+export function mobileAppDownloadsUnsupportedError(
+  method: "mobileAppDownloads" | "mobileAppReleases",
+): Error {
+  return new Error(
+    `system.${method}() is unsupported: Foundry does not publish mobile app builds.`,
+  );
 }
 
 export interface SystemVersionArgs {
@@ -102,7 +113,10 @@ export type SystemAiServicesResult = SystemAiServicesResponse;
 export type SystemSetAiServiceSelectionArgs = SetAiServiceSelectionRequest;
 export type SystemTestAiServiceArgs = TestAiServiceRequest;
 export type SystemTestAiServiceResult = TestAiServiceResponse;
-export type SystemRecordTelemetryEventArgs = RecordTelemetryEventRequest;
+export interface SystemRecordTelemetryEventArgs {
+  name: string;
+  properties: object;
+}
 export interface SystemRecordTelemetryEventResult {
   ok: true;
 }
@@ -194,7 +208,7 @@ export interface SystemArea {
     args: SystemVoiceTranscriptionArgs,
   ): Promise<SystemVoiceTranscriptionResult>;
   uiPreferences: SystemUiPreferencesArea;
-  mobileAppDownloads(): typeof mobileAppDownloads;
+  mobileAppDownloads(): MobileAppDownloads;
   mobileAppReleases(): Promise<SystemMobileAppReleasesResponse>;
   updateExperiments(
     args: ExperimentUpdates,
@@ -349,10 +363,8 @@ export function createSystemArea(args: CreateSdkAreaArgs): SystemArea {
         transport.api.v1.system["cli-skills"].install.$post({ json: input }),
       );
     },
-    async experimental_recordTelemetryEvent(input) {
-      return transport.readJson(
-        transport.api.v1.system.telemetry.events.$post({ json: input }),
-      );
+    async experimental_recordTelemetryEvent() {
+      return { ok: true };
     },
     async reloadConfig() {
       return transport.readJson(transport.api.v1.system.config.reload.$post());
@@ -377,12 +389,10 @@ export function createSystemArea(args: CreateSdkAreaArgs): SystemArea {
       );
     },
     async mobileAppReleases() {
-      return transport.readJson(
-        transport.api.v1.system["mobile-app-releases"].$get(),
-      );
+      throw mobileAppDownloadsUnsupportedError("mobileAppReleases");
     },
     mobileAppDownloads() {
-      return { ...mobileAppDownloads };
+      throw mobileAppDownloadsUnsupportedError("mobileAppDownloads");
     },
     async updateExperiments(input) {
       return transport.readJson(

@@ -29,11 +29,8 @@ const categoryIds: ReadonlySet<string> = new Set(
 const screenshotSchema = z.string().superRefine((value, ctx) => {
   try {
     const url = new URL(value);
-    if (url.protocol !== "https:" || url.hostname !== "getbb.app") {
-      ctx.addIssue({
-        code: "custom",
-        message: "must be an https URL on getbb.app",
-      });
+    if (url.protocol !== "https:") {
+      ctx.addIssue({ code: "custom", message: "must be an https URL" });
     }
     if (!/\.(?:jpe?g|png|webp)$/iu.test(url.pathname)) {
       ctx.addIssue({

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createProfileStore, profileStorageKey } from "./profile-store";
+import {
+  PROFILE_INDEX_STORAGE_KEY,
+  createProfileStore,
+  profileStorageKey,
+} from "./profile-store";
 import { createMemorySecureStorage } from "./secure-storage";
 import { createServerMovedProfileHandler } from "./server-moved";
 
@@ -8,8 +12,24 @@ const MOVED = {
   toHostName: "studio",
 };
 
+const RETIRED_CONNECT = {
+  mode: "connect" as const,
+  serverUrl: "https://laptop.getbb.app",
+  label: "laptop",
+  handle: "laptop",
+  credential: "bbcm_secret",
+  id: "retired",
+  createdAt: 1,
+};
+
 async function setup() {
-  const storage = createMemorySecureStorage();
+  const storage = createMemorySecureStorage({
+    [PROFILE_INDEX_STORAGE_KEY]: JSON.stringify({
+      ids: ["retired"],
+      activeProfileId: "retired",
+    }),
+    [profileStorageKey("retired")]: JSON.stringify(RETIRED_CONNECT),
+  });
   let counter = 0;
   const store = createProfileStore({
     storage,
@@ -21,13 +41,7 @@ async function setup() {
     serverUrl: "http://192.168.1.20:38886",
     label: "Laptop",
   });
-  const connect = await store.addProfile({
-    mode: "connect",
-    serverUrl: "https://laptop.getbb.app",
-    label: "laptop",
-    handle: "laptop",
-    credential: "bbcm_secret",
-  });
+  const connect = RETIRED_CONNECT;
   const notify = vi.fn<(message: string) => void>();
   const handler = createServerMovedProfileHandler({ store, notify });
   return { connect, direct, handler, notify, storage, store };
@@ -49,7 +63,7 @@ describe("server moved profile handler", () => {
     expect(notify).toHaveBeenCalledExactlyOnceWith("Server moved to studio");
   });
 
-  it("ignores connect profiles because their address does not change", async () => {
+  it("leaves a saved bb connect profile untouched", async () => {
     const { connect, handler, notify, store } = await setup();
 
     await expect(handler.handle(connect.id, MOVED)).resolves.toBe(false);

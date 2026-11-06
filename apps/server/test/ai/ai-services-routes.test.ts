@@ -46,8 +46,8 @@ describe("AI services routes", () => {
     await withTestHarness({}, async (harness) => {
       registerServices(harness);
       registerFakeAiService(harness.deps.aiServices, {
-        pluginId: "bb-ai",
-        id: "bb",
+        pluginId: "alpha-plugin",
+        id: "alpha",
         builtin: true,
       });
       const response = await harness.app.request("/api/v1/system/ai-services");
@@ -62,7 +62,7 @@ describe("AI services routes", () => {
           automaticRank,
         })),
       ).toEqual([
-        { pluginId: "bb-ai", id: "bb", automaticRank: 0 },
+        { pluginId: "alpha-plugin", id: "alpha", automaticRank: 0 },
         { pluginId: "helper-plugin", id: "helper", automaticRank: 1 },
         { pluginId: "listener-plugin", id: "listener", automaticRank: 2 },
       ]);
@@ -71,8 +71,43 @@ describe("AI services routes", () => {
         testAiServiceResponseSchema.parse(await readJson(test)),
       ).toMatchObject({
         ok: true,
+        pluginId: "alpha-plugin",
+        serviceId: "alpha",
+      });
+      expect(view.notice).toBeNull();
+    });
+  });
+
+  it("reports a retired bb AI selection as off with a notice until it is replaced", async () => {
+    await withTestHarness({}, async (harness) => {
+      registerServices(harness);
+      setAiServiceSelection(harness.deps.db, "voice", {
+        mode: "service",
         pluginId: "bb-ai",
         serviceId: "bb",
+      });
+
+      const view = systemAiServicesResponseSchema.parse(
+        await readJson(await harness.app.request("/api/v1/system/ai-services")),
+      );
+      expect(view.selections.voice).toEqual({ mode: "off" });
+      expect(view.notice).toMatch(/bb AI/u);
+
+      const updated = systemAiServicesResponseSchema.parse(
+        await readJson(
+          await putSelection(harness, {
+            task: "voice",
+            selection: {
+              mode: "service",
+              pluginId: "listener-plugin",
+              serviceId: "listener",
+            },
+          }),
+        ),
+      );
+      expect(updated.notice).toBeNull();
+      expect(getAiServiceSelections(harness.deps.db).voice).toMatchObject({
+        pluginId: "listener-plugin",
       });
     });
   });

@@ -61,26 +61,6 @@ export const BUILTIN_PLUGINS = [
     defaultEnabled: true,
   },
   {
-    name: "bb-account",
-    pluginId: "bb-account",
-    defaultEnabled: true,
-  },
-  {
-    name: "bb-ai",
-    pluginId: "bb-ai",
-    defaultEnabled: true,
-  },
-  {
-    name: "connect",
-    pluginId: "connect",
-    defaultEnabled: true,
-  },
-  {
-    name: "connect-next",
-    pluginId: "bb--connect-next",
-    defaultEnabled: false,
-  },
-  {
     name: "environment-project-checkout",
     pluginId: "environment-project-checkout",
     defaultEnabled: true,
@@ -242,11 +222,6 @@ export const BUILTIN_PLUGINS = [
 
 export const OFFICIAL_PLUGINS = [
   {
-    name: "environment-modal-sandbox",
-    pluginId: "environment-modal-sandbox",
-    defaultEnabled: true,
-  },
-  {
     name: "browser-automation",
     pluginId: "browser-automation",
     defaultEnabled: false,
@@ -306,6 +281,32 @@ export const RETIRED_BUNDLED_PLUGINS: readonly RetiredBundledPlugin[] =
       carriedSettings: RETIRED_PLUGIN_CARRIED_SETTINGS[pluginId] ?? [],
     }),
   );
+
+export interface DiscontinuedBuiltinPlugin {
+  name: string;
+  pluginId: string;
+  displayName: string;
+}
+
+export const DISCONTINUED_BUILTIN_PLUGIN_DETAIL =
+  "Foundry no longer includes this plugin, so it does not run. Its saved settings and secrets are kept.";
+
+export const DISCONTINUED_BUILTIN_PLUGINS: readonly DiscontinuedBuiltinPlugin[] =
+  [
+    { name: "bb-account", pluginId: "bb-account", displayName: "bb account" },
+    { name: "bb-ai", pluginId: "bb-ai", displayName: "bb AI" },
+    { name: "connect", pluginId: "connect", displayName: "bb connect" },
+    {
+      name: "connect-next",
+      pluginId: "bb--connect-next",
+      displayName: "bb connect next",
+    },
+    {
+      name: "environment-modal-sandbox",
+      pluginId: "environment-modal-sandbox",
+      displayName: "Modal sandbox",
+    },
+  ];
 
 const builtinPluginsModuleDir = path.dirname(fileURLToPath(import.meta.url));
 

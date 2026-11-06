@@ -57,14 +57,6 @@ has been exercised or that every behavior has been understood.
 - `app-route: packages/client-core/src/routes/route-paths.ts: TOOLS_SKILLS_ROUTE_PATH "/extensions/skills"`
 - `app-route: packages/client-core/src/routes/route-paths.ts: TOOLS_SKILL_DETAIL_ROUTE_PATH "/extensions/skills/library/:skillId"`
 
-## app:connect
-
-15 source files. Recipes: [cloud-gateway](features/cloud-gateway.md).
-
-## app:demo-server
-
-11 source files. Recipes: [developer-fixtures](features/developer-fixtures.md).
-
 ## app:desktop
 
 65 source files. Recipes: [desktop](features/desktop.md).
@@ -74,31 +66,6 @@ has been exercised or that every behavior has been understood.
 208 source files. Recipes: [mobile](features/mobile.md).
 
 - `app-route: apps/mobile/src/lib/shell/shell-links.ts: SHELL_ROUTE_PATH "/webview"`
-
-## app:web
-
-86 source files. Recipes: [hosted-web](features/hosted-web.md).
-
-- `web-route: apps/web/src/routes/[.]well-known.apple-app-site-association.tsx: /.well-known/apple-app-site-association`
-- `web-route: apps/web/src/routes/[.]well-known.assetlinks[.]json.tsx: /.well-known/assetlinks.json`
-- `web-route: apps/web/src/routes/api.auth.$.tsx: /api/auth/$`
-- `web-route: apps/web/src/routes/api.connect.machine-code.tsx: /api/connect/machine-code`
-- `web-route: apps/web/src/routes/api.connect.redeem-machine.tsx: /api/connect/redeem-machine`
-- `web-route: apps/web/src/routes/api.connect.redeem.tsx: /api/connect/redeem`
-- `web-route: apps/web/src/routes/api.connect.revoke-machine.tsx: /api/connect/revoke-machine`
-- `web-route: apps/web/src/routes/api.subscribe.tsx: /api/subscribe`
-- `web-route: apps/web/src/routes/blog.tsx: /blog`
-- `web-route: apps/web/src/routes/blog_.$slug.tsx: /blog_/$slug`
-- `web-route: apps/web/src/routes/changelog.tsx: /changelog`
-- `web-route: apps/web/src/routes/dashboard.tsx: /dashboard`
-- `web-route: apps/web/src/routes/download.macos.tsx: /download/macos`
-- `web-route: apps/web/src/routes/index.tsx: /`
-- `web-route: apps/web/src/routes/marketplace.v1.$.tsx: /marketplace/v1/$`
-- `web-route: apps/web/src/routes/marketplace.v2.$.tsx: /marketplace/v2/$`
-- `web-route: apps/web/src/routes/marketplace_.$pluginId.tsx: /marketplace_/$pluginId`
-- `web-route: apps/web/src/routes/marketplace_.author.$github.tsx: /marketplace_/author/$github`
-- `web-route: apps/web/src/routes/marketplace_.tsx: /marketplace_`
-- `web-route: apps/web/src/routes/privacy.tsx: /privacy`
 
 ## cli-runtime
 
@@ -377,10 +344,6 @@ has been exercised or that every behavior has been understood.
 - `cli-command: apps/cli/src/commands/voice.ts: transcribe <file>`
 - `cli-command: apps/cli/src/commands/voice.ts: voice`
 
-## dev-harness
-
-3 source files. Recipes: [developer-fixtures](features/developer-fixtures.md).
-
 ## domain-contracts
 
 71 source files. Recipes: [navigation](features/navigation.md), [projects-environments](features/projects-environments.md), [composer](features/composer.md), [execution-controls](features/execution-controls.md), [interactions](features/interactions.md), [timeline](features/timeline.md), [workspace-panels](features/workspace-panels.md), [settings](features/settings.md), [extensions](features/extensions.md), [hosts-updates](features/hosts-updates.md), [compatibility-api](features/compatibility-api.md), [responsive-accessibility](features/responsive-accessibility.md).
@@ -431,20 +394,6 @@ has been exercised or that every behavior has been understood.
 - `cli-name-candidate: plugins/concurrency-limit/server.ts: host`
 - `cli-name-candidate: plugins/concurrency-limit/server.ts: status`
 - `plugin-slot: plugins/concurrency-limit/app.tsx: settingsSection`
-
-## plugin:connect
-
-16 source files. Recipes: [plugin-connect](features/plugin-connect.md).
-
-- `cli-name-candidate: plugins/connect/src/cli.ts: connect`
-- `cli-name-candidate: plugins/connect/src/cli.ts: expose`
-- `cli-name-candidate: plugins/connect/src/cli.ts: machine-code`
-- `cli-name-candidate: plugins/connect/src/cli.ts: off`
-- `cli-name-candidate: plugins/connect/src/cli.ts: servers`
-- `cli-name-candidate: plugins/connect/src/cli.ts: shares`
-- `cli-name-candidate: plugins/connect/src/cli.ts: status`
-- `cli-name-candidate: plugins/connect/src/cli.ts: unexpose`
-- `plugin-slot: plugins/connect/app.tsx: settingsSection`
 
 ## plugin:custom-instructions
 

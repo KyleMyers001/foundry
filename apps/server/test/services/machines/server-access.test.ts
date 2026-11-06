@@ -1,7 +1,8 @@
 import { createDeferredPromise } from "@bb/test-helpers";
 import { createFakePluginHost } from "@get-bb/plugin-sdk/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getHost, setAppSettings, updateHost, upsertHost } from "@bb/db";
+import { eq } from "drizzle-orm";
+import { getHost, hosts, setAppSettings, updateHost, upsertHost } from "@bb/db";
 import { defaultAppSettings } from "@bb/domain";
 import type { ServerAccessProviderDeclaration } from "@get-bb/plugin-sdk";
 import {
@@ -91,6 +92,66 @@ describe("machine server access", () => {
       await expect(
         serverAccess.resolve(deps, { key: "k", hostId: host.id, signal }),
       ).rejects.toThrow("unavailable");
+    });
+  });
+
+  it("uses the direct route instead of a retired bb connect default and says why", async () => {
+    await withTestHarness(async ({ deps }) => {
+      vi.stubEnv("BB_EXTERNAL_URL", "https://direct.example.com");
+      setAppSettings(deps.db, {
+        ...defaultAppSettings,
+        defaultMachineAccess: "connect",
+      });
+
+      const status = await serverAccessStatus(deps);
+      expect(status.defaultProviderId).toBe("direct");
+      expect(status.notice).toMatch(/bb connect/u);
+
+      const host = upsertHost(deps.db, deps.hub, { name: "fresh" })!;
+      await expect(
+        serverAccess.resolve(deps, { key: "k", hostId: host.id, signal }),
+      ).resolves.toEqual({
+        id: host.id,
+        serverUrl: "https://direct.example.com",
+      });
+
+      setAppSettings(deps.db, {
+        ...defaultAppSettings,
+        defaultMachineAccess: "direct",
+      });
+      expect((await serverAccessStatus(deps)).notice).toBeNull();
+    });
+  });
+
+  it("moves a bb connect machine to the direct route only once one is configured", async () => {
+    await withTestHarness(async ({ deps }) => {
+      const host = upsertHost(deps.db, deps.hub, { name: "laptop" })!;
+      deps.db
+        .update(hosts)
+        .set({
+          serverAccessProviderId: "connect",
+          serverAccessGrantId: "connect-grant",
+        })
+        .where(eq(hosts.id, host.id))
+        .run();
+      const args = { key: host.id, hostId: host.id, signal };
+
+      await expect(serverAccess.repair(deps, args)).rejects.toThrow(
+        /bb connect.*server URL/u,
+      );
+      expect(getHost(deps.db, host.id)).toMatchObject({
+        serverAccessProviderId: "connect",
+      });
+
+      vi.stubEnv("BB_EXTERNAL_URL", "https://laptop.tailnet.example");
+      await expect(serverAccess.repair(deps, args)).resolves.toEqual({
+        id: host.id,
+        serverUrl: "https://laptop.tailnet.example",
+      });
+      expect(getHost(deps.db, host.id)).toMatchObject({
+        serverAccessProviderId: "direct",
+        serverAccessGrantId: host.id,
+      });
     });
   });
 

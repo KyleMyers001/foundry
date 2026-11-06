@@ -1,6 +1,3 @@
-import { reportedProviderId } from "../services/system/provider-telemetry.js";
-import { rememberPluginRecommendation } from "../services/plugins/plugin-use-telemetry.js";
-import { createMobileAppReleaseService } from "../services/install/mobile-app-releases.js";
 import {
   setMachineEnvironmentVariable,
   deleteMachineEnvironmentVariable,
@@ -9,7 +6,6 @@ import {
   machineEnvironmentView,
   replaceMachineEnvironment,
 } from "../services/machines/environment-settings.js";
-import { getGateAuthKind } from "../request-context.js";
 import { serverAccessStatus } from "../services/machines/server-access.js";
 import {
   getAppSettings,
@@ -159,12 +155,6 @@ export function registerSystemRoutes(
 
   const themeRoot = resolveThemeRootPath(deps.config.dataDir);
 
-  const mobileAppReleases = createMobileAppReleaseService();
-  get(routes.mobileAppReleases, async (context) => {
-    context.header("cache-control", "no-store");
-    return context.json(await mobileAppReleases());
-  });
-
   get(routes.attention, (context) =>
     context.json({ hasAttention: hasActiveThreadAttention(deps.db) }),
   );
@@ -254,12 +244,6 @@ export function registerSystemRoutes(
     };
   }
   post(routes.setMachineEnvironmentVariable, async (context, payload) => {
-    if (getGateAuthKind(context) === "machine")
-      throw new ApiError(
-        403,
-        "forbidden",
-        "Machine credentials cannot change global environment settings",
-      );
     await setMachineEnvironmentVariable(
       deps.db,
       deps.config.dataDir,
@@ -272,12 +256,6 @@ export function registerSystemRoutes(
   });
 
   del(routes.deleteMachineEnvironmentVariable, async (context, payload) => {
-    if (getGateAuthKind(context) === "machine")
-      throw new ApiError(
-        403,
-        "forbidden",
-        "Machine credentials cannot change global environment settings",
-      );
     await deleteMachineEnvironmentVariable(deps.db, payload.name, null);
     deps.lifecycleDedupers.providerModelCatalogs.markAllStale();
     deps.hub.notifySystem(["config-changed"]);
@@ -288,12 +266,6 @@ export function registerSystemRoutes(
     context.json(await machineEnvironmentView(deps.db)),
   );
   put(routes.replaceMachineEnvironment, async (context, payload) => {
-    if (getGateAuthKind(context) === "machine")
-      throw new ApiError(
-        403,
-        "forbidden",
-        "Machine credentials cannot change global environment settings",
-      );
     await replaceMachineEnvironment(deps.db, deps.config.dataDir, payload);
     deps.lifecycleDedupers.providerModelCatalogs.markAllStale();
     deps.hub.notifySystem(["config-changed"]);
@@ -315,7 +287,6 @@ export function registerSystemRoutes(
           : settings.idleProviderSessionTimeoutMinutes,
       allowFastServiceTier:
         settings.allowFastServiceTier ?? current.allowFastServiceTier,
-      telemetryEnabled: settings.telemetryEnabled ?? current.telemetryEnabled,
       terminalCopyOnSelect:
         settings.terminalCopyOnSelect ?? current.terminalCopyOnSelect,
       keepHistoryAfterContextClear:
@@ -338,39 +309,8 @@ export function registerSystemRoutes(
           : diagnosticValue,
     });
     setAppSettings(deps.db, updatedSettings);
-    if (current.telemetryEnabled && !updatedSettings.telemetryEnabled) {
-      deps.telemetry.capture({ name: "telemetry_disabled" });
-    }
-    deps.telemetry.setEnabled(updatedSettings.telemetryEnabled);
     deps.hub.notifySystem(["config-changed"]);
     return context.json(compatibleGeneralSettings());
-  });
-
-  post(routes.recordTelemetryEvent, (context, payload) => {
-    if (
-      payload.name === "recommendation" &&
-      payload.properties.action === "selected"
-    ) {
-      rememberPluginRecommendation(
-        deps,
-        payload.properties.resource_id,
-        payload.properties.recommendation_id,
-      );
-    }
-    deps.telemetry.capture(
-      payload.name === "onboarding_operation" &&
-        payload.properties.step === "agent" &&
-        payload.properties.resource_id !== undefined
-        ? {
-            ...payload,
-            properties: {
-              ...payload.properties,
-              resource_id: reportedProviderId(payload.properties.resource_id),
-            },
-          }
-        : payload,
-    );
-    return context.json({ ok: true });
   });
 
   put(routes.keyboardSettings, (context, payload) => {
@@ -730,14 +670,12 @@ export function registerSystemRoutes(
   get(routes.appUpdate, async (context, query) =>
     context.json(
       await deps.appUpdate.getStatus({
-        forceRefresh:
-          query.force === "true" && getGateAuthKind(context) !== "machine",
+        forceRefresh: query.force === "true",
       }),
     ),
   );
 
   post(routes.applyAppUpdate, async (context, body) => {
-    assertAppUpdateAllowed(context);
     return context.json(
       await deps.appUpdate.apply({
         confirmInterruptingThreads: body.confirmInterruptingThreads,
@@ -746,7 +684,6 @@ export function registerSystemRoutes(
   });
 
   post(routes.acknowledgeAppUpdate, async (context, body) => {
-    assertAppUpdateAllowed(context);
     return context.json(
       await deps.appUpdate.acknowledgeResult({ id: body.id }),
     );
@@ -757,36 +694,10 @@ export function registerSystemRoutes(
   );
 
   post(routes.installCliCommand, async (context) => {
-    assertCliCommandChangeAllowed(context);
     return context.json(await deps.cliCommand.install());
   });
 
   post(routes.removeCliCommand, async (context) => {
-    assertCliCommandChangeAllowed(context);
     return context.json(await deps.cliCommand.remove());
   });
-}
-
-function assertCliCommandChangeAllowed(
-  context: Parameters<typeof getGateAuthKind>[0],
-): void {
-  if (getGateAuthKind(context) === "machine") {
-    throw new ApiError(
-      403,
-      "forbidden",
-      "Machine credentials cannot change the bb command on the bb server's computer",
-    );
-  }
-}
-
-function assertAppUpdateAllowed(
-  context: Parameters<typeof getGateAuthKind>[0],
-): void {
-  if (getGateAuthKind(context) === "machine") {
-    throw new ApiError(
-      403,
-      "forbidden",
-      "Machine credentials cannot update the bb server",
-    );
-  }
 }

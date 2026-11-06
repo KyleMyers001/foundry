@@ -1,6 +1,5 @@
 import type { ProjectSource } from "@bb/domain";
 import type { SystemEnvironmentProvider } from "@bb/server-contract";
-import modalLogoUrl from "../../../../../plugins/environment-modal-sandbox/modal-logo.svg?url";
 import { EnvironmentPickerUI } from "./EnvironmentPicker";
 import { ProjectSelector } from "./ProjectSelector";
 import { StoryCard, StoryRow } from "../../../.ladle/story-card";
@@ -446,13 +445,13 @@ export function MachineSearchReuse() {
 }
 
 const modalComposition: SystemEnvironmentProvider = {
-  machineProviderId: "modal-sandbox",
-  id: "modal-composition",
-  displayName: "Modal Sandbox",
-  description: "Create a project checkout in a new Modal sandbox.",
+  machineProviderId: "example-sandbox",
+  id: "example-composition",
+  displayName: "Example Sandbox",
+  description: "Create a project checkout in a new example sandbox.",
   icon: "Box",
-  logoUrl: modalLogoUrl,
-  pluginId: "environment-modal-sandbox",
+  logoUrl: null,
+  pluginId: "example-sandbox",
   acceptsEmptyInputs: true,
   machineAvailability: {},
   availability: null,

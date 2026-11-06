@@ -35,7 +35,7 @@ function appUpdate(
     current: { commit: null, version: current },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
   };
 }
 
@@ -54,10 +54,10 @@ function systemVersion(
     installKind: "npm",
     currentVersion: "0.46.1",
     latestVersion: "0.46.1",
-    source: "npm",
+    source: "foundry-releases",
     updateAvailable: false,
     isDevelopment: false,
-    upgradeCommand: "npx bb-app@latest",
+    releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
     ...overrides,
   };
 }
@@ -184,34 +184,9 @@ describe("resolveReleaseUpdateVersion", () => {
   });
 });
 
-const FETCHED = parseChangelog(`## 0.48.0
-
-Fetched lede.
-`);
-
 describe("findReleaseEntry", () => {
-  it("prefers the fetched changelog and falls back to the bundled one", () => {
-    const bundled = parseChangelog(`## 0.48.0
-
-Bundled lede.
-
-## 0.47.0
-
-Older lede.
-`);
-    expect(findReleaseEntry("0.48.0", FETCHED, bundled)?.lede).toEqual([
-      { kind: "paragraph", text: "Fetched lede." },
-    ]);
-    expect(findReleaseEntry("0.47.0", FETCHED, bundled)?.version).toBe(
-      "0.47.0",
-    );
-    expect(findReleaseEntry("0.48.0", undefined, bundled)?.lede).toEqual([
-      { kind: "paragraph", text: "Bundled lede." },
-    ]);
-  });
-
-  it("is null when neither changelog has the release", () => {
-    expect(findReleaseEntry("0.49.0", FETCHED, CHANGELOG_ENTRIES)).toBeNull();
+  it("is null when the bundled changelog has no entry for the release", () => {
+    expect(findReleaseEntry("999.0.0", CHANGELOG_ENTRIES)).toBeNull();
   });
 
   it("covers a patch release with the newest earlier entry in its minor line", () => {
@@ -227,19 +202,11 @@ Patch lede.
 
 Older minor lede.
 `);
-    expect(findReleaseEntry("0.48.1", undefined, entries)?.version).toBe(
-      "0.48.0",
-    );
-    expect(findReleaseEntry("0.43.4", undefined, entries)?.version).toBe(
-      "0.43.3",
-    );
-    expect(findReleaseEntry("0.43.3", undefined, entries)?.version).toBe(
-      "0.43.3",
-    );
-    expect(findReleaseEntry("0.43.2", undefined, entries)?.version).toBe(
-      "0.43.0",
-    );
-    expect(findReleaseEntry("0.49.1", undefined, entries)).toBeNull();
+    expect(findReleaseEntry("0.48.1", entries)?.version).toBe("0.48.0");
+    expect(findReleaseEntry("0.43.4", entries)?.version).toBe("0.43.3");
+    expect(findReleaseEntry("0.43.3", entries)?.version).toBe("0.43.3");
+    expect(findReleaseEntry("0.43.2", entries)?.version).toBe("0.43.0");
+    expect(findReleaseEntry("0.49.1", entries)).toBeNull();
   });
 
   it("covers a nightly with the newest release below its next patch", () => {
@@ -252,15 +219,14 @@ Newest lede.
 Older lede.
 `);
     expect(
-      findReleaseEntry("0.48.2-nightly.40981326765.1", undefined, entries)
-        ?.version,
+      findReleaseEntry("0.48.2-nightly.40981326765.1", entries)?.version,
     ).toBe("0.48.0");
-    expect(
-      findReleaseEntry("0.49.0-nightly.12.1", undefined, entries)?.version,
-    ).toBe("0.48.0");
-    expect(
-      findReleaseEntry("0.48.0-nightly.3.1", undefined, entries)?.version,
-    ).toBe("0.47.0");
-    expect(findReleaseEntry("0.0.0-dev", undefined, entries)).toBeNull();
+    expect(findReleaseEntry("0.49.0-nightly.12.1", entries)?.version).toBe(
+      "0.48.0",
+    );
+    expect(findReleaseEntry("0.48.0-nightly.3.1", entries)?.version).toBe(
+      "0.47.0",
+    );
+    expect(findReleaseEntry("0.0.0-dev", entries)).toBeNull();
   });
 });

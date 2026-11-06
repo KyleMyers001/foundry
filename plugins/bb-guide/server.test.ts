@@ -64,11 +64,7 @@ it("keeps the introduction and skill switches independent across reloads", async
       pluginAuthoring: false,
     });
     expect(instructions()).toBeNull();
-    expect(await skills()).toEqual([
-      "bb-cli",
-      "skill-creator",
-      "submit-a-plugin",
-    ]);
+    expect(await skills()).toEqual(["bb-cli", "skill-creator"]);
     await harness.behavior.setSettings({ skills: false });
     expect(await skills()).toEqual([]);
     await harness.lifecycle.reload(plugin);
@@ -76,11 +72,7 @@ it("keeps the introduction and skill switches independent across reloads", async
     expect(await skills()).toEqual([]);
     await harness.behavior.setSettings({ introduction: true, skills: true });
     expect(instructions()).toContain("bb status");
-    expect(await skills()).toEqual([
-      "bb-cli",
-      "skill-creator",
-      "submit-a-plugin",
-    ]);
+    expect(await skills()).toEqual(["bb-cli", "skill-creator"]);
   } finally {
     await harness.lifecycle.dispose();
   }
@@ -88,10 +80,9 @@ it("keeps the introduction and skill switches independent across reloads", async
 
 describe("individual skill selection", () => {
   it.each([
-    ["bbCli", ["bb-plugin-authoring", "skill-creator", "submit-a-plugin"]],
-    ["pluginAuthoring", ["bb-cli", "skill-creator", "submit-a-plugin"]],
-    ["skillCreator", ["bb-cli", "bb-plugin-authoring", "submit-a-plugin"]],
-    ["submitPlugin", ["bb-cli", "bb-plugin-authoring", "skill-creator"]],
+    ["bbCli", ["bb-plugin-authoring", "skill-creator"]],
+    ["pluginAuthoring", ["bb-cli", "skill-creator"]],
+    ["skillCreator", ["bb-cli", "bb-plugin-authoring"]],
   ])("disables %s", async (key, expected) => {
     const { bb, harness } = createFakePluginHost({
       pluginId: "bb-guide",

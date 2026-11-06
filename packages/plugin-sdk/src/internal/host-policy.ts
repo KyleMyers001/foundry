@@ -3786,3 +3786,14 @@ export function normalizeRpcJsonResult(
 
   return visit(value, "$result");
 }
+
+export function sharedPortTunnelsUnsupportedError(
+  method: "ensureSharedPortTunnel",
+): Error {
+  return new Error(
+    `bb.hosts.${method} is not supported: Foundry removed bb connect, which provided shared-port tunnels`,
+  );
+}
+
+export const SHARED_PORT_DECLARATIONS_IGNORED_MESSAGE =
+  "bb.hosts.declareSharedPorts is ignored: Foundry removed bb connect, which provided shared-port tunnels";

@@ -18,8 +18,6 @@ const scenario = process.env.BB_STARTUP_SMOKE_SCENARIO ?? "custom";
 const channel = "bb-desktop:startup-action";
 const loads = [];
 let contents;
-let recovered = false;
-let mintCount = 0;
 let logsWindow;
 
 async function until(check) {
@@ -44,28 +42,6 @@ async function run() {
           voiceTranscriptionEnabled: false,
         }),
       );
-    } else if (
-      request.url === "/api/v1/plugins/connect/rpc/createDesktopSession"
-    ) {
-      mintCount += 1;
-      if (!recovered) {
-        response.writeHead(503);
-        response.end();
-      } else {
-        response.end(
-          JSON.stringify({
-            ok: true,
-            result: {
-              cookie: {
-                domain: "127.0.0.1",
-                expiresAt: Date.now() + 3600_000,
-                name: "bb_session",
-                value: "synthetic-retry-cookie",
-              },
-            },
-          }),
-        );
-      }
     } else if (request.url.startsWith("/api/")) {
       response.writeHead(404);
       response.end();
@@ -77,6 +53,19 @@ async function run() {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port;
   const serverUrl = `http://127.0.0.1:${port}`;
+  let retiredRequests = 0;
+  const retiredServer = createServer((_request, response) => {
+    retiredRequests += 1;
+    response.end(JSON.stringify({ ok: true }));
+  });
+  await new Promise((resolve) =>
+    retiredServer.listen(0, "127.0.0.1", resolve),
+  );
+  const retiredConnectServer = {
+    handle: "retry",
+    name: "Retry fixture",
+    url: `http://127.0.0.1:${retiredServer.address().port}`,
+  };
   if (scenario === "custom" || scenario === "crashed") {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -95,15 +84,11 @@ async function run() {
     JSON.stringify(
       scenario === "fatal" || scenario === "attached" || scenario === "crashed"
         ? { target: "builtin", customServerUrl: null }
-        : scenario === "connect"
+        : scenario === "retired-connect"
           ? {
               target: "connect",
               customServerUrl: null,
-              connectServer: {
-                handle: "retry",
-                name: "Retry fixture",
-                url: serverUrl,
-              },
+              connectServer: retiredConnectServer,
             }
           : { target: "custom", customServerUrl: serverUrl },
     ),
@@ -139,6 +124,39 @@ async function run() {
     app.exit(0);
     return;
   }
+  if (scenario === "retired-connect") {
+    const title = "Retry fixture used bb connect";
+    await until(
+      () =>
+        contents?.getURL().startsWith("data:") &&
+        contents.executeJavaScript(
+          `document.querySelector("h1")?.textContent === ${JSON.stringify(title)}`,
+        ),
+    );
+    assert.deepEqual(
+      await contents.executeJavaScript(
+        'Array.from(document.querySelectorAll("[data-startup-action]"), (button) => button.dataset.startupAction)',
+      ),
+      ["add-server", "choose-server"],
+    );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(
+      retiredRequests,
+      0,
+      "The app must never contact a saved bb connect server",
+    );
+    const saved = JSON.parse(
+      await readFile(join(app.getPath("userData"), "server-target.json"), "utf8"),
+    );
+    assert.deepEqual(saved.connectServer, retiredConnectServer);
+    assert.equal(saved.target, "connect");
+    retiredServer.close();
+    server.close();
+    console.log("STARTUP_RETRY_SMOKE_OK");
+    app.exit(0);
+    return;
+  }
+  retiredServer.close();
   if (scenario === "crashed") {
     const desktopLog = join(process.env.BB_DATA_DIR, "logs", "desktop.log");
     await until(async () =>
@@ -154,11 +172,7 @@ async function run() {
     return;
   }
   const errorTitle =
-    scenario === "fatal"
-      ? "Port conflict"
-      : scenario === "connect"
-        ? "Could not authenticate with bb Connect"
-        : "Could not reach this bb server";
+    scenario === "fatal" ? "Port conflict" : "Could not reach this bb server";
   const hasError = () =>
     contents?.getURL().startsWith("data:") &&
     contents.executeJavaScript(
@@ -266,9 +280,7 @@ async function run() {
   if (scenario === "custom") {
     await new Promise((resolve) => server.listen(port, "127.0.0.1", resolve));
   }
-  recovered = true;
   const before = loads.length;
-  const previousMints = mintCount;
   await contents.executeJavaScript(
     'const button = document.querySelector("[data-startup-action=retry]"); for (let i = 0; i < 10; i++) button.click();',
   );
@@ -279,21 +291,7 @@ async function run() {
     ),
   );
   const retryLoads = loads.slice(before).filter((url) => url === serverUrl);
-  console.log(
-    JSON.stringify({ scenario, retryLoads: retryLoads.length, mintCount }),
-  );
-  if (scenario === "connect") {
-    assert.equal(
-      mintCount - previousMints,
-      1,
-      "Concurrent retries must mint one fresh session",
-    );
-    const cookies = await contents.session.cookies.get({
-      url: serverUrl,
-      name: "bb_session",
-    });
-    assert.equal(cookies[0]?.value, "synthetic-retry-cookie");
-  }
+  console.log(JSON.stringify({ scenario, retryLoads: retryLoads.length }));
   assert.equal(
     retryLoads.length,
     1,
@@ -345,10 +343,10 @@ async function verifyLocalLogs() {
     join(logDir, "server.1.log"),
     "attached server diagnostic\n",
   );
-  await appendFile(join(logDir, "desktop.log"), "desktop Connect diagnostic\n");
+  await appendFile(join(logDir, "desktop.log"), "desktop diagnostic\n");
   await until(() =>
     logsWindow.webContents.executeJavaScript(
-      'document.querySelector("pre")?.textContent.includes("attached server diagnostic") && document.querySelector("pre")?.textContent.includes("desktop Connect diagnostic")',
+      'document.querySelector("pre")?.textContent.includes("attached server diagnostic") && document.querySelector("pre")?.textContent.includes("desktop diagnostic")',
     ),
   );
 }

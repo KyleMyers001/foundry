@@ -1,40 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SystemVersionResponse } from "@bb/server-contract";
 import { readJson } from "../helpers/json.js";
 import { withTestHarness } from "../helpers/test-app.js";
 
-function createStubAppVersionService(response: SystemVersionResponse) {
-  return {
-    async getSystemVersion(): Promise<SystemVersionResponse> {
-      return response;
-    },
-  };
-}
-
 describe("GET /api/v1/system/version", () => {
-  it("reports updateAvailable=false in development mode", async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("points at Foundry releases without offering an npm update", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     await withTestHarness(
-      {
-        appVersion: "0.0.5",
-        appVersionService: createStubAppVersionService({
-          currentVersion: "0.0.5",
-          latestVersion: null,
-          currentCommit: null,
-          installKind: "npm",
-          source: "npm",
-          updateAvailable: false,
-          isDevelopment: true,
-          upgradeCommand: "npx bb-app@latest",
-        }),
-        isDevelopment: true,
-      },
+      { appVersion: "0.0.5", isDevelopment: false },
       async (harness) => {
-        const response = await harness.app.request("/api/v1/system/version");
+        const response = await harness.app.request(
+          "/api/v1/system/version?force=true",
+        );
         expect(response.status).toBe(200);
         const body = (await readJson(response)) as SystemVersionResponse;
-        expect(body.isDevelopment).toBe(true);
-        expect(body.updateAvailable).toBe(false);
-        expect(body.latestVersion).toBeNull();
+        expect(body).toMatchObject({
+          currentVersion: "0.0.5",
+          isDevelopment: false,
+          latestVersion: null,
+          releasesUrl:
+            "https://github.com/KyleMyers001/foundry/releases/latest",
+          source: "foundry-releases",
+          updateAvailable: false,
+        });
+        expect(body).not.toHaveProperty("upgradeCommand");
+        expect(
+          fetchSpy.mock.calls.some(([input]) =>
+            String(input instanceof Request ? input.url : input).includes(
+              "registry.npmjs.org",
+            ),
+          ),
+        ).toBe(false);
       },
     );
   });

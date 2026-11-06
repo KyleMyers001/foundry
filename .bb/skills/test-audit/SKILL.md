@@ -93,8 +93,8 @@ dependency-backed behavior, inspect the dependency source or types directly.
 Keep discovery read-only and report evidence before editing. For broad scope,
 run parallel discovery lanes when available:
 
-- app UI: `apps/app` (the largest suite), `apps/web`, `apps/mobile`,
-  `apps/desktop`, `packages/thread-view`, `packages/client-core`;
+- app UI: `apps/app` (the largest suite), `apps/mobile`, `apps/desktop`,
+  `packages/thread-view`, `packages/client-core`;
 - server and data: `apps/server`, `packages/db`, `packages/domain`;
 - host and runtime: `apps/host-daemon`, `packages/agent-runtime`,
   `packages/provider-bridge-*`, `packages/host-*`;
