@@ -13,7 +13,6 @@ const cliEntry = join(packageRoot, "dist", "bb.js");
 
 const EXPECTED_RUNNING_BUILTIN_PLUGINS = [
   "automations",
-  "connect",
   "environment-git-worktree",
   "environment-project-checkout",
   "provider-acp",
@@ -158,7 +157,6 @@ const cliEnv = {
   BB_DATA_DIR: dataDir,
   BB_HOST_DAEMON_PORT: String(daemonPort),
   BB_SERVER_URL: serverUrl,
-  BB_TELEMETRY: "false",
 };
 let output = "";
 const launcher = spawn(
@@ -175,7 +173,7 @@ const launcher = spawn(
   ],
   {
     detached: process.platform !== "win32",
-    env: { ...process.env, BB_TELEMETRY: "false", NODE_ENV: "production" },
+    env: { ...process.env, NODE_ENV: "production" },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   },

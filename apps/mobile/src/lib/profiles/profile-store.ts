@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  directServerProfileSchema,
   serverProfileSchema,
   type NewServerProfile,
   type ServerProfile,
@@ -12,6 +13,9 @@ import {
 } from "./secure-storage";
 
 export const PROFILE_INDEX_STORAGE_KEY = "bb.profiles.index";
+
+export const RETIRED_CONNECT_PROFILE_EDIT_MESSAGE =
+  "This server used bb connect, which Foundry no longer supports. Remove it and add the server's direct or Tailscale address.";
 const PROFILE_STORAGE_KEY_PREFIX = "bb.profile.";
 
 export function profileStorageKey(profileId: string): string {
@@ -180,7 +184,7 @@ export function createProfileStore(deps: CreateProfileStoreDeps): ProfileStore {
     listProfiles: () => state.profiles,
     addProfile(input) {
       return mutate(async () => {
-        const profile = serverProfileSchema.parse({
+        const profile = directServerProfileSchema.parse({
           ...input,
           id: generateId(),
           createdAt: now(),
@@ -199,14 +203,11 @@ export function createProfileStore(deps: CreateProfileStoreDeps): ProfileStore {
       return mutate(async () => {
         const existing = state.profiles.find((p) => p.id === id);
         if (!existing) throw new Error(`Unknown server profile: ${id}`);
-        if (
-          existing.mode === "direct" &&
-          (patch.handle !== undefined || patch.credential !== undefined)
-        ) {
-          throw new Error("Direct profiles have no connect handle/credential");
+        if (existing.mode === "connect") {
+          throw new Error(RETIRED_CONNECT_PROFILE_EDIT_MESSAGE);
         }
         const merged = { ...existing, ...withoutUndefined(patch) };
-        const profile = serverProfileSchema.parse(merged);
+        const profile = directServerProfileSchema.parse(merged);
         await storage.setItem(profileStorageKey(id), serializeProfile(profile));
         setState({
           ...state,

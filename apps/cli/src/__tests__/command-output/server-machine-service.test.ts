@@ -282,7 +282,7 @@ describe("bb server install-machine-service", () => {
       "Stop bb on this computer and install a background service that keeps it connected to desktop? [y/N] ",
     );
     expect(collectLogPayloads(vi.mocked(console.error))).toEqual([
-      "Error: The background service install failed; see the installer output above. Until it succeeds, this computer stays connected only while the bb desktop app or npx bb-app runs, so start one of them to reconnect it now.",
+      "Error: The background service install failed; see the installer output above. Until it succeeds, this computer stays connected only while the bb desktop app or pnpm start runs, so start one of them to reconnect it now.",
     ]);
   });
 });

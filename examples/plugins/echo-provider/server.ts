@@ -37,7 +37,7 @@ export default function plugin(bb: BbPluginApi) {
       signInHint: "Nothing to sign in to: the echo agent runs offline.",
       expiredHint: "Echo sessions never expire.",
       installUrl:
-        "https://github.com/get-bb/bb/tree/main/examples/plugins/echo-provider",
+        "https://github.com/KyleMyers001/foundry/tree/main/examples/plugins/echo-provider",
       brandPrefix: "Echo ",
       planModeCopy: "Echo will repeat your plan without running anything.",
       iconTint: { light: "#b45309", dark: "#fcd34d" },

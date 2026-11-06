@@ -500,6 +500,31 @@ replacement.
 - `HostDaemonAcpLaunchSpec`
 - `ClaudeTaskToolOutput`
 
+Kept only as unsupported stubs until the next major, because Foundry removed
+the hosted services behind them:
+
+- `bb.hosts.declareSharedPorts` and `bb.hosts.ensureSharedPortTunnel`
+  (`@get-bb/plugin-sdk`). bb connect shared-port tunnels are gone.
+  `ensureSharedPortTunnel` rejects with an unsupported error naming the
+  method, because a caller needs the identity it would return.
+  `declareSharedPorts` ignores its ports and logs one warning per plugin load,
+  so a plugin that declares ports at load keeps loading. The server and the
+  fake plugin host behave the same. Nothing in this repository calls them.
+- `bb.internal_DO_NOT_USE_recordPluginUse()` (`@get-bb/plugin-sdk`). Foundry
+  sends no usage data, so it does nothing in the server and the fake plugin
+  host. It stays because forks of the first-party plugins that called it
+  (`monaco-editor`, `prompt-library`, `agent-annotations`) inherit the call.
+  Nothing in this repository calls it.
+- `system.experimental_recordTelemetryEvent()` on the SDK (`bb.sdk.system` for
+  plugins). Foundry sends no usage data and the
+  `/api/v1/system/telemetry/events` route is gone, so it resolves `{ ok: true }`
+  without contacting the server. Nothing in this repository calls it.
+- `system.mobileAppDownloads()` and `system.mobileAppReleases()` on the SDK
+  (`bb.sdk.system` for plugins). Foundry publishes no mobile app builds, so
+  both throw an unsupported error without contacting the server, and the
+  `/api/v1/system/mobile-app-releases` route is gone. Nothing in this
+  repository calls them.
+
 Also kept only until the next major:
 
 - On `@get-bb/plugin-sdk/provider-bridge/acp`, `AcpAgentProfile`, a deprecated
@@ -1187,90 +1212,9 @@ The operator-configured public app URL from `BB_APP_URL`, or `null`.
 
 Docs: `backend-foundation.md`.
 
-**Audit before stabilizing.** Decide whether `BB_EXTERNAL_URL` or the bb
-connect URL should supply this value when `BB_APP_URL` is empty. Confirm that
-one public URL has clear behavior when a server has several access paths.
-
-## `bb.internal_DO_NOT_USE_recordPluginUse`
-
-Internal to bb's first-party plugins whose meaningful use happens in their own
-UI rather than through an agent tool or CLI command: `monaco-editor` (a saved
-file), `prompt-library` (an inserted prompt) and `agent-annotations` (a saved
-annotation). It takes no arguments. The server counts it as one `plugin_use`
-of the calling plugin, exactly like a successful tool call or CLI command, and
-sends nothing for non-public plugins or when usage data is off. Each plugin's
-use is sent at most once per day. Forks of these plugins inherit the call, so
-removing it later means leaving a no-op stub.
-
-## `bb.server.internal_DO_NOT_USE_openTunnelIngress`
-
-Internal to bb's own connect plugins (`connect`, `bb--connect-next`): the `internal_DO_NOT_USE_` prefix marks members that are not part of the plugin API, are not offered to third-party plugins, and may change or disappear in any release.
-
-`internal_DO_NOT_USE_openTunnelIngress({ audience })` resolves to
-`{ baseUrl, close() }` for a listener on `127.0.0.1` with an ephemeral port.
-Every HTTP request and WebSocket upgrade on it must carry an
-`x-bb-gate-assertion` (`@bb/tunnel-contract/next`) signed by the bb connect
-next gate for `audience`, the request method and the exact path and query;
-anything else gets a 401 JSON body `{ code: "gate_assertion_invalid", reason }`
-and never reaches the app. A verified request loses every inbound
-`x-bb-gate-*` header, gets `x-bb-gate-auth` (and the machine id or OAuth
-grant headers) from the claims only, has Host and the public Origin rewritten
-to the server's loopback origin, and is dispatched in-process into the same
-app as `loopbackBaseUrl` (HTTP, `/ws`, plugin WebSockets). The ingress never
-counts as a loopback caller. Gate keys come from `BB_CONNECT_GATE_KEYS_URL`.
-Opening an audience again shares its listener; it stops, and drops its
-WebSockets, when every handle closes. Handles close when the plugin is
-disabled or unloaded.
-
-Core callers: none. The Cloudflare bb connect path still replays requests to
-the main loopback port; the `connect-next` plugin is the only caller.
-
-Docs: `backend-foundation.md`; the request rules are in [connect-next.md](connect-next.md) (Server ingress).
-
-**Audit before stabilizing.** Decide whether the Cloudflare tunnel client
-moves onto the same ingress so core and both connect plugins share one path.
-Decide whether `target` (share ports) belongs here or stays refused. Confirm
-the audience should stay free-form or become a typed server id, and whether a
-plugin may open audiences for servers other than its own.
-
-## `bb.hosts.internal_DO_NOT_USE_setNextTunnels`, `internal_DO_NOT_USE_nextTunnelStatuses`, `internal_DO_NOT_USE_onNextTunnelStatusChange`
-
-Internal to bb's own connect plugins (`connect`, `bb--connect-next`): the `internal_DO_NOT_USE_` prefix marks members that are not part of the plugin API, are not offered to third-party plugins, and may change or disappear in any release.
-
-`internal_DO_NOT_USE_setNextTunnels(config | null)` turns bb connect next machine
-tunnels on (an `InternalDoNotUsePluginNextTunnelConfig`,
-`{ domain, server: { protocol, host, port } }`) or off. The server keeps one
-config owned by the calling plugin (another plugin's non-null call throws
-while it is set; a null call from a non-owner is a no-op), clears it when the
-owner is disabled or uninstalled, and sends it as `connect-next.replace` (and
-`connectNext` in the session-open response) to every connected daemon that
-holds a bb connect machine credential and opened its session with protocol
-247 or newer. A protocol-246 daemon is still accepted and only gets its
-Cloudflare shares. Each daemon runs frpc with one proxy per port declared
-through `declareSharedPorts` at `<label>--<port>.<domain>` while it shares at
-least one port, and refuses a config whose domain is not its trusted
-enrollment's base domain or `next.<base domain>`, or whose tunnel host is not
-`tunnel.<domain>`, or that is not `wss` for an https enrollment, so a plugin
-cannot send the machine credential elsewhere.
-`internal_DO_NOT_USE_nextTunnelStatuses()` returns each connected daemon's last
-`connect-next.status` report as `InternalDoNotUsePluginHostNextTunnelStatus`
-(dropped when its session ends), and
-`internal_DO_NOT_USE_onNextTunnelStatusChange(listener)` calls `listener` on any
-change and returns an unsubscribe function that disposal also runs.
-
-Core callers: none. Product policy (on or off, which domain) belongs to the
-`connect-next` plugin, which calls all three; core's Cloudflare machine tunnel
-needs no config because the daemon derives its gate from its enrollment.
-
-Docs: `backend-foundation.md`; the wire and daemon behavior are in
-[connect-next.md](connect-next.md) (Machine tunnels).
-
-**Audit before stabilizing.** Decide whether the config should be per host
-instead of global, whether the status should be pushed through `bb.realtime`
-instead of a listener, and whether the compatibility window for protocol 246
-can close (then `HOST_DAEMON_COMPATIBLE_PROTOCOL_VERSIONS` goes back to the
-current version only). Decide whether the Cloudflare machine tunnel should
-move onto the same frpc runner once next replaces it.
+**Audit before stabilizing.** Decide whether `BB_EXTERNAL_URL` should supply
+this value when `BB_APP_URL` is empty. Confirm that one public URL has clear
+behavior when a server has several access paths.
 
 ## Bridge record mode (`experimental_recordProviderChildIo` and `experimental_isProviderBridgeRecording`)
 
@@ -3639,12 +3583,11 @@ switch starts, and in `recovery_required` it rolls the switch back.
 copy. All of them refuse machine credentials. Everything except status and
 cancel requires the default-off `serverMove` experiment (403
 `server_move_experiment_disabled`). CLI:
-`bb server move|export|import|unlock|allow-connect|delete-old-copy|install-machine-service`.
+`bb server move|export|import|unlock|delete-old-copy|install-machine-service`.
 
 Before stabilization, audit: authorization for plugin backends (`bb.sdk` runs
 with owner access, so a plugin can export every secret or move the server);
-the switch ordering against the bb connect tunnel and daemons that miss
-`server.moved`; archive size limits and streaming memory use; cancellation
+the switch ordering against daemons that miss `server.moved`; archive size limits and streaming memory use; cancellation
 and failure recovery at every step, including a server restart mid-move;
 behavior when the target runs a provider-managed machine; and whether
 `startMove` should return immediately or expose progress through a durable
@@ -3816,29 +3759,6 @@ be cancelled during activation or rollback.
 
 Stabilization requires exercising reconnect/reload, concurrent deduplication,
 rollback delivery, missing jobs after restart, and CLI/SDK parity.
-
-## `PluginBbSdk.system.experimental_recordTelemetryEvent`
-
-Posts one anonymous product event to `POST /api/v1/system/telemetry/events`,
-which forwards it to usage telemetry under the install's anonymous id and
-drops it when usage data sharing is off. The schema is a strict allow-list of
-setup-guide, new-thread-submit, plugin-creation-started, and release notes
-events; anything else is a 400. App callers, all through `recordTelemetryEvent`
-in `apps/app/src/components/onboarding/onboarding-telemetry.ts`: the setup guide
-(`OnboardingFlow`, `useOnboardingProjectImport`, and agent installs it starts
-through `provider-cli-install-store`), `NewThreadComposer`'s `new_thread_submit` outcomes,
-`PluginCreateButton`'s `plugin_creation_started`, and Settings → Updates'
-changelog (`release_notes_opened`, inline or on the web). `bb plugin new` sends
-`plugin_creation_started` through the same SDK method. The setup guide's
-Plugins step reports `recommendation` `shown` and `selected` with a per-visit
-`recommendation_id`; `selected` also stores that id in server-owned settings
-until the plugin's next use, disable or uninstall. `NewThreadComposer` also
-reports `new_thread_blocker` once per blocker reason while a draft exists.
-`onboarding_operation` reports a guide action's started, succeeded or failed
-outcome with only a public agent id or counts.
-
-Stabilize after deciding whether third-party plugins may emit product events
-at all and, if so, how they are namespaced and rate limited.
 
 ## `PluginBbSdk.system.experimental_cliCommand`, `experimental_installCliCommand`, and `experimental_removeCliCommand`
 

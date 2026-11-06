@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getAppSettings } from "@bb/db";
+import { appSettingsValues, getAppSettings } from "@bb/db";
+import { eq } from "drizzle-orm";
 import { appSettingsSchema, defaultAppSettings } from "@bb/domain";
 import { systemConfigResponseSchema } from "@bb/server-contract";
 import { readJson } from "../helpers/json.js";
@@ -258,28 +259,53 @@ it("persists terminal copy-on-select and preserves opt-out for older clients", a
   });
 });
 
-it("preserves telemetry opt-out when older clients update other settings", async () => {
+it("ignores a saved analytics opt-in, keeps its stored row, and refuses the retired setting", async () => {
   await withTestHarness(async (harness) => {
+    harness.db
+      .insert(appSettingsValues)
+      .values({ key: "telemetryEnabled", value: "true", updatedAt: 1 })
+      .run();
     const put = (settings: object) =>
       harness.app.request("/api/v1/settings/general", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(settings),
       });
+
+    const config = (await readJson(
+      await harness.app.request("/api/v1/system/config"),
+    )) as { generalSettings: Record<string, unknown> };
+    expect(config.generalSettings).not.toHaveProperty("telemetryEnabled");
     expect(
-      (await put({ ...defaultAppSettings, telemetryEnabled: false })).status,
+      (await put({ ...defaultAppSettings, telemetryEnabled: true })).status,
+    ).toBe(400);
+    expect(
+      (await put({ ...defaultAppSettings, showKeyboardHints: false })).status,
     ).toBe(200);
-    expect(getAppSettings(harness.db).telemetryEnabled).toBe(false);
-    const { telemetryEnabled, ...legacy } = defaultAppSettings;
-    expect(telemetryEnabled).toBe(true);
-    expect((await put({ ...legacy, showKeyboardHints: false })).status).toBe(
-      200,
+    expect(
+      harness.db
+        .select({ value: appSettingsValues.value })
+        .from(appSettingsValues)
+        .where(eq(appSettingsValues.key, "telemetryEnabled"))
+        .get(),
+    ).toEqual({ value: "true" });
+  });
+});
+
+it("serves no analytics endpoint", async () => {
+  await withTestHarness(async (harness) => {
+    const response = await harness.app.request(
+      "/api/v1/system/telemetry/events",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "new_thread_submit",
+          properties: { outcome: "failed" },
+        }),
+      },
     );
-    const config = systemConfigResponseSchema.parse(
-      await readJson(await harness.app.request("/api/v1/system/config")),
-    );
-    expect(config.generalSettings.telemetryEnabled).toBe(false);
-    expect(config.generalSettings.showKeyboardHints).toBe(false);
+    expect(response.status).toBe(404);
   });
 });
 

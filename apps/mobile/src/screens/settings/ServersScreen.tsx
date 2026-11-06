@@ -15,7 +15,6 @@ import {
   useSheet,
   type ActionSheetAction,
 } from "@/ui";
-import { connectEnrollHref } from "../shell/hrefs";
 import { GroupedScreen } from "./GroupedScreen";
 import {
   HeaderIconButton,
@@ -38,6 +37,13 @@ export function ServersScreen() {
 
   const activate = (profile: ServerProfile) => {
     if (profile.id === activeProfile?.id) return;
+    if (profile.mode === "connect") {
+      toast.error("bb connect is no longer supported", {
+        description:
+          "Add this server's direct or Tailscale address to use it, then remove this entry.",
+      });
+      return;
+    }
     setActiveProfile(profile.id).catch((error: unknown) => {
       toast.error("Could not switch server", {
         description: describeError(error),
@@ -60,14 +66,15 @@ export function ServersScreen() {
       title: `Remove ${profile.label}?`,
       message:
         profile.mode === "connect"
-          ? "The app forgets this server and its device credential. The phone stays listed under Machines in the getbb.app dashboard until you revoke it there."
+          ? "The app forgets this bb connect server and its saved device credential."
           : "The app forgets this server. Nothing on the server changes.",
       actionLabel: "Remove",
       onConfirm: () => remove(profile),
     });
 
   const actionsFor = (profile: ServerProfile): ActionSheetAction[] => [
-    ...(IS_IOS || profile.id !== activeProfile?.id
+    ...(profile.mode === "direct" &&
+    (IS_IOS || profile.id !== activeProfile?.id)
       ? [
           {
             key: "activate",
@@ -75,18 +82,6 @@ export function ServersScreen() {
             icon: "Check" as const,
             disabled: profile.id === activeProfile?.id,
             onPress: () => activate(profile),
-          },
-        ]
-      : []),
-    ...(profile.mode === "connect"
-      ? [
-          {
-            key: "reauth",
-            label: "Sign in again",
-            icon: "Lock" as const,
-            onPress: () => {
-              router.push(connectEnrollHref({ profileId: profile.id }));
-            },
           },
         ]
       : []),
@@ -135,7 +130,7 @@ export function ServersScreen() {
       )}
       <GroupedScreen testID="servers-screen">
         {profiles.length === 0 ? (
-          <SettingsSection footnote="No servers saved yet. Pair through getbb.app or enter a direct URL.">
+          <SettingsSection footnote="No servers saved yet. Enter a direct or Tailscale URL.">
             <GroupedRow
               title="Add server"
               leading="Plus"
@@ -160,7 +155,7 @@ export function ServersScreen() {
                 subtitle={
                   IS_IOS
                     ? profile.mode === "connect"
-                      ? `@${profile.handle} · ${profile.serverUrl}`
+                      ? `bb connect, no longer supported · ${profile.serverUrl}`
                       : profile.serverUrl
                     : profile.serverUrl
                         .replace(/^https?:\/\//, "")
@@ -175,7 +170,7 @@ export function ServersScreen() {
                     : undefined
                 }
                 selected={profile.id === activeProfile?.id}
-                accessibilityLabel={`${profile.label}, ${profile.mode === "connect" ? "bb connect" : "Direct"}, ${profile.serverUrl}`}
+                accessibilityLabel={`${profile.label}, ${profile.mode === "connect" ? "bb connect, no longer supported" : "Direct"}, ${profile.serverUrl}`}
                 trailing={
                   IS_IOS ? (
                     profile.id === activeProfile?.id ? (
@@ -215,7 +210,7 @@ export function ServersScreen() {
         message={
           confirmingRemoval
             ? target?.mode === "connect"
-              ? "This removes the server and its device credential from this phone. Revoke the phone separately in getbb.app → Machines."
+              ? "This removes the bb connect server and its saved device credential from this phone."
               : "This removes the server from this phone. Nothing on the server changes."
             : target?.serverUrl
         }

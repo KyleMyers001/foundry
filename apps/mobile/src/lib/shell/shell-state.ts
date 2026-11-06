@@ -1,4 +1,5 @@
-import type { SessionState } from "../session/session-scheduler";
+export const RETIRED_CONNECT_PROFILE_DETAIL =
+  "This server used bb connect, which Foundry no longer supports, so the app won't open it. Its saved details are kept. Add the server's direct or Tailscale address in Servers.";
 
 export type ShellLoadPhase =
   | { kind: "loading" }
@@ -14,15 +15,14 @@ export type ShellScreenState =
       kind: "error";
       title: string;
       detail: string;
-      action: "retry" | "re-pair";
+      action: "retry" | "servers";
     };
 
 interface ShellScreenInput {
   storeReady: boolean;
   hasAnyProfile: boolean;
   hasProfile: boolean;
-  requiresSession: boolean;
-  session: SessionState;
+  retiredConnectProfile: boolean;
   load: ShellLoadPhase;
 }
 
@@ -38,31 +38,13 @@ export function resolveShellScreenState(
   if (!input.hasProfile) {
     return { kind: "loading", message: "Opening server" };
   }
-  switch (input.session.status) {
-    case "auth-required":
-      return {
-        kind: "error",
-        title: "Could not sign in",
-        detail:
-          "bb connect could not renew this phone’s sign-in. Pair again to reconnect.",
-        action: "re-pair",
-      };
-    case "error":
-      return {
-        kind: "error",
-        title: "Cannot reach this server",
-        detail: input.session.detail,
-        action: "retry",
-      };
-    case "authenticating":
-      return { kind: "loading", message: "Signing in" };
-    case "idle":
-      if (input.requiresSession) {
-        return { kind: "loading", message: "Signing in" };
-      }
-      break;
-    case "authenticated":
-      break;
+  if (input.retiredConnectProfile) {
+    return {
+      kind: "error",
+      title: "bb connect is no longer supported",
+      detail: RETIRED_CONNECT_PROFILE_DETAIL,
+      action: "servers",
+    };
   }
   switch (input.load.kind) {
     case "failed":
@@ -80,17 +62,10 @@ export function resolveShellScreenState(
   }
 }
 
-export function revealsShellFailure(
-  screen: ShellScreenState,
-  requiresSession: boolean,
-): boolean {
-  if (screen.kind === "error") return true;
-  if (screen.kind !== "webview" || screen.serverErrorStatus === null) {
-    return false;
-  }
-  return !(
-    requiresSession &&
-    (screen.serverErrorStatus === 401 || screen.serverErrorStatus === 403)
+export function revealsShellFailure(screen: ShellScreenState): boolean {
+  return (
+    screen.kind === "error" ||
+    (screen.kind === "webview" && screen.serverErrorStatus !== null)
   );
 }
 
@@ -103,20 +78,4 @@ export function resolveShellLoadPath(input: {
     return input.requestedPath;
   }
   return "/";
-}
-
-export function shouldReloadForSession(
-  previous: SessionState,
-  next: SessionState,
-  now: number,
-  load: ShellLoadPhase,
-): boolean {
-  return (
-    previous.status === "authenticated" &&
-    next.status === "authenticated" &&
-    previous !== next &&
-    ((load.kind === "http-error" &&
-      (load.status === 401 || load.status === 403)) ||
-      (previous.expiresAt !== next.expiresAt && previous.expiresAt <= now))
-  );
 }

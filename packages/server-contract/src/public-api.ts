@@ -8,12 +8,10 @@ import {
 } from "./api/machine-environment.js";
 import {
   machineEnvironmentReplaceSchema,
-  recordTelemetryEventRequestSchema,
   setAiServiceSelectionRequestSchema,
   systemProviderEnabledRequestSchema,
   testAiServiceRequestSchema,
   type MachineEnvironmentReplace,
-  type RecordTelemetryEventRequest,
   type SetAiServiceSelectionRequest,
   type SystemAiServicesResponse,
   type SystemProviderCatalogEntry,
@@ -201,7 +199,6 @@ import {
   type SystemAttentionResponse,
   type SystemConfigReloadResponse,
   type SystemConfigResponse,
-  type SystemMobileAppReleasesResponse,
   type SystemCliSkillsStatusQuery,
   type SystemCliSkillsStatusResponse,
   type SystemInstallCliSkillsRequest,
@@ -887,7 +884,6 @@ export const publicApiRoutes = {
       request: noRequest<PathId>(),
       response: jsonResponse<
         Host & {
-          connectMachineId: string | null;
           threadStorageRootPath: string | null;
         }
       >(),
@@ -1904,12 +1900,6 @@ export const publicApiRoutes = {
       request: noRequest(),
       response: jsonResponse<SystemAttentionResponse>(),
     }),
-    mobileAppReleases: defineRoute({
-      path: "/system/mobile-app-releases",
-      method: "get",
-      request: noRequest(),
-      response: jsonResponse<SystemMobileAppReleasesResponse>(),
-    }),
     config: defineRoute({
       path: "/system/config",
       method: "get",
@@ -1937,14 +1927,6 @@ export const publicApiRoutes = {
         testAiServiceRequestSchema,
       ),
       response: jsonResponse<TestAiServiceResponse>(),
-    }),
-    recordTelemetryEvent: defineRoute({
-      path: "/system/telemetry/events",
-      method: "post",
-      request: jsonRequest<EmptyInput, RecordTelemetryEventRequest>(
-        recordTelemetryEventRequestSchema,
-      ),
-      response: jsonResponse<{ ok: true }>(),
     }),
     generalSettings: defineRoute({
       path: "/settings/general",

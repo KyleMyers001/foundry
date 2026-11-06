@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { nanoid } from "nanoid";
 import { useLocation } from "react-router-dom";
 import {
   findLocalPathProjectSourceForHost,
   isActiveTerminalSessionStatus,
-  mobileAppDownloads,
 } from "@bb/domain";
 import type { TerminalOutputChunk, TerminalSession } from "@bb/server-contract";
 import { useMediaQuery } from "@bb/shared-ui/hooks/use-media-query";
 import { AddMachineDialog } from "@/components/dialogs/AddMachineDialog";
 import { ProjectPathDialog } from "@/components/dialogs/ProjectPathDialog";
-import { PluginSettingsSections } from "@/components/plugin/PluginSettingsSections";
 import { useSetPluginEnabled } from "@/components/plugin/useSetPluginEnabled";
 import {
   buildProviderCliIssue,
@@ -43,7 +40,6 @@ import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import { terminalOutputTailQueryKey } from "@/hooks/queries/query-keys";
 import {
   useHostProviderCliStatus,
-  useSystemConfig,
   useSystemProviderStates,
   useSystemProviders,
 } from "@/hooks/queries/system-queries";
@@ -76,22 +72,17 @@ import {
   type OnboardingRepo,
 } from "./OnboardingViews";
 import {
-  CONNECT_PLUGIN_ID,
   ONBOARDING_PLUGINS,
   ONBOARDING_PLUGIN_MARKETPLACE,
-  connectAccessUrl,
   defaultSelectedRepoPaths,
   hasReadyAgent,
   parseSignInOutput,
   resolveAgentSetupState,
   resolveSignInCommand,
   shortRemoteName,
+  type OnboardingEntry,
   type OnboardingStepId,
 } from "./onboarding-model";
-import {
-  recordTelemetryEvent,
-  type OnboardingEntry,
-} from "./onboarding-telemetry";
 import { useOnboardingProjectImport } from "./useOnboardingProjectImport";
 
 const SIGN_IN_POLL_INTERVAL_MS = 3_000;
@@ -288,21 +279,14 @@ function AgentStepContainer({
   const { mutate: closeTerminalMutate } = closeTerminal;
   const { mutateAsync: createTerminalAsync } = createTerminal;
 
-  const endSignIn = useCallback(
-    (outcome: "ready" | "exited" | "failed" | "cancelled" = "cancelled") => {
-      const current = signInRef.current;
-      if (current === null) return;
-      signInRef.current = null;
-      recordTelemetryEvent({
-        name: "onboarding_sign_in",
-        properties: { entry, outcome },
-      });
-      setSignIn(null);
-      closeTerminalMutate({ mode: "force", terminalId: current.session.id });
-      void refetchStates();
-    },
-    [closeTerminalMutate, entry, refetchStates],
-  );
+  const endSignIn = useCallback(() => {
+    const current = signInRef.current;
+    if (current === null) return;
+    signInRef.current = null;
+    setSignIn(null);
+    closeTerminalMutate({ mode: "force", terminalId: current.session.id });
+    void refetchStates();
+  }, [closeTerminalMutate, refetchStates]);
 
   const signInRequestRef = useRef(0);
   useEffect(
@@ -319,7 +303,7 @@ function AgentStepContainer({
       if (current !== null && exitCode !== 0) {
         setSignInFailedProviderId(current.providerId);
       }
-      endSignIn(exitCode === 0 ? "exited" : "failed");
+      endSignIn();
     },
     [endSignIn],
   );
@@ -339,7 +323,7 @@ function AgentStepContainer({
     states?.find((state) => state.providerId === signingInProviderId)
       ?.status === "ready";
   useEffect(() => {
-    if (signingInProviderReady) endSignIn("ready");
+    if (signingInProviderReady) endSignIn();
   }, [endSignIn, signingInProviderReady]);
 
   const { runningJobKey } = installRunner;
@@ -361,10 +345,6 @@ function AgentStepContainer({
     setSignInFailedProviderId(null);
     signInRequestRef.current += 1;
     const request = signInRequestRef.current;
-    recordTelemetryEvent({
-      name: "onboarding_sign_in",
-      properties: { entry, outcome: "started" },
-    });
     const title = `Sign in to ${state.displayName}`;
     await closeAbandonedSignInTerminals({ hostId, title });
     let session: TerminalSession;
@@ -377,17 +357,9 @@ function AgentStepContainer({
         target: { kind: "host_path", hostId, cwd: null },
       });
     } catch {
-      recordTelemetryEvent({
-        name: "onboarding_sign_in",
-        properties: { entry, outcome: "failed" },
-      });
       return;
     }
     if (signInRequestRef.current !== request) {
-      recordTelemetryEvent({
-        name: "onboarding_sign_in",
-        properties: { entry, outcome: "cancelled" },
-      });
       void sdk.terminals
         .close({ mode: "force", terminalId: session.id })
         .catch(() => null);
@@ -411,7 +383,7 @@ function AgentStepContainer({
     if (hostId === null || status === undefined) return;
     const issue = buildProviderCliIssue({ provider: providerId, status });
     if (issue === null || !hasProviderCliAction(issue)) return;
-    installRunner.startInstall({ hostId, issue, onboardingEntry: entry });
+    installRunner.startInstall({ hostId, issue });
   };
 
   const viewInstallLog = (providerId: string) => {
@@ -697,12 +669,10 @@ function PluginCardContainer({
   entry,
   enabled,
   onChanged,
-  onSelected,
 }: {
   entry: PluginCatalogSearchEntry;
   enabled: boolean;
   onChanged: () => Promise<void>;
-  onSelected: () => void;
 }) {
   const queryClient = useQueryClient();
   const setPluginEnabled = useSetPluginEnabled();
@@ -724,7 +694,6 @@ function PluginCardContainer({
   }, [busy, settling]);
 
   const toggle = async (next: boolean) => {
-    if (next) onSelected();
     setTarget(next);
     setWorking(true);
     try {
@@ -811,36 +780,6 @@ function PluginsStepContainer({
     });
   }, [catalogQuery.data?.entries]);
 
-  const [recommendationIds] = useState(() => new Map<string, string>());
-  const recordRecommendation = useCallback(
-    (pluginId: string, action: "shown" | "selected") => {
-      let recommendationId = recommendationIds.get(pluginId);
-      if (recommendationId === undefined) {
-        recommendationId = nanoid();
-        recommendationIds.set(pluginId, recommendationId);
-      }
-      recordTelemetryEvent({
-        name: "recommendation",
-        properties: {
-          resource_type: "plugin",
-          resource_id: pluginId,
-          recommendation_id: recommendationId,
-          action,
-          surface: "onboarding",
-          entry: onboardingEntry,
-        },
-      });
-    },
-    [onboardingEntry, recommendationIds],
-  );
-  useEffect(() => {
-    for (const entry of entries ?? []) {
-      if (!recommendationIds.has(entry.pluginId)) {
-        recordRecommendation(entry.pluginId, "shown");
-      }
-    }
-  }, [entries, recommendationIds, recordRecommendation]);
-
   return (
     <OnboardingLayout
       {...chrome}
@@ -869,9 +808,6 @@ function PluginsStepContainer({
                   false)
               }
               onChanged={refresh}
-              onSelected={() =>
-                recordRecommendation(entry.pluginId, "selected")
-              }
             />
           ))
         )}
@@ -895,9 +831,7 @@ function DevicesStepContainer({
   onFinish: () => void;
   onLeave: () => void;
 }) {
-  const configQuery = useSystemConfig();
   const hostsQuery = useHosts();
-  const [connectSetupOpen, setConnectSetupOpen] = useState(false);
   const [addMachineOpen, setAddMachineOpen] = useState(false);
   const location = useLocation();
   const [initialPathname] = useState(location.pathname);
@@ -908,42 +842,6 @@ function DevicesStepContainer({
   const otherMachineCount = (hostsQuery.data ?? []).filter(
     (host) => host.id !== hostId,
   ).length;
-  const connect = connectAccessUrl(configQuery.data?.serverAccess);
-  const connectedMachineCount = hostsQuery.data?.filter(
-    (host) => host.id !== hostId && host.status === "connected",
-  ).length;
-  const pendingSetup = useRef<{
-    remoteAccess: boolean;
-    machinesBefore: number | null;
-  }>({ remoteAccess: false, machinesBefore: null });
-  const recordDeviceSetup = useCallback(
-    (
-      operation: "remote_access" | "add_machine",
-      outcome: "started" | "succeeded",
-    ) =>
-      recordTelemetryEvent({
-        name: "onboarding_operation",
-        properties: { entry, step: "devices", operation, outcome },
-      }),
-    [entry],
-  );
-  useEffect(() => {
-    if (connect.status !== "on" || !pendingSetup.current.remoteAccess) return;
-    pendingSetup.current.remoteAccess = false;
-    recordDeviceSetup("remote_access", "succeeded");
-  }, [connect.status, recordDeviceSetup]);
-  useEffect(() => {
-    const before = pendingSetup.current.machinesBefore;
-    if (
-      before === null ||
-      connectedMachineCount === undefined ||
-      connectedMachineCount <= before
-    ) {
-      return;
-    }
-    pendingSetup.current.machinesBefore = null;
-    recordDeviceSetup("add_machine", "succeeded");
-  }, [connectedMachineCount, recordDeviceSetup]);
 
   return (
     <OnboardingLayout
@@ -956,33 +854,8 @@ function DevicesStepContainer({
       onBack={onBack}
     >
       <DevicesStep
-        connect={connect}
-        connectSetup={<PluginSettingsSections pluginId={CONNECT_PLUGIN_ID} />}
-        connectSetupOpen={connectSetupOpen}
         otherMachineCount={otherMachineCount}
-        mobileLinks={mobileAppDownloads}
-        onToggleConnectSetup={() => {
-          if (
-            !connectSetupOpen &&
-            connect.status === "off" &&
-            !pendingSetup.current.remoteAccess
-          ) {
-            pendingSetup.current.remoteAccess = true;
-            recordDeviceSetup("remote_access", "started");
-          }
-          setConnectSetupOpen((open) => !open);
-        }}
-        onCopyConnectUrl={(url) => void copyToClipboardWithToast(url)}
-        onAddMachine={() => {
-          if (
-            connectedMachineCount !== undefined &&
-            pendingSetup.current.machinesBefore === null
-          ) {
-            pendingSetup.current.machinesBefore = connectedMachineCount;
-            recordDeviceSetup("add_machine", "started");
-          }
-          setAddMachineOpen(true);
-        }}
+        onAddMachine={() => setAddMachineOpen(true)}
       />
       <AddMachineDialog
         open={addMachineOpen}
@@ -1019,108 +892,16 @@ export function OnboardingFlow({
   }
   const primaryHost = usePrimaryHost();
   const hostId = primaryHost?.id ?? null;
-  const reposQuery = useHostDiscoveredRepos(hostId);
-  const { dataUpdatedAt, errorUpdatedAt } = reposQuery;
-  const foundCount = reposQuery.data?.repos.length;
-  useEffect(() => {
-    if (dataUpdatedAt === 0) return;
-    recordTelemetryEvent({
-      name: "onboarding_operation",
-      properties: {
-        entry,
-        step: "projects",
-        operation: "scan",
-        outcome: "succeeded",
-        item_count: foundCount,
-      },
-    });
-  }, [dataUpdatedAt, entry, foundCount]);
-  useEffect(() => {
-    if (errorUpdatedAt === 0) return;
-    recordTelemetryEvent({
-      name: "onboarding_operation",
-      properties: {
-        entry,
-        step: "projects",
-        operation: "scan",
-        outcome: "failed",
-      },
-    });
-  }, [entry, errorUpdatedAt]);
-  const agentStatesQuery = useSystemProviderStates({
+  useHostDiscoveredRepos(hostId);
+  useSystemProviderStates({
     enabled: hostId !== null,
     poll: false,
     ...(hostId === null ? {} : { hostId }),
   });
-  const agentStates = agentStatesQuery.data?.providers;
-  const agentStateRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (agentStates === undefined && !agentStatesQuery.isError) return;
-    const knownStates = agentStatesQuery.isError ? undefined : agentStates;
-    const hasUnknown =
-      knownStates?.some((state) => state.status === "unknown") ?? true;
-    const installed =
-      knownStates?.some(
-        (state) =>
-          state.status !== "not_installed" && state.status !== "unknown",
-      ) ?? false;
-    const properties = {
-      entry,
-      agent_installed: installed ? true : hasUnknown ? null : false,
-      agent_ready: hasReadyAgent(knownStates)
-        ? true
-        : hasUnknown
-          ? null
-          : false,
-    };
-    const key = JSON.stringify(properties);
-    if (agentStateRef.current === key) return;
-    agentStateRef.current = key;
-    recordTelemetryEvent({ name: "onboarding_agent_state", properties });
-  }, [agentStates, agentStatesQuery.isError, entry]);
-  const startReportedRef = useRef(entry !== "first_run");
-  useEffect(() => {
-    if (startReportedRef.current || agentStates === undefined) return;
-    startReportedRef.current = true;
-    recordTelemetryEvent({
-      name: "onboarding_started",
-      properties: {
-        agent_installed: agentStates.some(
-          (state) =>
-            state.status !== "not_installed" && state.status !== "unknown",
-        ),
-        agent_ready: hasReadyAgent(agentStates),
-      },
-    });
-  }, [agentStates]);
-  const reachedStepsRef = useRef(new Set<OnboardingStepId>());
-  useEffect(() => {
-    if (reachedStepsRef.current.has(step)) return;
-    reachedStepsRef.current.add(step);
-    recordTelemetryEvent({
-      name: "onboarding_step_reached",
-      properties: { step, entry },
-    });
-  }, [entry, step]);
   const finishedRef = useRef(false);
-  const close = (outcome: "completed" | "skipped") => {
+  const close = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    if (outcome === "skipped") {
-      recordTelemetryEvent({
-        name: "onboarding_step_skipped",
-        properties: { step, entry },
-      });
-    } else {
-      recordTelemetryEvent({
-        name: "onboarding_step_completed",
-        properties: { step, entry },
-      });
-    }
-    recordTelemetryEvent({
-      name: "onboarding_finished",
-      properties: { outcome, entry, last_step: step },
-    });
     onClose();
   };
   const compact = useMediaQuery("(max-width: 640px)");
@@ -1133,22 +914,13 @@ export function OnboardingFlow({
       windowState,
     }),
     onSelectStep: setStep,
-    onSkipAll: () => close("skipped"),
+    onSkipAll: close,
   };
   const goTo = (offset: number) => () => {
     const next = STEP_ORDER[STEP_ORDER.indexOf(step) + offset];
     if (next !== undefined) setStep(next);
   };
-  const advance = (outcome: "completed" | "skipped") => () => {
-    recordTelemetryEvent({
-      name:
-        outcome === "completed"
-          ? "onboarding_step_completed"
-          : "onboarding_step_skipped",
-      properties: { step, entry },
-    });
-    goTo(1)();
-  };
+  const advance = goTo(1);
 
   switch (step) {
     case "agent":
@@ -1158,9 +930,7 @@ export function OnboardingFlow({
           entry={entry}
           hostId={hostId}
           hostName={primaryHost?.name ?? null}
-          onContinue={advance(
-            hasReadyAgent(agentStates) ? "completed" : "skipped",
-          )}
+          onContinue={advance}
         />
       );
     case "projects":
@@ -1171,8 +941,8 @@ export function OnboardingFlow({
           hostId={hostId}
           projectIdsAtOpen={projectIdsAtOpen}
           onBack={goTo(-1)}
-          onContinue={advance("completed")}
-          onSkip={advance("skipped")}
+          onContinue={advance}
+          onSkip={advance}
         />
       );
     case "plugins":
@@ -1181,8 +951,8 @@ export function OnboardingFlow({
           chrome={chrome}
           entry={entry}
           onBack={goTo(-1)}
-          onContinue={advance("completed")}
-          onSkip={advance("skipped")}
+          onContinue={advance}
+          onSkip={advance}
         />
       );
     case "devices":
@@ -1192,8 +962,8 @@ export function OnboardingFlow({
           entry={entry}
           hostId={hostId}
           onBack={goTo(-1)}
-          onFinish={() => close("completed")}
-          onLeave={() => close("skipped")}
+          onFinish={close}
+          onLeave={close}
         />
       );
   }

@@ -13,6 +13,25 @@ import { getMachineProvider } from "../plugins/plugin-machine-provider-registry.
 
 type Dependencies = Pick<WorkSessionDeps, "db" | "hub" | "logger">;
 
+const RETIRED_SERVER_ACCESS_PROVIDER_IDS: ReadonlySet<string> = new Set([
+  "connect",
+]);
+
+export const RETIRED_CONNECT_ACCESS_NOTICE =
+  "bb connect is no longer available in Foundry, so new machines use the server URL below. Machines that were added through bb connect need to be reconnected with that URL.";
+
+const RETIRED_CONNECT_ACCESS_SETUP_MESSAGE =
+  "This machine was added through bb connect, which Foundry no longer supports. Set a server URL reachable by machines, then reconnect it.";
+
+function isRetiredProvider(providerId: string): boolean {
+  return (
+    RETIRED_SERVER_ACCESS_PROVIDER_IDS.has(providerId) &&
+    !listServerAccessProviders().some(
+      (record) => record.provider.id === providerId,
+    )
+  );
+}
+
 const reachableUrlSchema = z
   .string()
   .url()
@@ -82,12 +101,16 @@ function serverAccessConfiguration(deps: Dependencies) {
     pluginId: null,
   });
   const configured = getAppSettings(deps.db).defaultMachineAccess;
-  const defaultProviderId = configured ?? records[0]?.provider.id ?? "direct";
+  const retiredDefault = configured !== null && isRetiredProvider(configured);
+  const defaultProviderId = retiredDefault
+    ? "direct"
+    : (configured ?? records[0]?.provider.id ?? "direct");
   return {
     providers,
     defaultProviderId,
     effectiveUrl: direct.url,
     urlSource: direct.source,
+    notice: retiredDefault ? RETIRED_CONNECT_ACCESS_NOTICE : null,
   };
 }
 
@@ -152,12 +175,19 @@ async function resolve(
   if (!host || host.destroyedAt !== null)
     throw new Error("Machine identity is unavailable");
   const status = serverAccessConfiguration(deps);
-  const providerId = host.serverAccessProviderId ?? status.defaultProviderId;
+  const storedProviderId =
+    host.serverAccessProviderId ?? status.defaultProviderId;
+  const retiredRoute = isRetiredProvider(storedProviderId);
+  const providerId = retiredRoute ? "direct" : storedProviderId;
   let grant: ServerAccessGrant;
   if (providerId === "direct") {
     const serverUrl = status.effectiveUrl;
     if (serverUrl === null)
-      throw new Error("Set a server URL reachable by machines");
+      throw new Error(
+        retiredRoute
+          ? RETIRED_CONNECT_ACCESS_SETUP_MESSAGE
+          : "Set a server URL reachable by machines",
+      );
     grant = { id: args.hostId, serverUrl };
   } else {
     const record = listServerAccessProviders().find(
@@ -221,6 +251,7 @@ async function resolve(
     }
   }
   if (
+    !retiredRoute &&
     host.serverAccessGrantId !== null &&
     host.serverAccessGrantId !== grant.id
   ) {
@@ -249,7 +280,7 @@ async function release(
   const providerId = host.serverAccessProviderId;
   const grantId = host.serverAccessGrantId;
   if (providerId === null) return;
-  if (providerId !== "direct") {
+  if (providerId !== "direct" && !isRetiredProvider(providerId)) {
     const record = listServerAccessProviders().find(
       (entry) => entry.provider.id === providerId,
     );

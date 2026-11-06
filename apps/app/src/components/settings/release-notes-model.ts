@@ -86,7 +86,7 @@ function isSameMinorRelease(left: string, right: string): boolean {
   return leftMajor === rightMajor && leftMinor === rightMinor;
 }
 
-function findEntryCoveringRelease(
+export function findReleaseEntry(
   version: string,
   entries: readonly ChangelogEntry[],
 ): ChangelogEntry | null {
@@ -110,17 +110,4 @@ function findEntryCoveringRelease(
     }
   }
   return covering;
-}
-
-export function findReleaseEntry(
-  version: string,
-  fetchedEntries: readonly ChangelogEntry[] | undefined,
-  bundledEntries: readonly ChangelogEntry[],
-): ChangelogEntry | null {
-  return (
-    (fetchedEntries === undefined
-      ? null
-      : findEntryCoveringRelease(version, fetchedEntries)) ??
-    findEntryCoveringRelease(version, bundledEntries)
-  );
 }

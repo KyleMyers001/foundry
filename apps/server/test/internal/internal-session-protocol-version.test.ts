@@ -42,7 +42,6 @@ describe("internal session protocol version", () => {
               hostId,
               instanceId: `instance-${phase}`,
               hostName: "Paused Host",
-              hasMachineCredential: true,
               platform: "linux",
               dataDir: `/tmp/${hostId}`,
               localApiPort: 38_888,
@@ -88,7 +87,6 @@ describe("internal session protocol version", () => {
           hostId,
           instanceId: "instance-resuming",
           hostName: "Resuming Host",
-          hasMachineCredential: true,
           platform: "linux",
           dataDir: `/tmp/${hostId}`,
           localApiPort: 38_888,
@@ -137,7 +135,7 @@ describe("internal session protocol version", () => {
             platform: "darwin",
             dataDir: "/tmp/host-protocol-data",
             localApiPort: 38_888,
-            protocolVersion: 188,
+            protocolVersion: 258,
             activeThreads: [],
             undeliveredEventThreadIds: [],
             loadedEnvironments: [],
@@ -151,11 +149,11 @@ describe("internal session protocol version", () => {
           retryUpdate: false,
           serverProtocolVersion: HOST_DAEMON_PROTOCOL_VERSION,
         },
-        message: `Daemon protocol version 188 does not match server protocol version ${HOST_DAEMON_PROTOCOL_VERSION}`,
+        message: `Daemon protocol version 258 does not match server protocol version ${HOST_DAEMON_PROTOCOL_VERSION}`,
       });
       expect(
         getHost(server.db, "host-protocol")?.lastRejectedProtocolVersion,
-      ).toBe(188);
+      ).toBe(258);
 
       const preLocalApiPortProtocolVersion = 139;
       const oldDaemonResponse = await fetch(
@@ -198,7 +196,6 @@ describe("internal session protocol version", () => {
           hostId: "host-protocol",
           instanceId: "instance-1",
           hostName: "Protocol Host",
-          hasMachineCredential: false,
           platform: "darwin",
           dataDir: "/tmp/host-protocol-data",
           localApiPort: 38_888,
@@ -235,7 +232,6 @@ describe("internal session protocol version", () => {
           hostId: "host-protocol",
           instanceId: "instance-retry",
           hostName: "Protocol Host",
-          hasMachineCredential: false,
           platform: "darwin",
           dataDir: "/tmp/host-protocol-data",
           localApiPort: 38_888,
@@ -254,7 +250,6 @@ describe("internal session protocol version", () => {
           hostId: "host-protocol",
           instanceId: "instance-retry-consumed",
           hostName: "Protocol Host",
-          hasMachineCredential: false,
           platform: "darwin",
           dataDir: "/tmp/host-protocol-data",
           localApiPort: 38_888,
@@ -273,7 +268,6 @@ describe("internal session protocol version", () => {
           hostId: "host-protocol",
           instanceId: "instance-2",
           hostName: "Protocol Host",
-          hasMachineCredential: false,
           platform: "darwin",
           dataDir: "/tmp/host-protocol-data",
           localApiPort: 38_888,

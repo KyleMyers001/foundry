@@ -55,7 +55,7 @@ function status(
     current: { commit: null, version: "1.1.0" },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
     ...overrides,
   };
 }

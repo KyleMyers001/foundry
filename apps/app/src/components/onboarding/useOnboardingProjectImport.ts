@@ -3,10 +3,7 @@ import { isPromptDraftEmpty } from "@bb/client-core";
 import { useCreateProject } from "@/hooks/mutations/project-mutations";
 import { usePromptDraftController } from "@/hooks/usePromptDraftStorage";
 import { useImportedProjectDefault } from "@/lib/root-compose-selection";
-import {
-  recordTelemetryEvent,
-  type OnboardingEntry,
-} from "./onboarding-telemetry";
+import type { OnboardingEntry } from "./onboarding-model";
 
 export function useOnboardingProjectImport({
   entry,
@@ -51,20 +48,6 @@ export function useOnboardingProjectImport({
     if (importing || !lifetime?.active) return;
     setImporting(true);
     let lastImportedProjectId: string | null = null;
-    let succeededCount = 0;
-    const recordOutcome = (outcome: "started" | "succeeded" | "failed") =>
-      recordTelemetryEvent({
-        name: "onboarding_operation",
-        properties: {
-          entry,
-          step: "projects",
-          operation: "import",
-          outcome,
-          item_count: repos.length,
-          succeeded_count: succeededCount,
-        },
-      });
-    recordOutcome("started");
     try {
       for (const repo of repos) {
         if (!lifetime.active) return;
@@ -73,11 +56,8 @@ export function useOnboardingProjectImport({
           source: { type: "local_path", hostId, path: repo.path },
         });
         lastImportedProjectId = project.id;
-        succeededCount += 1;
       }
-      recordOutcome("succeeded");
     } catch {
-      recordOutcome("failed");
       return;
     } finally {
       if (lifetime.active) {
