@@ -158,53 +158,44 @@ describe("createServerClient", () => {
     },
   );
 
-  it.each([
-    {
-      serverHeaders: { "x-bb-connect-machine": "bbcm_machine" },
-      hasMachineCredential: true,
-    },
-    { serverHeaders: undefined, hasMachineCredential: false },
-  ])(
-    "reports live machine-credential capability as $hasMachineCredential",
-    async ({ serverHeaders, hasMachineCredential }) => {
-      const fetchFn = vi.fn<FetchFn>(async (_input, init) => {
-        expect(JSON.parse(String(init?.body))).toMatchObject({
-          hasMachineCredential,
-          localApiPort: 38_888,
-        });
-        return Response.json(
-          {
-            sessionId: "session-1",
-            machineEnvironment: { revision: 0, entries: [] },
-            idleProviderSessionTimeoutMinutes: 30,
-            heartbeatIntervalMs: 5_000,
-            leaseTimeoutMs: 30_000,
-          },
-          { status: 201 },
-        );
-      });
-      const client = createServerClient({
-        fetchFn,
-        getSessionId: () => "session-1",
-        hostKey: "host-key",
-        logger: createLogger(),
-        ...(serverHeaders !== undefined ? { serverHeaders } : {}),
-        serverUrl: "https://bb.example.test",
-      });
+  it("opens a session with generic proxy headers and no bb connect capability", async () => {
+    const fetchFn = vi.fn<FetchFn>(async (_input, init) => {
+      expect(new Headers(init?.headers).get("x-proxy-auth")).toBe("kept");
+      const body: unknown = JSON.parse(String(init?.body));
+      expect(body).toMatchObject({ localApiPort: 38_888 });
+      expect(body).not.toHaveProperty("hasMachineCredential");
+      return Response.json(
+        {
+          sessionId: "session-1",
+          machineEnvironment: { revision: 0, entries: [] },
+          idleProviderSessionTimeoutMinutes: 30,
+          heartbeatIntervalMs: 5_000,
+          leaseTimeoutMs: 30_000,
+        },
+        { status: 201 },
+      );
+    });
+    const client = createServerClient({
+      fetchFn,
+      getSessionId: () => "session-1",
+      hostKey: "host-key",
+      logger: createLogger(),
+      serverHeaders: { "x-proxy-auth": "kept" },
+      serverUrl: "https://bb.example.test",
+    });
 
-      await client.openSession({
-        hostId: "host-1",
-        hostName: "Host",
-        dataDir: "/tmp/bb",
-        instanceId: "instance-1",
-        localApiPort: 38_888,
-        activeThreads: [],
-        undeliveredEventThreadIds: [],
-        loadedEnvironments: [],
-      });
-      expect(fetchFn).toHaveBeenCalledOnce();
-    },
-  );
+    await client.openSession({
+      hostId: "host-1",
+      hostName: "Host",
+      dataDir: "/tmp/bb",
+      instanceId: "instance-1",
+      localApiPort: 38_888,
+      activeThreads: [],
+      undeliveredEventThreadIds: [],
+      loadedEnvironments: [],
+    });
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
 
   it("refuses to fetch project attachments over insecure non-loopback HTTP", async () => {
     const fetchFn = vi.fn<FetchFn>();

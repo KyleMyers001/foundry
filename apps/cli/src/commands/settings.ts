@@ -45,7 +45,7 @@ interface AiServiceSetOptions extends JsonOptions {
 
 function describeCliCommandStatus(status: SystemCliCommandStatus): string {
   if (!status.supported) {
-    return "The bb CLI can be installed for use outside bb only by an installed bb. Start bb with npx bb-app or the desktop app.";
+    return "The bb CLI can be installed for use outside bb only by an installed bb, such as the Foundry desktop app. A source checkout does not offer this.";
   }
   if (status.installedPath !== null) {
     return status.onPath
@@ -143,6 +143,7 @@ function describeAiSelection(
 }
 
 function printAiServices(view: SystemAiServicesResponse): void {
+  if (view.notice !== null) console.log(`${view.notice}\n`);
   for (const task of AI_TASKS) {
     const selection = view.selections[task];
     const automatic =
@@ -647,36 +648,6 @@ export function registerSettingsCommands(
         ).system.uiPreferences.reset({ key });
         if (outputJson(opts, result)) return;
         console.log(`${key} reset`);
-      }),
-    );
-
-  settings
-    .command("mobile-app")
-    .description("Show iOS TestFlight and Android APK download links")
-    .option("--details", "Include available public release metadata")
-    .option("--json", "Print machine-readable JSON output")
-    .action(
-      action(async (opts: JsonOptions & { details?: boolean }) => {
-        const system = createCliBbSdk(getUrl()).system;
-        const links = system.mobileAppDownloads();
-        if (opts.details) {
-          const releases = await system.mobileAppReleases();
-          if (outputJson(opts, { downloads: links, releases })) return;
-          console.log(
-            `iOS TestFlight: ${links.ios}\nAndroid APK: ${links.android}`,
-          );
-          console.log(
-            releases.android
-              ? `Android ${releases.android.version} (build ${releases.android.versionCode}) · Updated ${releases.android.updatedAt} · ${Math.ceil(releases.android.size / 1024 / 1024)} MB`
-              : "Android release details are unavailable.",
-          );
-          console.log("iOS version and release date are shown in TestFlight.");
-          return;
-        }
-        if (outputJson(opts, links)) return;
-        console.log(
-          `iOS TestFlight: ${links.ios}\nAndroid APK: ${links.android}`,
-        );
       }),
     );
 

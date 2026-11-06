@@ -190,8 +190,10 @@ function unsupportedAppUpdateMessage(status: SystemAppUpdateStatus): string {
       return "In-app updates are unavailable in development mode.";
     case "desktop":
       return "The desktop app updates itself; use its update controls.";
+    case "manual":
+      return "This install updates manually. Download the latest Foundry release from https://github.com/KyleMyers001/foundry/releases/latest.";
     case "unmanaged":
-      return "In-app updates are off. Start bb with `npx bb-app start` or `pnpm start`, without `--no-in-app-updates`, to turn them on.";
+      return "In-app updates are off. Start Foundry from its source checkout with `pnpm start`, without `--no-in-app-updates`, to turn them on.";
   }
 }
 
@@ -236,11 +238,7 @@ function appRowFromStatus(args: {
             ? `${UPDATE_STATE_PRESENTATION["latest-unknown"].label} (${appUpdate.blocked.message})`
             : appUpdate.blocked !== null
               ? `${UPDATE_STATE_PRESENTATION["update-manually"].label} (${appUpdate.blocked.message})`
-              : appUpdate.support.kind === "supported" &&
-                  appUpdate.support.mode === "npm" &&
-                  version.latestVersion === null
-                ? UPDATE_STATE_PRESENTATION["latest-unknown"].label
-                : UPDATE_STATE_PRESENTATION["up-to-date"].label
+              : UPDATE_STATE_PRESENTATION["up-to-date"].label
           : appUpdate.blocked !== null
             ? `${UPDATE_STATE_PRESENTATION["update-available"].label} (blocked: ${appUpdate.blocked.message})`
             : `${UPDATE_STATE_PRESENTATION["update-available"].label} (run: bb updates app apply)`;
@@ -259,17 +257,8 @@ function appRowFromStatus(args: {
   }
   const appState = version.isDevelopment
     ? "development mode"
-    : version.updateAvailable
-      ? `${UPDATE_STATE_PRESENTATION["update-available"].label} (run: ${version.upgradeCommand})`
-      : version.latestVersion === null
-        ? UPDATE_STATE_PRESENTATION["latest-unknown"].label
-        : UPDATE_STATE_PRESENTATION["up-to-date"].label;
-  const appVersionLabel =
-    version.latestVersion !== null &&
-    version.latestVersion !== version.currentVersion
-      ? `${version.currentVersion} -> ${version.latestVersion}`
-      : version.currentVersion;
-  return ["bb-app", appVersionLabel, appState];
+    : `Manual updates: ${version.releasesUrl}`;
+  return ["bb-app", version.currentVersion, appState];
 }
 
 function printAppUpdateStatus(status: SystemAppUpdateStatus): void {

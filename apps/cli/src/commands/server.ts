@@ -1,16 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
 import { open, rename, rm, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { Command } from "commander";
 import { formatServerDataSize } from "@bb/domain";
-import {
-  deleteOldServerCopy,
-  readServerMovedFile,
-  removeServerConnectHoldFile,
-  SERVER_CONNECT_HOLD_FILE_NAME,
-} from "@bb/server-archive";
+import { deleteOldServerCopy, readServerMovedFile } from "@bb/server-archive";
 import type { ServerMoveStatus } from "@bb/server-contract";
 import { action, CliExitError } from "../action.js";
 import { createCliBbSdk } from "../client.js";
@@ -81,14 +75,8 @@ const SERVER_EXPORT_UNENCRYPTED_WARNING =
 
 function startServerHint(dataDir: string): string {
   return isDefaultDataDir(dataDir)
-    ? "npx bb-app or the desktop app"
-    : `npx bb-app --data-dir ${dataDir}`;
-}
-
-function allowConnectCommand(dataDir: string): string {
-  return isDefaultDataDir(dataDir)
-    ? "bb server allow-connect"
-    : `bb server allow-connect --data-dir ${dataDir}`;
+    ? "pnpm start or the desktop app"
+    : `pnpm start --data-dir ${dataDir}`;
 }
 
 const STOPPED_FOLLOWING_MESSAGE =
@@ -428,10 +416,7 @@ export function registerServerCommands(
         );
         console.log("");
         console.log(
-          "Stop the original bb server before you start this one. Two servers holding the same bb connect credential take each other's tunnel.",
-        );
-        console.log(
-          `bb connect stays off in this copy until you run ${allowConnectCommand(dataDir)}.`,
+          "Stop the original bb server before you start this one. Two servers running the same data would both drive the same machines.",
         );
         console.log(`Then start it with ${startServerHint(dataDir)}.`);
       }),
@@ -478,12 +463,12 @@ export function registerServerCommands(
           const probe = await probeMovedServer({ dataDir, lock });
           if (probe.kind === "running") {
             throw new Error(
-              `The server at ${lock.serverUrl} is running. Unlocking now would run two servers with the same data and bb connect credential. Stop it first, or pass --force.`,
+              `The server at ${lock.serverUrl} is running. Unlocking now would run two servers with the same data. Stop it first, or pass --force.`,
             );
           }
-          if (probe.kind === "unconfirmed") {
+          if (probe.kind === "unchecked") {
             console.error(
-              `Couldn't confirm whether the server at ${lock.serverUrl} is running (HTTP ${String(probe.status)}). Make sure it is stopped before this old copy starts.`,
+              `This copy moved through bb connect, which Foundry no longer contacts, so whether ${lock.serverUrl} is running wasn't checked. Make sure it is stopped before this old copy starts.`,
             );
           }
         }
@@ -494,7 +479,7 @@ export function registerServerCommands(
           `Unlocking starts this old copy again. Everything since the move is lost here: threads, settings, and plugin data changed on ${lock.toHostName} stay there.`,
         );
         console.error(
-          `Stop the bb server on ${lock.toHostName} first. Two servers holding the same bb connect credential take each other's tunnel.`,
+          `Stop the bb server on ${lock.toHostName} first. Two servers running the same data would both drive the same machines.`,
         );
         if (
           !opts.yes &&
@@ -544,45 +529,6 @@ export function registerServerCommands(
         if (outputJson(opts, result)) return;
         console.log(
           `This computer now stays connected to ${result.toHostName} as a machine, even when bb is closed. The service updates bb whenever the server does.`,
-        );
-      }),
-    );
-
-  server
-    .command("allow-connect")
-    .description(
-      "Let bb account and bb connect start from an imported server copy (does not call a server)",
-    )
-    .option(
-      "--data-dir <dir>",
-      "Data directory of the imported server (default: BB_DATA_DIR or ~/.bb)",
-    )
-    .option("--yes", "Skip the confirmation prompt")
-    .option("--json", "Print machine-readable JSON output")
-    .action(
-      action(async (opts: LocalServerCommandOptions) => {
-        const dataDir = resolveLocalDataDir(opts.dataDir);
-        if (!existsSync(join(dataDir, SERVER_CONNECT_HOLD_FILE_NAME))) {
-          if (!outputJson(opts, { dataDir, connectHoldRemoved: false })) {
-            console.log(`${dataDir} has no bb connect hold.`);
-          }
-          return;
-        }
-        console.error(
-          "Stop the original bb server first. Two servers holding the same bb account credential take each other's tunnel and spend the same hosted quota.",
-        );
-        if (
-          !opts.yes &&
-          !(await confirmDestructiveAction(
-            `Let bb account and bb connect start from the imported bb server in ${dataDir}?`,
-          ))
-        ) {
-          return;
-        }
-        const connectHoldRemoved = await removeServerConnectHoldFile(dataDir);
-        if (outputJson(opts, { dataDir, connectHoldRemoved })) return;
-        console.log(
-          `Removed the bb connect hold from ${dataDir}. bb account and bb connect start the next time this server starts; restart bb if it's already running.`,
         );
       }),
     );

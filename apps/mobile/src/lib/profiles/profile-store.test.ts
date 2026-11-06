@@ -21,12 +21,19 @@ const direct = {
   serverUrl: "http://127.0.0.1:20304",
   label: "Simulator",
 };
-const connect = {
+const lan = {
+  mode: "direct" as const,
+  serverUrl: "https://desk.example.ts.net",
+  label: "Desk",
+};
+const retiredConnect = {
   mode: "connect" as const,
   serverUrl: "https://bee.getbb.app",
   label: "bee",
   handle: "bee",
   credential: "bbcm_secret",
+  id: "retired",
+  createdAt: 1,
 };
 
 describe("profile store", () => {
@@ -34,7 +41,7 @@ describe("profile store", () => {
     const { store, storage } = makeStore();
     await store.load();
     const a = await store.addProfile(direct);
-    const b = await store.addProfile(connect);
+    const b = await store.addProfile(lan);
 
     expect(store.getSnapshot()).toMatchObject({
       status: "ready",
@@ -48,7 +55,7 @@ describe("profile store", () => {
       },
     );
     expect(JSON.parse(storage.entries.get(profileStorageKey(b.id))!)).toEqual({
-      ...connect,
+      ...lan,
       id: b.id,
       createdAt: 1_700_000_000_000,
     });
@@ -57,7 +64,7 @@ describe("profile store", () => {
   it("reloads from storage in a fresh store", async () => {
     const { store, storage } = makeStore();
     const a = await store.addProfile(direct);
-    const b = await store.addProfile(connect);
+    const b = await store.addProfile(lan);
     await store.setActiveProfile(b.id);
 
     const { store: reloaded } = makeStore(storage);
@@ -70,7 +77,7 @@ describe("profile store", () => {
   it("removeProfile deletes the key, heals the active id, and notifies listeners", async () => {
     const { store, storage } = makeStore();
     const a = await store.addProfile(direct);
-    const b = await store.addProfile(connect);
+    const b = await store.addProfile(lan);
     let notified = 0;
     store.subscribe(() => notified++);
 
@@ -90,32 +97,78 @@ describe("profile store", () => {
     );
   });
 
-  it("updateProfile validates the result and keeps mode-specific fields honest", async () => {
+  it("updateProfile validates the result", async () => {
     const { store } = makeStore();
     const a = await store.addProfile(direct);
-    const c = await store.addProfile(connect);
 
     const renamed = await store.updateProfile(a.id, { label: "Mac" });
     expect(renamed).toEqual({ ...a, label: "Mac" });
-    await expect(
-      store.updateProfile(a.id, { credential: "bbcm_x" }),
-    ).rejects.toThrow(/Direct profiles/);
-    await expect(store.updateProfile(a.id, { label: "" })).rejects.toThrow();
-
-    const rotated = await store.updateProfile(c.id, {
-      credential: "bbcm_new",
+    const moved = await store.updateProfile(a.id, {
+      serverUrl: "https://mac.example.ts.net",
       label: undefined,
     });
-    expect(rotated).toEqual({ ...c, credential: "bbcm_new" });
+    expect(moved).toEqual({
+      ...a,
+      label: "Mac",
+      serverUrl: "https://mac.example.ts.net",
+    });
+    await expect(store.updateProfile(a.id, { label: "" })).rejects.toThrow();
     await expect(store.updateProfile("nope", { label: "x" })).rejects.toThrow(
       /Unknown/,
     );
   });
 
+  it("keeps a saved bb connect profile, its secret and its index entry on load without rewriting them", async () => {
+    const index = JSON.stringify({
+      ids: ["good", "retired"],
+      activeProfileId: "retired",
+    });
+    const saved = JSON.stringify(retiredConnect);
+    const storage = createMemorySecureStorage({
+      [PROFILE_INDEX_STORAGE_KEY]: index,
+      [profileStorageKey("good")]: JSON.stringify({
+        ...direct,
+        id: "good",
+        createdAt: 1,
+      }),
+      [profileStorageKey("retired")]: saved,
+    });
+    const { store } = makeStore(storage);
+    const state = await store.load();
+
+    expect(state.profiles.map((p) => p.id)).toEqual(["good", "retired"]);
+    expect(state.activeProfileId).toBe("retired");
+    expect(state.loadError).toBeNull();
+    expect(storage.entries.get(PROFILE_INDEX_STORAGE_KEY)).toBe(index);
+    expect(storage.entries.get(profileStorageKey("retired"))).toBe(saved);
+  });
+
+  it("refuses to edit a saved bb connect profile and still lets the user remove it", async () => {
+    const storage = createMemorySecureStorage({
+      [PROFILE_INDEX_STORAGE_KEY]: JSON.stringify({
+        ids: ["retired"],
+        activeProfileId: "retired",
+      }),
+      [profileStorageKey("retired")]: JSON.stringify(retiredConnect),
+    });
+    const { store } = makeStore(storage);
+    await store.load();
+
+    await expect(
+      store.updateProfile("retired", { serverUrl: "https://bee.example.com" }),
+    ).rejects.toThrow(/bb connect/);
+    expect(
+      JSON.parse(storage.entries.get(profileStorageKey("retired"))!),
+    ).toEqual(retiredConnect);
+    await store.removeProfile("retired");
+    expect(store.listProfiles()).toEqual([]);
+    expect(storage.entries.has(profileStorageKey("retired"))).toBe(false);
+  });
+
   it("setActiveProfile rejects unknown ids and persists the choice", async () => {
     const { store, storage } = makeStore();
     const a = await store.addProfile(direct);
-    const b = await store.addProfile(connect);
+    const b = await store.addProfile(lan);
     await expect(store.setActiveProfile("ghost")).rejects.toThrow(/Unknown/);
     await store.setActiveProfile(b.id);
     expect(store.getSnapshot().activeProfileId).toBe(b.id);
@@ -158,7 +211,10 @@ describe("profile store", () => {
   it("refuses profiles that would exceed the SecureStore value limit", async () => {
     const { store } = makeStore();
     await expect(
-      store.addProfile({ ...connect, credential: "x".repeat(2100) }),
+      store.addProfile({
+        ...lan,
+        serverUrl: `https://example.com/${"x".repeat(2100)}`,
+      }),
     ).rejects.toThrow(/too large/);
     expect(store.listProfiles()).toEqual([]);
   });
@@ -167,7 +223,7 @@ describe("profile store", () => {
     const { store, storage } = makeStore();
     const [a, b, c] = await Promise.all([
       store.addProfile(direct),
-      store.addProfile(connect),
+      store.addProfile(lan),
       store.addProfile({ ...direct, label: "LAN" }),
     ]);
     expect(

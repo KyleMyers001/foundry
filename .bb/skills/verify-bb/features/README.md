@@ -1,7 +1,7 @@
 # BB verification feature map
 
 This map inventories the features discoverable in this checkout across the
-core app, CLI/SDK, all 28 repository plugins, native clients and hosted services.
+core app, CLI/SDK, the repository plugins, and native clients.
 Each group page has separate recipes with a drive action, observable success,
 source entry points and prerequisites. Shared behaviors can appear in more than
 one recipe because provider/platform behavior needs separate verification.
@@ -10,7 +10,10 @@ one recipe because provider/platform behavior needs separate verification.
 maintenance audit assessed all 348 recipes: **166 passed, 177 partial/blocked,
 and 5 failed**. Another 27 macOS assessments overlap these recipes; iOS variants
 were excluded. See the [audit](../MAINTENANCE.md) and
-[per-recipe ledger](../validation-2026-09-05.json).
+[per-recipe ledger](../validation-2026-09-05.json). Foundry later removed the
+bb account, bb cloud AI, bb connect, hosted website and cloud gateway along
+with their recipe pages; their 2026-09-05 ledger entries remain historical
+evidence, not current coverage, and the group counts below are unchanged.
 
 ## Starting a run
 
@@ -58,9 +61,6 @@ were excluded. See the [audit](../MAINTENANCE.md) and
 | [Fallback question cards](plugin-ask-user-question.md) | 5 | 3 passed, 1 failed, 1 partial/blocked |
 | [Scheduled agent and script automations](plugin-automations.md) | 8 | 8 passed |
 | [Agent concurrency limits](plugin-concurrency-limit.md) | 5 | 4 passed, 1 partial/blocked |
-| [bb account sign-in](plugin-bb-account.md) | 5 | 5 not run |
-| [bb cloud AI](plugin-bb-ai.md) | 5 | 5 not run |
-| [Remote Connect and port sharing](plugin-connect.md) | 7 | 5 passed, 2 partial/blocked |
 | [Custom agent instructions](plugin-custom-instructions.md) | 3 | 2 passed, 1 partial/blocked |
 | [Docs vaults and editing](plugin-docs.md) | 9 | 7 passed, 2 partial/blocked |
 | [GitHub issues and pull requests](plugin-github.md) | 8 | 2 passed, 6 partial/blocked |
@@ -77,7 +77,7 @@ were excluded. See the [audit](../MAINTENANCE.md) and
 | [Pi provider](plugin-provider-pi.md) | 5 | 2 passed, 3 partial/blocked |
 | [Automatic provider retry](plugin-provider-retry.md) | 5 | 5 partial/blocked |
 | [Provider usage limits](plugin-provider-usage.md) | 3 | 2 passed, 1 partial/blocked |
-| [Web, desktop, and mobile notifications](plugin-push-notifications.md) | 6 | 1 passed, 5 partial/blocked |
+| [Web and desktop notifications](plugin-push-notifications.md) | 6 | 1 passed, 5 partial/blocked |
 | [Scheduled messages](plugin-scheduled-send.md) | 5 | 2 passed, 3 partial/blocked |
 | [Secure credential requests](plugin-secrets.md) | 5 | 4 passed, 1 partial/blocked |
 | [Side chats](plugin-side-chat.md) | 4 | 3 passed, 1 partial/blocked |
@@ -91,8 +91,6 @@ were excluded. See the [audit](../MAINTENANCE.md) and
 | --- | --- | --- |
 | [Desktop application](desktop.md) | 12 | 12 partial/blocked |
 | [Native mobile shell](mobile.md) | 12 | 12 partial/blocked |
-| [Hosted website, dashboard, and marketplace](hosted-web.md) | 12 | 5 passed, 7 partial/blocked |
-| [Cloud gateway and tunnel behavior](cloud-gateway.md) | 7 | 4 passed, 3 partial/blocked |
 | [Developer tools, fixtures, and scope boundaries](developer-fixtures.md) | 5 | 2 passed, 3 partial/blocked |
 
 ## Additions outside the dated audit
@@ -108,8 +106,8 @@ the historical desktop results or describe the browser-automation plugin.
 
 - **Compatibility:** legacy app routes and removed manager commands are
   tracked in compatibility-api; they are not additional modern product features.
-- **Developer-only:** demo server, dev launchers, Plugin API tester, Guide, theme
-  workbench and gated mobile diagnostics are explicitly mapped.
+- **Developer-only:** dev launchers, Plugin API tester, Guide, theme workbench
+  and gated mobile diagnostics are explicitly mapped.
 - **Native wrappers:** repeat core web recipes in Electron and the mobile WebView,
   then run native-only recipes. Chromium emulation does not verify Safari/iOS.
 - **Third-party plugins:** code absent from this checkout cannot be enumerated

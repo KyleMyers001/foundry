@@ -1,9 +1,9 @@
 # Releasing Foundry Desktop
 
 Foundry ships one thing: a signed, notarized macOS (Apple silicon) app on
-GitHub Releases. It is not published to npm. `docs/bb-release-process.md`,
-`build-desktop.yml`, and `publish-bb-app.yml` describe upstream bb's process and
-do not apply here.
+GitHub Releases. It is not published to npm. `docs/bb-release-process.md`
+describes upstream bb's process, including its `build-desktop.yml` and
+`publish-bb-app.yml` workflows, which this repository does not include.
 
 ## Set up signing once
 
@@ -88,7 +88,6 @@ applies these defaults at launch unless the variable is already set:
 | `BB_DATA_DIR`         | `~/.foundry`    |
 | `BB_SERVER_PORT`      | `38986`         |
 | `BB_HOST_DAEMON_PORT` | `38987`         |
-| `BB_TELEMETRY`        | `false`         |
 
 An installed bb keeps `~/.bb` and ports `38886` and `38887`, so the two do not
 share threads, projects, or settings. The `bb` CLI inside a Foundry thread comes
@@ -102,5 +101,6 @@ unaffected.
 
 ## Known upstream ties
 
-These are not changed by a release: the plugin marketplace and bb connect still
-default to `getbb.app`, and in-app text and the official plugin logo still say bb.
+These are not changed by a release: in-app text and the official plugin logo
+still say bb, and plugin manifests keep the upstream `getbb.app` `$schema`
+identifiers, which Foundry never fetches.

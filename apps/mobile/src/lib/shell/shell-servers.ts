@@ -5,13 +5,15 @@ export function bridgeServersForProfiles(
   profiles: readonly ServerProfile[],
   activeProfileId: string | null,
 ): BridgeServer[] {
-  return profiles.map((profile) => ({
-    id: profile.id,
-    name: profile.label,
-    origin: new URL(profile.serverUrl).origin,
-    kind: profile.mode === "connect" ? "account" : "custom",
-    active: profile.id === activeProfileId,
-  }));
+  return profiles
+    .filter((profile) => profile.mode === "direct")
+    .map((profile) => ({
+      id: profile.id,
+      name: profile.label,
+      origin: new URL(profile.serverUrl).origin,
+      kind: "custom",
+      active: profile.id === activeProfileId,
+    }));
 }
 
 export function canSwitchToProfile(
@@ -20,6 +22,7 @@ export function canSwitchToProfile(
   id: string,
 ): boolean {
   return (
-    id !== activeProfileId && profiles.some((profile) => profile.id === id)
+    id !== activeProfileId &&
+    profiles.some((profile) => profile.id === id && profile.mode === "direct")
   );
 }

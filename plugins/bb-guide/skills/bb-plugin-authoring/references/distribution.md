@@ -39,7 +39,7 @@ does not cover:
      rewrites `@bb/plugin-sdk` imports; rerunning is a no-op, and you run
      `npm install` after. Never migrate a plugin the user did not ask you to
      migrate.
-3. **`git clone --depth 1 https://github.com/get-bb/bb`** for host behavior or
+3. **`git clone --depth 1 https://github.com/KyleMyers001/foundry`** for host behavior or
    a reference implementation: `packages/plugin-sdk/src/`,
    `apps/server/src/services/plugins/`, `plugins/`, and the provider contract
    in `docs/provider-plugin-api.md` and `docs/provider-bridge-protocol.md`.
@@ -165,7 +165,7 @@ Version 2 ignores unknown fields except inside npm and git source objects,
 where an unknown key is rejected because it would change the installed code.
 A rejected manifest leaves the last catalog bb validated serving. `name` is the
 marketplace's identity and must be unique on the user's machine;
-`bb-official` and `bb-community` are reserved.
+`bb-official` and the retired `bb-community` are reserved.
 Compatibility belongs in each plugin package manifest. Icons are `.svg`,
 `.png`, or `.webp`, either an absolute https URL or a path relative to the
 manifest — bb fetches and validates them server-side and serves them from its
@@ -197,10 +197,11 @@ installing from a marketplace that does not ship with bb, bb resolves and
 shows the true source — including the exact release tag and commit a range
 lands on — so keep your listed URL, subdirectory, and range honest.
 
-Two marketplaces ship with bb. `bb-official` lists the plugins bundled inside
-the app, which install from that local copy with no network fetch; inclusion
-there is a BB release decision. `bb-community` lists public third-party
-plugins; to list one there, use the `submit-a-plugin` skill.
+One marketplace ships with Foundry. `bb-official` lists the plugins bundled
+inside the app, which install from that local copy with no network fetch;
+inclusion there is a release decision. Foundry does not read the upstream
+`bb-community` catalog, so publish third-party plugins through your own
+marketplace or a Git or npm source.
 
 ### Store listing text
 
@@ -210,10 +211,9 @@ the lead paragraph on the detail page. Keep it under about 140 characters.
 State the outcome the user gets.
 
 `PLUGIN_OVERVIEW.md` beside package.json holds the long-form description. The
-detail page shows it in an Overview section under the lead paragraph, in the
-app and on the public getbb.app marketplace. `bb plugin new` scaffolds one, the
-BB Community marketplace requires one, and a plugin that is only installed from
-a local path or a private source still reads better with one.
+detail page shows it in an Overview section under the lead paragraph.
+`bb plugin new` scaffolds one, and a plugin that is only installed from a local
+path or a private source still reads better with one.
 
 The file is the same claim as `bb.description` at length: the same outcome, the
 same surfaces, no capability the short text does not imply. Treat the two as
@@ -221,9 +221,8 @@ one text in two lengths. Whenever you change `bb.description`, or add or remove
 a surface, update this file in the same change so the lead paragraph and the
 Overview section never disagree.
 
-The `submit-a-plugin` skill copies the file into the marketplace repository as
-`overview/<plugin-id>.md` and references it from the entry with
-`"overview": "./overview/<plugin-id>.md"`. A bundled BB plugin uses the same
+A marketplace repository stores the file as `overview/<plugin-id>.md` and
+references it from the entry with `"overview": "./overview/<plugin-id>.md"`. A bundled BB plugin uses the same
 file, and the bb-official generator folds it into the built catalog.
 
 Follow these rules. Marketplace CI rejects a file that breaks one.

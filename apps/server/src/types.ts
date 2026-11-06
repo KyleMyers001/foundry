@@ -8,12 +8,10 @@ import type { AppUpdateService } from "./services/system/app-update.js";
 import type { CliCommandService } from "./services/system/cli-command.js";
 import type { AppVersionService } from "./services/system/app-version.js";
 import type { BbAppManagedConfigReloader } from "./services/system/bb-app-managed-config.js";
-import type { TelemetryService } from "./services/system/telemetry.js";
 import type { TerminalSessionLifecycle } from "./services/terminals/terminal-session-lifecycle.js";
 import type { LifecycleDedupers } from "./lifecycle-dedupers.js";
 import type { NotificationHub } from "./ws/hub.js";
 import type { WatchInterestCoordinator } from "./ws/watch-interests.js";
-import type { HostSharedPortCoordinator } from "./ws/host-shared-ports.js";
 import type { SkillTreeRegistry } from "./services/skills/injected-skills.js";
 import type { ProviderRegistryService } from "./services/providers/provider-registry.js";
 import type { AiServiceRegistry } from "./services/ai/ai-service-registry.js";
@@ -33,8 +31,6 @@ export interface ServerRuntimeConfig {
   inheritedSkillsRootPaths: string[];
   isDevelopment: boolean;
   performanceDiagnosticsAvailable: boolean;
-  marketplaceUrl: string;
-  connectGateKeysUrl: string;
   serverPort: number;
   sharedSkillRoots: ProviderNativeSkillRoots;
   appUrl?: string;
@@ -56,10 +52,8 @@ export interface AppDeps {
   providerLiveCommands: ProviderLiveCommandsCache;
   aiServices: AiServiceRegistry;
   skillTreeRegistry: SkillTreeRegistry;
-  telemetry: TelemetryService;
   terminalSessions: TerminalSessionLifecycle;
   watchInterests: WatchInterestCoordinator;
-  sharedPorts: HostSharedPortCoordinator;
 }
 
 export interface ServerAppDeps extends AppDeps {
@@ -81,7 +75,6 @@ export type WorkSessionDeps = Pick<
   | "pluginHostArtifacts"
   | "aiServices"
   | "skillTreeRegistry"
-  | "telemetry"
 >;
 
 export type LoggedWorkSessionDeps = WorkSessionDeps & Pick<AppDeps, "logger">;

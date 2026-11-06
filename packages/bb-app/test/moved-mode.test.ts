@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LEGACY_CONNECT_ENROLLMENT_MESSAGE } from "@bb/config/bb-app-managed-config";
 import {
   type ServerImportFile,
   type ServerMovedFile,
@@ -641,11 +642,129 @@ describe("bb-app start after the server moved", () => {
     });
   });
 
-  it("builds the managed daemon env from the rewritten config on every start", async () => {
+  it("refuses a bb connect destination for the moved daemon but follows a newly enrolled direct address", async () => {
     const dataDir = scratchDir();
+    const connectMove = createMovedFile({
+      connectHandle: "desk-handle",
+      mode: "connect",
+      serverUrl: "https://desk-handle.connect.example",
+    });
+    const writeConfig = (config: Record<string, unknown>): void => {
+      writeFileSync(join(dataDir, "config.json"), JSON.stringify(config));
+    };
+    const resolveLaunch = (movedFile: ServerMovedFile) =>
+      resolveMovedDaemonLaunch({
+        entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+          .href,
+        env: { BB_SERVER_URL: "http://127.0.0.1:39886" },
+        homeDir: "/home/tester",
+        movedFile,
+        options: parseLauncherArgs([
+          "--data-dir",
+          dataDir,
+          "--server-url",
+          "http://127.0.0.1:39886",
+        ]).options,
+        worktreePolicy: null,
+      });
+
+    writeConfig({});
+    await expect(resolveLaunch(connectMove)).rejects.toThrow(
+      "This bb server moved to desk at a bb connect address (https://desk-handle.connect.example), which Foundry no longer supports",
+    );
+    writeConfig({ serverUrl: "https://desk-handle.connect.example/" });
+    await expect(resolveLaunch(connectMove)).rejects.toThrow(
+      "Add this computer again from desk with a direct or Tailscale URL (Settings → Machines → Add machine)",
+    );
+    writeConfig({
+      serverUrl: "https://laptop.connect.example",
+      serverHeaders: { "x-bb-connect-machine": "bbcm_secret" },
+      machineCredential: "bbcm_secret",
+    });
+    await expect(resolveLaunch(createMovedFile({}))).rejects.toThrow(
+      LEGACY_CONNECT_ENROLLMENT_MESSAGE,
+    );
+
+    writeConfig({ serverUrl: "https://desk.tailnet.example" });
+    const directLaunch = await resolveLaunch(connectMove);
+
+    expect(directLaunch.serverUrl).toBe("https://desk.tailnet.example");
+    expect(directLaunch.env.BB_SERVER_URL).toBe("https://desk.tailnet.example");
+  });
+
+  it("explains a retired bb connect destination once and keeps answering without retrying the daemon", async () => {
+    const dataDir = scratchDir();
+    writeFileSync(
+      join(dataDir, "config.json"),
+      JSON.stringify({ serverUrl: "https://desk-handle.connect.example" }),
+    );
     const movedFile = createMovedFile({
       connectHandle: "desk-handle",
       mode: "connect",
+      serverUrl: "https://desk-handle.connect.example",
+    });
+    const processes: ManagedFullStackProcesses = {
+      daemonRun: null,
+      serverRun: null,
+    };
+    const responders = createFakeResponders();
+    let daemonStarts = 0;
+    let delays = 0;
+    let shutdownRequested = false;
+    let supervisionResult: FullStackSupervisionResult | null = null;
+
+    const output = await captureOutput(process.stdout, async () => {
+      supervisionResult = await superviseBbAppStart({
+        context: createTestStartContext(),
+        delayMilliseconds: async () => {
+          delays += 1;
+          if (delays >= 3) shutdownRequested = true;
+        },
+        findMachineService: async () => null,
+        isShutdownRequested: () => shutdownRequested,
+        prepareFullStack: async () => {
+          throw new Error("Unexpected full stack");
+        },
+        processes,
+        readServerMoveMarkers: async () => ({
+          movedFile,
+          pendingMoveImport: false,
+        }),
+        readServerMovedFile: async () => movedFile,
+        serverBindHost: "127.0.0.1",
+        serverListenerUrl: "http://127.0.0.1:39886",
+        shutdown: async () => {
+          throw new Error("Unexpected startup failure");
+        },
+        startMovedDaemon: async (file) => {
+          daemonStarts += 1;
+          await resolveMovedDaemonLaunch({
+            entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+              .href,
+            env: {},
+            homeDir: "/home/tester",
+            movedFile: file,
+            options: parseLauncherArgs(["--data-dir", dataDir]).options,
+            worktreePolicy: null,
+          });
+          throw new Error("Unexpected daemon launch");
+        },
+        startMovedResponder: responders.start,
+        waitForMarkerPoll: () => new Promise<void>(() => undefined),
+      });
+    });
+
+    expect(supervisionResult).toBe("shutdown");
+    expect(daemonStarts).toBe(1);
+    expect(processes.daemonRun).toBeNull();
+    expect(responders.opens).toHaveLength(1);
+    expect(output.split("at a bb connect address")).toHaveLength(2);
+    expect(output).not.toContain("Restarting");
+  });
+
+  it("builds the managed daemon env from the rewritten config on every start", async () => {
+    const dataDir = scratchDir();
+    const movedFile = createMovedFile({
       serverUrl: "https://bb.example.com/desk",
     });
     const options = parseLauncherArgs([
@@ -674,30 +793,30 @@ describe("bb-app start after the server moved", () => {
     writeFileSync(
       join(dataDir, "config.json"),
       JSON.stringify({
-        serverHeaders: { "x-bb-connect-machine": "bbcm_laptop" },
+        serverHeaders: { "x-proxy-auth": "laptop" },
         serverUrl: "https://bb.example.com/desk",
       }),
     );
-    const connectLaunch = await resolveLaunch();
+    const proxiedLaunch = await resolveLaunch();
 
-    expect(connectLaunch.serverUrl).toBe("https://bb.example.com/desk");
-    expect(connectLaunch.context.serverUrl).toBe("https://bb.example.com/desk");
-    expect(connectLaunch.context.dataDir).toBe(dataDir);
-    expect(connectLaunch.context.daemonPort).toBe(39911);
-    expect(connectLaunch.env).toMatchObject({
+    expect(proxiedLaunch.serverUrl).toBe("https://bb.example.com/desk");
+    expect(proxiedLaunch.context.serverUrl).toBe("https://bb.example.com/desk");
+    expect(proxiedLaunch.context.dataDir).toBe(dataDir);
+    expect(proxiedLaunch.context.daemonPort).toBe(39911);
+    expect(proxiedLaunch.env).toMatchObject({
       BB_DATA_DIR: dataDir,
       BB_HOST_DAEMON_PORT: "39911",
       BB_SERVER_URL: "https://bb.example.com/desk",
     });
-    expect(JSON.parse(connectLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual({
-      "x-bb-connect-machine": "bbcm_laptop",
+    expect(JSON.parse(proxiedLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual({
+      "x-proxy-auth": "laptop",
     });
-    expect(connectLaunch.env.BB_THREAD_ID).toBeUndefined();
+    expect(proxiedLaunch.env.BB_THREAD_ID).toBeUndefined();
 
     writeFileSync(
       join(dataDir, "config.json"),
       JSON.stringify({
-        serverHeaders: { "x-bb-connect-machine": "bbcm_rotated" },
+        serverHeaders: { "x-proxy-auth": "rotated" },
         serverUrl: "https://desk.tailnet.example",
       }),
     );
@@ -708,7 +827,7 @@ describe("bb-app start after the server moved", () => {
       "https://desk.tailnet.example",
     );
     expect(JSON.parse(rewrittenLaunch.env.BB_SERVER_HEADERS ?? "null")).toEqual(
-      { "x-bb-connect-machine": "bbcm_rotated" },
+      { "x-proxy-auth": "rotated" },
     );
 
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({}));
