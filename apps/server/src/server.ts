@@ -974,6 +974,9 @@ export function createApp(
       assertBrowserWebSocketAllowed(context);
       declineWebSocketCompression(context);
       const terminalId = context.req.param("terminalId");
+      if (terminalId === undefined) {
+        throw new ApiError(400, "missing_terminal_id", "Missing terminal ID");
+      }
       const query = terminalWebSocketQuerySchema.safeParse({
         outputAcks: context.req.query("outputAcks"),
         sinceSeq: context.req.query("sinceSeq"),
