@@ -14,6 +14,7 @@ overrides:
   oxfmt>tinypool@<2.1.2: ^2.1.2
   '@earendil-works/pi-coding-agent@0.84.0>undici': ^8.12.2
   drizzle-kit>@esbuild-kit/esm-loader: '-'
+  katex: ^0.19.1
 
 patchedDependencies:
   '@better-auth/api-key@1.7.7':
@@ -274,8 +275,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1(jotai@2.19.0(@babel/core@7.29.13)(@babel/template@7.29.7)(@types/react@19.3.0)(react@19.3.0))
       katex:
-        specifier: ^0.16.22
-        version: 0.16.47
+        specifier: ^0.19.1
+        version: 0.19.1
       mermaid:
         specifier: ^11.16.1
         version: 11.17.2(patch_hash=3m5kmqlt3oscxkkb53ahujfawq)
@@ -712,8 +713,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/text-utils
       '@hono/node-server':
-        specifier: ^1.19.15
-        version: 1.19.15(hono@4.13.11)
+        specifier: ^2.1.6
+        version: 2.1.6(hono@4.13.11)
       '@parcel/watcher':
         specifier: 2.5.6
         version: 2.5.6
@@ -1047,11 +1048,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@hono/node-server':
-        specifier: ^1.19.15
-        version: 1.19.15(hono@4.13.11)
+        specifier: ^2.1.6
+        version: 2.1.6(hono@4.13.11)
       '@hono/node-ws':
-        specifier: ^1.3.0
-        version: 1.3.0(@hono/node-server@1.19.15(hono@4.13.11))(hono@4.13.11)
+        specifier: ^1.3.1
+        version: 1.3.1(@hono/node-server@2.1.6(hono@4.13.11))(hono@4.13.11)
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -5528,8 +5529,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/test-helpers
       '@hono/node-server':
-        specifier: ^1.19.15
-        version: 1.19.15(hono@4.13.11)
+        specifier: ^2.1.6
+        version: 2.1.6(hono@4.13.11)
       bb-plugin-bb--git:
         specifier: workspace:*
         version: link:../../plugins/git
@@ -6854,14 +6855,14 @@ packages:
     resolution: {integrity: sha512-zP0tnfqrFFRL8INtOaQ6XwEYfdIpIH9vrEo7y0bHQGQa50z4/QWXE5CI4nRUHxqFW4MVWOwXFg1hom1aAZHNkQ==}
     engines: {node: '>=22.13.0'}
 
-  '@expo/config-plugins@58.0.10':
-    resolution: {integrity: sha512-oW0geRREubSsqV2d0EwkK0rRcAoB7a68CnJx7s8Al33HoTtEg7KLTQNcKlSTmmwoUESQQvAmzNqAZy4ajuCBKA==}
+  '@expo/config-plugins@58.0.12':
+    resolution: {integrity: sha512-nqnoPBARpKdKLY8+c+N2mizJgiWjlQGWeDhEOqMOZnQcpMmU79H1Svc9QOzcE1yX7obzw0Hf2YVlfW67g58Ucg==}
 
   '@expo/config-types@58.0.3':
     resolution: {integrity: sha512-wyfrwkTT/hQHzwyqkXkngKxoOa8L6ovsTP4h/UukS1mTmssee5et6HOPoN5RtawdJPnm5JO28f//C/wXlpka8Q==}
 
-  '@expo/config@58.0.8':
-    resolution: {integrity: sha512-jbel1j208xyWFzy2XUUEo/sSnu+7hMunbw//rNyGrjM73rBQouWl3IRKo/p6p4BhRUgoUDJTqmm+AY9LSzfp2A==}
+  '@expo/config@58.0.11':
+    resolution: {integrity: sha512-qfJdK5GrT5LcwgkOx5OevR7rxrOwxcSsIFbgIK+IqaRqwCwnrjZCgG9awh0+tcpwOu+B90oDp0QorHzIb8YdUA==}
 
   '@expo/devcert@1.2.2':
     resolution: {integrity: sha512-wz1YedXwdNbYqk/PRr34vixnuw1+l6uSwmPXUj649cot5iYNccb2zIOnK7Nonb1Pfd/dxAY6CvU6KM3uSdxC7A==}
@@ -7002,6 +7003,14 @@ packages:
       typescript:
         optional: true
 
+  '@expo/require-utils@58.0.5':
+    resolution: {integrity: sha512-14dGubYUBmJjK9aqVSGnwSDs9uaxfzvtqJugtMCEWyuTa/eIvToUbzUwpKCSek6S/hYSEYcgds23vDJhXSBpbQ==}
+    peerDependencies:
+      typescript: ^5.0.0 || ^5.0.0-0 || ^6.0.0 || ^7.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   '@expo/router-server@58.0.17':
     resolution: {integrity: sha512-9xZqpWIvb9/2ZH038WrWAtXQJsVep1ZG9FYh7cpoz6RGRo9SkmG97kMkQW7slKzL85Ppx8iW+68EHK9SQf/Zog==}
     peerDependencies:
@@ -7111,18 +7120,17 @@ packages:
       react: '*'
       react-native: '*'
 
-  '@hono/node-server@1.19.15':
-    resolution: {integrity: sha512-Za2ai6TLdKjUvnur+eenO6nuYYipVAEhyCAdaV8IRvmU9kK8crOZUSYvIXn72E4f8fJqyAbpcJuTsYYmZp9Deg==}
-    engines: {node: '>=18.14.1'}
+  '@hono/node-server@2.1.6':
+    resolution: {integrity: sha512-p/KH9MnfNcsm3sR6x4lNgm5j+QN4Et8srKredl9DZfXiyZ1UQ3aQ2YVpFLbqktYN5JI+DB+VZFKM2PqE5hLKjQ==}
+    engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4
+      hono: ^4 || ^5.0.0-0
 
-  '@hono/node-ws@1.3.0':
-    resolution: {integrity: sha512-ju25YbbvLuXdqBCmLZLqnNYu1nbHIQjoyUqA8ApZOeL1k4skuiTcw5SW77/5SUYo2Xi2NVBJoVlfQurnKEp03Q==}
+  '@hono/node-ws@1.3.1':
+    resolution: {integrity: sha512-vo/MwCnpJAVHBkGzWjCJ28wF45fYHAfbPZcH2rodZODHtch2GHA94KtMfusmVycTUtsLAsaNsHhtY6P8X3RQsA==}
     engines: {node: '>=18.14.1'}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
-      '@hono/node-server': ^1.19.2
+      '@hono/node-server': ^1.19.11
       hono: ^4.6.0
 
   '@hugeicons/core-free-icons@4.3.4':
@@ -10618,6 +10626,10 @@ packages:
     resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
     engines: {node: '>=18'}
 
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
+
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
@@ -10628,10 +10640,6 @@ packages:
   commander@7.2.0:
     resolution: {integrity: sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==}
     engines: {node: '>= 10'}
-
-  commander@8.3.0:
-    resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
-    engines: {node: '>= 12'}
 
   commander@9.5.0:
     resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
@@ -10985,10 +10993,6 @@ packages:
   deep-extend@0.6.0:
     resolution: {integrity: sha512-LOHxIOaPYdHlJRtCQfDIVZtfw/ufM8+rVj649RIHzcm/vGwQRXFt6OPqIFWsm2XEMrNIEtWR64sY1LEKD2vAOA==}
     engines: {node: '>=4.0.0'}
-
-  deepmerge@4.3.1:
-    resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
-    engines: {node: '>=0.10.0'}
 
   default-browser-id@5.0.1:
     resolution: {integrity: sha512-x1VCxdX4t+8wVfd1so/9w+vQ4vx7lKd2Qp5tDRutErwmR85OgmfX7RlLRMWafRMY7hbEiXIbudNrjOAPa/hL8Q==}
@@ -12540,8 +12544,8 @@ packages:
   jws@4.0.1:
     resolution: {integrity: sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==}
 
-  katex@0.16.47:
-    resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
+  katex@0.19.1:
+    resolution: {integrity: sha512-jG8uKntjSEcm2EpQOh0XturpPuuC9r3Sq5HLHdsFdWZT27E672SF19QEi+of0/YeOy15lDgRhKvr5614uRrEfA==}
     hasBin: true
 
   keygrip@1.1.0:
@@ -16922,8 +16926,8 @@ snapshots:
     dependencies:
       2g: 1.0.1(@typescript/typescript6@6.0.2)
       '@expo/code-signing-certificates': 0.0.7
-      '@expo/config': 58.0.8(@typescript/typescript6@6.0.2)
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config': 58.0.11(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
       '@expo/devcert': 1.2.2
       '@expo/env': 2.5.3
       '@expo/image-utils': 0.12.5(@typescript/typescript6@6.0.2)
@@ -17004,19 +17008,19 @@ snapshots:
     dependencies:
       node-forge: 1.4.3
 
-  '@expo/config-plugins@58.0.10(@typescript/typescript6@6.0.2)':
+  '@expo/config-plugins@58.0.12(@typescript/typescript6@6.0.2)':
     dependencies:
       '@expo/config-types': 58.0.3
       '@expo/json-file': 11.2.1
       '@expo/plist': 0.10.1
-      '@expo/require-utils': 58.0.4(@typescript/typescript6@6.0.2)
+      '@expo/require-utils': 58.0.5(@typescript/typescript6@6.0.2)
       '@expo/sdk-runtime-versions': 1.0.1
       chalk: 4.1.2
       debug: 4.4.3
       getenv: 2.0.0
-      glob: 13.0.6
       semver: 7.8.5
       slugify: 1.6.9
+      tinyglobby: 0.2.17
       xcode: 4.0.0
       xml2js: 0.6.0
     transitivePeerDependencies:
@@ -17025,16 +17029,14 @@ snapshots:
 
   '@expo/config-types@58.0.3': {}
 
-  '@expo/config@58.0.8(@typescript/typescript6@6.0.2)':
+  '@expo/config@58.0.11(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
       '@expo/config-types': 58.0.3
       '@expo/json-file': 11.2.1
       '@expo/platforms': 58.0.1
-      '@expo/require-utils': 58.0.4(@typescript/typescript6@6.0.2)
-      deepmerge: 4.3.1
+      '@expo/require-utils': 58.0.5(@typescript/typescript6@6.0.2)
       getenv: 2.0.0
-      glob: 13.0.6
       resolve-workspace-root: 2.0.1
       semver: 7.8.5
       slugify: 1.6.9
@@ -17115,7 +17117,7 @@ snapshots:
 
   '@expo/inline-modules@0.2.7(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -17127,7 +17129,7 @@ snapshots:
 
   '@expo/local-build-cache-provider@58.0.8(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@expo/config': 58.0.8(@typescript/typescript6@6.0.2)
+      '@expo/config': 58.0.11(@typescript/typescript6@6.0.2)
       chalk: 4.1.2
     transitivePeerDependencies:
       - supports-color
@@ -17152,7 +17154,7 @@ snapshots:
       '@babel/code-frame': 7.29.7
       '@babel/core': 7.29.13
       '@babel/generator': 7.29.8
-      '@expo/config': 58.0.8(@typescript/typescript6@6.0.2)
+      '@expo/config': 58.0.11(@typescript/typescript6@6.0.2)
       '@expo/env': 2.5.3
       '@expo/json-file': 11.2.1
       '@expo/metro': 58.0.0
@@ -17265,8 +17267,8 @@ snapshots:
 
   '@expo/prebuild-config@58.0.16(@typescript/typescript6@6.0.2)':
     dependencies:
-      '@expo/config': 58.0.8(@typescript/typescript6@6.0.2)
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config': 58.0.11(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
       '@expo/config-types': 58.0.3
       '@expo/image-utils': 0.12.5(@typescript/typescript6@6.0.2)
       '@expo/json-file': 11.2.1
@@ -17290,6 +17292,16 @@ snapshots:
       - supports-color
 
   '@expo/require-utils@58.0.4(@typescript/typescript6@6.0.2)':
+    dependencies:
+      '@babel/code-frame': 7.29.7
+      '@babel/core': 7.29.13
+      '@babel/plugin-transform-modules-commonjs': 7.29.7(@babel/core@7.29.13)
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+    transitivePeerDependencies:
+      - supports-color
+
+  '@expo/require-utils@58.0.5(@typescript/typescript6@6.0.2)':
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/core': 7.29.13
@@ -17394,13 +17406,13 @@ snapshots:
       react: 19.3.0
       react-native: 0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0)
 
-  '@hono/node-server@1.19.15(hono@4.13.11)':
+  '@hono/node-server@2.1.6(hono@4.13.11)':
     dependencies:
       hono: 4.13.11
 
-  '@hono/node-ws@1.3.0(@hono/node-server@1.19.15(hono@4.13.11))(hono@4.13.11)':
+  '@hono/node-ws@1.3.1(@hono/node-server@2.1.6(hono@4.13.11))(hono@4.13.11)':
     dependencies:
-      '@hono/node-server': 1.19.15(hono@4.13.11)
+      '@hono/node-server': 2.1.6(hono@4.13.11)
       hono: 4.13.11
       ws: 8.21.0
     transitivePeerDependencies:
@@ -17837,7 +17849,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.2(zod@4.6.7)':
     dependencies:
-      '@hono/node-server': 1.19.15(hono@4.13.11)
+      '@hono/node-server': 2.1.6(hono@4.13.11)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -20838,13 +20850,13 @@ snapshots:
 
   commander@13.1.0: {}
 
+  commander@15.0.0: {}
+
   commander@2.20.3: {}
 
   commander@5.1.0: {}
 
   commander@7.2.0: {}
-
-  commander@8.3.0: {}
 
   commander@9.5.0:
     optional: true
@@ -21204,8 +21216,6 @@ snapshots:
   deep-equal@1.0.1: {}
 
   deep-extend@0.6.0: {}
-
-  deepmerge@4.3.1: {}
 
   default-browser-id@5.0.1: {}
 
@@ -21907,7 +21917,7 @@ snapshots:
 
   expo-splash-screen@58.0.11(@typescript/typescript6@6.0.2)(expo@58.0.19):
     dependencies:
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
       '@expo/image-utils': 0.12.5(@typescript/typescript6@6.0.2)
       expo: 58.0.19(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.15)(@typescript/typescript6@6.0.2)(expo-router@58.0.26)(react-dom@19.3.0(react@19.3.0))(react-native-webview@14.0.1(patch_hash=pa42giipqjf4cfw4ds4qiivfwm)(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       xml2js: 0.6.0
@@ -21938,8 +21948,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.10
       '@expo/cli': 58.1.15(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.15)(@typescript/typescript6@6.0.2)(expo-constants@58.0.13)(expo-font@58.0.10(expo@58.0.19)(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(expo-router@58.0.26)(expo@58.0.19)(react-dom@19.3.0(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
-      '@expo/config': 58.0.8(@typescript/typescript6@6.0.2)
-      '@expo/config-plugins': 58.0.10(@typescript/typescript6@6.0.2)
+      '@expo/config': 58.0.11(@typescript/typescript6@6.0.2)
+      '@expo/config-plugins': 58.0.12(@typescript/typescript6@6.0.2)
       '@expo/devtools': 58.0.2(expo@58.0.19)(react-native@0.88.0(@babel/core@7.29.13)(@react-native/metro-config@0.88.0(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       '@expo/fingerprint': 0.21.6
       '@expo/local-build-cache-provider': 58.0.8(@typescript/typescript6@6.0.2)
@@ -22973,9 +22983,9 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  katex@0.16.47:
+  katex@0.19.1:
     dependencies:
-      commander: 8.3.0
+      commander: 15.0.0
 
   keygrip@1.1.0:
     dependencies:
@@ -23508,7 +23518,7 @@ snapshots:
       dompurify: 3.4.17
       es-toolkit: 1.47.1
       fastdom: 1.0.12
-      katex: 0.16.47
+      katex: 0.19.1
       khroma: 2.1.0
       marked: 16.4.2
       roughjs: 4.6.6
@@ -23777,7 +23787,7 @@ snapshots:
     dependencies:
       '@types/katex': 0.16.8
       devlop: 1.1.0
-      katex: 0.16.47
+      katex: 0.19.1
       micromark-factory-space: 2.0.1
       micromark-util-character: 2.1.1
       micromark-util-symbol: 2.0.1
@@ -25197,7 +25207,7 @@ snapshots:
       '@types/katex': 0.16.8
       hast-util-from-html-isomorphic: 2.0.0
       hast-util-to-text: 4.0.2
-      katex: 0.16.47
+      katex: 0.19.1
       unist-util-visit-parents: 6.0.2
       vfile: 6.0.3
 

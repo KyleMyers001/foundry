@@ -87,7 +87,13 @@
       "better-call@1.4.0>@better-auth/utils": "0.4.2",
       "oxfmt>tinypool@<2.1.2": "^2.1.2",
       "@earendil-works/pi-coding-agent@0.84.0>undici": "^8.12.2",
-      "drizzle-kit>@esbuild-kit/esm-loader": "-"
+      "drizzle-kit>@esbuild-kit/esm-loader": "-",
+      "katex": "^0.19.1"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@hono/node-ws>@hono/node-server": "2"
+      }
     },
     "patchedDependencies": {
       "app-builder-lib@26.15.7": "patches/app-builder-lib@26.15.7.patch",
