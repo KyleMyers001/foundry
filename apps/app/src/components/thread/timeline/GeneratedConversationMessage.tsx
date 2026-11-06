@@ -51,10 +51,10 @@ import {
   GENERATED_MESSAGE_COLLAPSED_PREVIEW_CHAR_CAP,
 } from "@bb/client-core";
 
-interface AutomationLink {
+type AutomationLink = {
   automationId: string;
   projectId: string;
-}
+};
 
 interface GeneratedConversationMessageProps {
   attachmentItems: ConversationAttachmentItems;
