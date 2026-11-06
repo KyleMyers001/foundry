@@ -89,7 +89,7 @@
       "@better-auth/utils": "0.4.2",
       "better-call": "1.4.0",
       "@better-fetch/fetch": "1.3.2",
-      "oxfmt>tinypool": "2.1.2"
+      "oxfmt>tinypool@<2.1.2": "2.1.2"
     },
     "patchedDependencies": {
       "app-builder-lib@26.15.7": "patches/app-builder-lib@26.15.7.patch",
