@@ -213,14 +213,7 @@ describe("plugin catalog service", () => {
       icon: "FileText",
       iconUrl: null,
       category: "File Viewers & Editors",
-      screenshots: [
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-21ddb6757-inline-review-desktop.png",
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-f4957b72f-inline-editing-desktop.png",
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-f4957b72f-ask-mobile.png",
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-63b536e70-workspace-desktop.png",
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-21ddb6757-html-desktop.png",
-        "https://getbb.app/marketplace/v2/screenshots/docs/docs-21ddb6757-vault-desktop.png",
-      ],
+      screenshots: [],
       collections: [
         { id: "bb-official", rank: OFFICIAL_ORDER.indexOf("simple-notes") },
       ],

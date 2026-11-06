@@ -332,6 +332,8 @@ describe("PluginDetail official catalog lifecycle", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Capabilities")).toBeNull();
     expect(container.querySelector('[data-icon="Github"]')).not.toBeNull();
+    expect(screen.queryByLabelText("GitHub screenshots")).toBeNull();
+    expect(screen.queryByRole("img", { name: /screenshot/u })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Install GitHub" }));
     expect(onInstall).toHaveBeenCalledWith(GITHUB_CATALOG_ENTRY);
