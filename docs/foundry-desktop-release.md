@@ -88,7 +88,6 @@ applies these defaults at launch unless the variable is already set:
 | `BB_DATA_DIR`         | `~/.foundry`    |
 | `BB_SERVER_PORT`      | `38986`         |
 | `BB_HOST_DAEMON_PORT` | `38987`         |
-| `BB_TELEMETRY`        | `false`         |
 
 An installed bb keeps `~/.bb` and ports `38886` and `38887`, so the two do not
 share threads, projects, or settings. The `bb` CLI inside a Foundry thread comes
@@ -103,5 +102,5 @@ unaffected.
 ## Known upstream ties
 
 These are not changed by a release: in-app text and the official plugin logo
-still say bb, the bundled official plugin screenshots load from `getbb.app`, and
-plugin manifests keep the upstream `getbb.app` `$schema` identifiers.
+still say bb, and plugin manifests keep the upstream `getbb.app` `$schema`
+identifiers, which Foundry never fetches.

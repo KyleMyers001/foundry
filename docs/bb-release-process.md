@@ -122,11 +122,11 @@ If any input is unclear, ask before bumping the version.
 
 4. Update the release notes. Add the new version's section to the repo-root
    `CHANGELOG.md`, and add its entry (ship date and headline) to
-   `RELEASE_META` in the repo-root `changelog-metadata.ts`. The marketing site's
-   `/changelog` page and the optional in-app Updates preview consume these
-   shared files, so both changes must land before the release is published —
-   redeploy `@bb/web` after the release commit lands so the site shows the new
-   version. Once a month, these notes also feed the "What's new in bb" email;
+   `RELEASE_META` in the repo-root `changelog-metadata.ts`. The optional in-app
+   Updates preview consumes these shared files, so both changes must land
+   before the release is published. Upstream's marketing site also reads them;
+   this repository does not include that site. Once a month, these notes also
+   feed the "What's new in bb" email;
    the `monthly-release-email` skill in `.bb/skills/` builds it from
    `scripts/monthly-email/`.
 

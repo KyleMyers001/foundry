@@ -105,8 +105,9 @@ which can fast-forward `main`. Other installs link to
 [Foundry's releases](https://github.com/KyleMyers001/foundry/releases/latest).
 
 Some external destinations remain: provider CLIs and their APIs, plugin and
-marketplace sources you choose, GitHub for releases and Git operations, and the
-bundled official plugins' screenshots, which still load from `getbb.app`.
+marketplace sources you choose, and GitHub for releases and Git operations.
+Plugin manifests keep the upstream `getbb.app` `$schema` identifiers, which
+Foundry never fetches.
 
 ## Development
 
