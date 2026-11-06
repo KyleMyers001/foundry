@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { AppInfo, Packager } from "electron-builder";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createDesktopReleaseInfo,
   DESKTOP_AUTO_UPDATE_FEED_CONFIG,
@@ -295,6 +295,14 @@ const readResolvedConfig: ReadResolvedConfig = async (overrides) => {
 };
 
 describe("electron-builder signing config", () => {
+  beforeAll(async () => {
+    const config = await readStaticConfig();
+    await new Packager({
+      projectDir: desktopPackageRoot,
+      config,
+    }).validateConfig();
+  });
+
   it.each([
     ["latest", "foundry-desktop-updater"],
     ["nightly", "foundry-desktop-nightly-updater"],
