@@ -1037,9 +1037,9 @@ identity, branding, entry points, or engine ranges. Select an entry with
 ### BB guide
 
 BB guide is installed and enabled by default. Its boolean settings, all
-default `true`, are `introduction` (the BB introduction), `skills` (all four
-bundled skills), and `bbCli`, `pluginAuthoring`, `skillCreator`, and
-`submitPlugin` (individual skills). They apply the next time agent
+default `true`, are `introduction` (the BB introduction), `skills` (all three
+bundled skills), and `bbCli`, `pluginAuthoring`, and `skillCreator`
+(individual skills). They apply the next time agent
 configuration is assembled. Disabling the plugin removes its introduction and
 skills.
 
