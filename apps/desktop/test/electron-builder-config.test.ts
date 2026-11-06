@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   access,
   chmod,
@@ -13,10 +13,9 @@ import {
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { promisify } from "node:util";
 import { z } from "zod";
 import { AppInfo, Packager } from "electron-builder";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createDesktopReleaseInfo,
   DESKTOP_AUTO_UPDATE_FEED_CONFIG,
@@ -39,6 +38,23 @@ const nativeModulesScript: {
     platform: string;
   }): string[];
 } = require("./scripts/prepare-native-modules.cjs");
+const electronBuilderRequire = createRequire(
+  require.resolve("electron-builder"),
+);
+const electronBuilderMacPackager: {
+  MacPackager: new (packager: Packager) => {
+    readonly forceCodeSigning: boolean;
+  };
+} = electronBuilderRequire("app-builder-lib/out/macPackager");
+const electronBuilderMacCodeSign: {
+  reportError(
+    isMas: boolean,
+    certificateTypes: string[],
+    qualifier: string | null,
+    keychainFile: string | undefined,
+    isForceCodeSigning: boolean,
+  ): Promise<void>;
+} = electronBuilderRequire("app-builder-lib/out/codeSign/macCodeSign");
 
 const macConfigSchema = z
   .object({
@@ -279,6 +295,14 @@ const readResolvedConfig: ReadResolvedConfig = async (overrides) => {
 };
 
 describe("electron-builder signing config", () => {
+  beforeAll(async () => {
+    const config = await readStaticConfig();
+    await new Packager({
+      projectDir: desktopPackageRoot,
+      config,
+    }).validateConfig();
+  });
+
   it.each([
     ["latest", "foundry-desktop-updater"],
     ["nightly", "foundry-desktop-nightly-updater"],
@@ -661,34 +685,24 @@ describe("electron-builder signing config", () => {
       CSC_KEY_PASSWORD: "fixture-password",
       CSC_LINK: "fixture-p12",
     });
-    const script = `
-      const { createRequire } = require("node:module");
-      const { Packager } = require("electron-builder");
-      const builderRequire = createRequire(require.resolve("electron-builder"));
-      const { MacPackager } = builderRequire("app-builder-lib/out/macPackager");
-      const { reportError } = builderRequire("app-builder-lib/out/codeSign/macCodeSign");
-      (async () => {
-        const packager = new Packager({ projectDir: process.cwd(), config: JSON.parse(process.argv[1]) });
-        await packager.validateConfig();
-        const mac = new MacPackager(packager);
-        await reportError(false, ["Developer ID Application"], null, undefined, mac.forceCodeSigning);
-      })().catch(error => { console.error(error.message); process.exitCode = 1; });
-    `;
-    await expect(
-      promisify(execFile)(
-        process.execPath,
-        ["-e", script, JSON.stringify(config)],
-        {
-          cwd: desktopPackageRoot,
-          env: createScriptEnvironment({
-            CSC_IDENTITY_AUTO_DISCOVERY: "false",
-          }),
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 1,
-      stderr: expect.stringContaining("skipped macOS application code signing"),
-    });
+    const packager = new Packager({ projectDir: desktopPackageRoot, config });
+    await packager.validateConfig();
+    const mac = new electronBuilderMacPackager.MacPackager(packager);
+
+    vi.stubEnv("CSC_IDENTITY_AUTO_DISCOVERY", "false");
+    try {
+      await expect(
+        electronBuilderMacCodeSign.reportError(
+          false,
+          ["Developer ID Application"],
+          null,
+          undefined,
+          mac.forceCodeSigning,
+        ),
+      ).rejects.toThrow("skipped macOS application code signing");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("enables app signing and notarization when signing and Apple credentials are complete", async () => {
