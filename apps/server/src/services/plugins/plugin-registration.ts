@@ -19,17 +19,17 @@ import {
 import {
   BUILTIN_PLUGIN_ID_PREFIX,
   BUNDLED_PLUGINS,
+  DISCONTINUED_BUILTIN_PLUGINS,
   builtinPluginSource,
   type BundledPluginRegistration,
 } from "./builtin-registry.js";
 import { BUNDLED_MARKETPLACE_NAME } from "../plugin-catalog/marketplace-manifest.js";
 import {
-  CURATED_PLUGIN_MARKETPLACE_NAME,
+  RETIRED_COMMUNITY_MARKETPLACE_NAME,
   type InstalledPlugin,
   type PluginRuntimeStatus,
   type PluginSourceSelection,
 } from "@bb/server-contract";
-import type { TelemetryEvent } from "../system/telemetry.js";
 import { resolveSelectedSubdirectory } from "./collection-manifest.js";
 import {
   isCommitSha,
@@ -57,46 +57,6 @@ import {
   type NpmSourceIntentForResolution,
   type PluginResolvedUpdateVersion,
 } from "./update-resolver.js";
-
-export function isPublicPluginProvenance(
-  kind: PluginProvenance["kind"],
-  marketplace: string | null,
-): boolean {
-  return (
-    kind === "builtin" ||
-    (kind === "catalog" &&
-      (marketplace === CURATED_PLUGIN_MARKETPLACE_NAME ||
-        marketplace === BUNDLED_MARKETPLACE_NAME))
-  );
-}
-
-export function pluginInstalledTelemetryEvent(
-  pluginId: string,
-  provenance: PluginProvenance,
-  sourceIntent: PluginSourceIntent,
-  isFreshInstall: boolean,
-): Extract<TelemetryEvent, { name: "plugin_installed" }> {
-  const isPublic = isPublicPluginProvenance(
-    provenance.kind,
-    provenance.kind === "catalog" ? provenance.marketplace : null,
-  );
-  const publicCatalogEntryId =
-    isPublic && provenance.kind === "catalog" ? provenance.entryId : null;
-  return {
-    name: "plugin_installed",
-    properties: {
-      plugin_id: isPublic ? pluginId : null,
-      provenance: provenance.kind,
-      marketplace:
-        isPublic && provenance.kind === "catalog"
-          ? provenance.marketplace
-          : null,
-      source_kind: sourceIntent.kind,
-      is_fresh_install: isFreshInstall,
-      entry_id: publicCatalogEntryId,
-    },
-  };
-}
 
 interface PluginRegistrationContext {
   deps: PluginServiceDeps;
@@ -144,6 +104,14 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
   );
 
   function refuseBuiltinShadow(pluginId: string): void {
+    const discontinued = DISCONTINUED_BUILTIN_PLUGINS.find(
+      (plugin) => plugin.pluginId === pluginId,
+    );
+    if (discontinued !== undefined) {
+      throw new Error(
+        `install refused: plugin id "${pluginId}" belonged to the discontinued plugin "${discontinued.displayName}", whose saved settings and secrets Foundry keeps; rename the package so its id differs`,
+      );
+    }
     const bundledName = bundledPluginNamesById.get(pluginId);
     if (bundledName === undefined) {
       if (!pluginId.startsWith(BUILTIN_PLUGIN_ID_PREFIX)) return;
@@ -176,7 +144,7 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     if (
       provenance.kind === "catalog" &&
       (row.catalogEntryId !== provenance.entryId ||
-        catalogMarketplaceOf(row) !== provenance.marketplace)
+        row.catalogMarketplaceName !== provenance.marketplace)
     ) {
       return false;
     }
@@ -435,14 +403,6 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     if (isFreshInstall) await runInstallHandlers(manifest.id);
     const entry = list().find((p) => p.id === manifest.id);
     if (!entry) throw new Error(`plugin ${manifest.id} missing after install`);
-    deps.telemetry.capture(
-      pluginInstalledTelemetryEvent(
-        manifest.id,
-        args.provenance,
-        args.sourceIntent,
-        isFreshInstall,
-      ),
-    );
     return entry;
   }
 
@@ -556,18 +516,14 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     return { version: row.version, label: row.version, display: row.source };
   }
 
-  function catalogMarketplaceOf(row: InstalledPluginRow): string {
-    return row.catalogMarketplaceName ?? CURATED_PLUGIN_MARKETPLACE_NAME;
-  }
-
   function provenanceForRow(row: InstalledPluginRow): PluginProvenance {
     if (row.provenance !== "catalog") return { kind: row.provenance };
-    if (row.catalogEntryId === null) {
+    if (row.catalogEntryId === null || row.catalogMarketplaceName === null) {
       throw new Error(`plugin "${row.id}" has corrupt catalog provenance`);
     }
     return {
       kind: "catalog",
-      marketplace: catalogMarketplaceOf(row),
+      marketplace: row.catalogMarketplaceName,
       entryId: row.catalogEntryId,
     };
   }
@@ -651,8 +607,8 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
   ): PluginProvenance {
     if (
       existing?.provenance === "catalog" &&
-      (catalogMarketplaceOf(existing) === CURATED_PLUGIN_MARKETPLACE_NAME ||
-        catalogMarketplaceOf(existing) === BUNDLED_MARKETPLACE_NAME)
+      (existing.catalogMarketplaceName === RETIRED_COMMUNITY_MARKETPLACE_NAME ||
+        existing.catalogMarketplaceName === BUNDLED_MARKETPLACE_NAME)
     ) {
       return {
         kind: "catalog",

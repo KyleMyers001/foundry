@@ -34,11 +34,6 @@ export const MARKETPLACE_V1_SCHEMA_URL =
 export const MARKETPLACE_V2_SCHEMA_URL =
   "https://getbb.app/schemas/marketplace-v2.schema.json";
 
-export const CURATED_MARKETPLACE_V1_URL =
-  "https://getbb.app/marketplace/v1/marketplace.json";
-export const CURATED_MARKETPLACE_V2_URL =
-  "https://getbb.app/marketplace/v2/marketplace.json";
-
 export const BUILTIN_PUBLISHER_LABEL = "BB Official";
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/u;
@@ -336,26 +331,6 @@ function marketplaceManifestIndex(
   const index = { categories, collections, resolvedCollections };
   marketplaceManifestIndexes.set(manifest, index);
   return index;
-}
-
-export function curatedMarketplaceManifestUrls(configuredUrl: string): {
-  primary: string;
-  fallback: string | null;
-} {
-  const url = new URL(configuredUrl);
-  if (url.toString() === CURATED_MARKETPLACE_V1_URL) {
-    return {
-      primary: CURATED_MARKETPLACE_V2_URL,
-      fallback: CURATED_MARKETPLACE_V1_URL,
-    };
-  }
-  if (url.toString() === CURATED_MARKETPLACE_V2_URL) {
-    return {
-      primary: CURATED_MARKETPLACE_V2_URL,
-      fallback: CURATED_MARKETPLACE_V1_URL,
-    };
-  }
-  return { primary: url.toString(), fallback: null };
 }
 
 export function parseMarketplaceManifest(

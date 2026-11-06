@@ -1446,8 +1446,8 @@ bb plugin types --check  # CI: fail when it does not match
 Ask BB to write plugins for you: the \`bb-plugin-authoring\` skill documents
 the whole surface with examples.
 
-Confused by the API, or need something the types don't explain? Clone the BB
-repo and read the source: <https://github.com/get-bb/bb>.
+Confused by the API, or need something the types don't explain? Clone the
+Foundry repo and read the source: <https://github.com/KyleMyers001/foundry>.
 `;
 }
 

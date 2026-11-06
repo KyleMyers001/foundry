@@ -276,6 +276,9 @@ function MachineAccessDetails({
     machineAccess;
   return (
     <>
+      {access?.notice != null && (
+        <p className="text-xs text-subtle-foreground">{access.notice}</p>
+      )}
       {selected !== "direct" && effective !== undefined && (
         <MachineAccessStatus
           machineAccess={machineAccess}

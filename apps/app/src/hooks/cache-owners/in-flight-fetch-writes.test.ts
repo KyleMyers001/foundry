@@ -95,7 +95,7 @@ function appUpdateStatus(
     current: { commit: null, version: "1.0.0" },
     lastResult: null,
     runningThreadCount: 0,
-    support: { kind: "supported", mode: "npm" },
+    support: { kind: "supported", mode: "source" },
   };
 }
 
@@ -105,10 +105,10 @@ function systemVersion(latestVersion: string): SystemVersionResponse {
     installKind: "npm",
     currentVersion: "1.0.0",
     latestVersion,
-    source: "npm",
+    source: "foundry-releases",
     updateAvailable: true,
     isDevelopment: false,
-    upgradeCommand: "npm install -g @get-bb/bb",
+    releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
   };
 }
 
@@ -116,6 +116,7 @@ function aiServices(
   selection: SystemAiServicesResponse["selections"]["thread-title"],
 ): SystemAiServicesResponse {
   return {
+    notice: null,
     selections: {
       "thread-title": selection,
       "commit-message": { mode: "automatic" },

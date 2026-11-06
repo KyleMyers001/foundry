@@ -503,6 +503,7 @@ describe("bb settings commands", () => {
 
   describe("ai-services", () => {
     const aiView = {
+      notice: null,
       selections: {
         "thread-title": { mode: "automatic" },
         "commit-message": {

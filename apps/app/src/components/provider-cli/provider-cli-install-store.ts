@@ -12,10 +12,6 @@ import { invalidateHostProviderCliStatus } from "@/hooks/cache-owners/provider-c
 import { invalidateSystemExecutionOptions } from "@/hooks/cache-owners/system-cache-effects";
 import { asHttpError, getHttpErrorMessage } from "@/lib/http-error";
 import { sdk } from "@/lib/sdk";
-import {
-  recordTelemetryEvent,
-  type OnboardingEntry,
-} from "@/components/onboarding/onboarding-telemetry";
 
 type ProviderCliInstallCompletedEvent = Extract<
   ProviderCliInstallEvent,
@@ -33,7 +29,6 @@ const PROVIDER_CLI_FAILURE_LOG_TRUNCATION_MARKER =
 interface ProviderCliInstallJob {
   hostId: string;
   issue: ProviderCliActionableIssue;
-  onboardingEntry?: OnboardingEntry;
 }
 
 export type ProviderCliInstallFailureKind = "command" | "interrupted";
@@ -260,23 +255,9 @@ function showProviderCliInstallFailureToast(args: {
 }
 
 function runInstall(job: ProviderCliInstallJob): void {
-  const { hostId, issue, onboardingEntry } = job;
+  const { hostId, issue } = job;
   const { action, provider } = issue;
   const jobKey = providerCliJobKey(hostId, provider);
-  const recordOutcome = (outcome: "started" | "succeeded" | "failed") => {
-    if (onboardingEntry === undefined) return;
-    recordTelemetryEvent({
-      name: "onboarding_operation",
-      properties: {
-        entry: onboardingEntry,
-        step: "agent",
-        operation: action.kind,
-        outcome,
-        resource_id: provider,
-      },
-    });
-  };
-  recordOutcome("started");
 
   const failuresByJobKey = new Map(snapshot.failuresByJobKey);
   failuresByJobKey.delete(jobKey);
@@ -312,7 +293,6 @@ function runInstall(job: ProviderCliInstallJob): void {
         }
       }
 
-      recordOutcome(completedEvent?.success ? "succeeded" : "failed");
       if (completedEvent?.success) {
         if (queryClient !== null) {
           void invalidateHostProviderCliStatus({ queryClient, hostId });
@@ -336,7 +316,6 @@ function runInstall(job: ProviderCliInstallJob): void {
       });
     })
     .catch((error: unknown) => {
-      recordOutcome("failed");
       const message = error instanceof Error ? error.message : String(error);
       installLogChunks.push(`\n${message}\n`);
       showProviderCliInstallFailureToast({

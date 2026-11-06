@@ -67,8 +67,7 @@ export function hasActionableReleaseUpdate(
 ): boolean {
   return (
     status !== undefined &&
-    ((status.support.kind === "supported" && status.support.mode === "npm") ||
-      status.desktopUpdateSupported === true) &&
+    status.desktopUpdateSupported === true &&
     status.available !== null &&
     status.blocked === null
   );

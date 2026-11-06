@@ -25,16 +25,16 @@ import {
 import { createMigratedConnection } from "@bb/db/testing";
 import { PLUGIN_SDK_VERSION, type SystemChangeKind } from "@bb/domain";
 import type { Logger } from "@bb/logger";
-import { pluginListResponseSchema } from "@bb/server-contract";
+import {
+  pluginListResponseSchema,
+  RETIRED_COMMUNITY_MARKETPLACE_NAME,
+} from "@bb/server-contract";
 import { createAiServiceRegistry } from "../../../src/services/ai/ai-service-registry.js";
 import {
   createPluginService,
   type PluginService,
 } from "../../../src/services/plugins/plugin-service.js";
 import { testLogger } from "../../helpers/test-app.js";
-import { pluginInstalledTelemetryEvent } from "../../../src/services/plugins/plugin-registration.js";
-import type { TelemetryEvent } from "../../../src/services/system/telemetry.js";
-import { createNoopTelemetryService } from "../../../src/services/system/telemetry.js";
 import { createProviderRegistryService } from "../../../src/services/providers/provider-registry.js";
 
 const logger = testLogger as unknown as Logger;
@@ -117,7 +117,6 @@ describe("plugin service", () => {
     workDir = await mkdtemp(join(tmpdir(), "bb-plugin-test-"));
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -133,8 +132,7 @@ describe("plugin service", () => {
     });
   });
 
-  function createTelemetryTrackedService(
-    captured: TelemetryEvent[],
+  function createServiceWithoutBundledPlugins(
     fixture = { db, workDir },
   ): PluginService {
     return createPluginService({
@@ -148,10 +146,6 @@ describe("plugin service", () => {
         notifySystem: () => {},
       },
       logger,
-      telemetry: {
-        ...createNoopTelemetryService(),
-        capture: (event) => captured.push(event),
-      },
       dataDir: join(fixture.workDir, "data"),
       appVersion: "0.9.0",
       bundledPlugins: [],
@@ -178,7 +172,7 @@ describe("plugin service", () => {
       expect((await service.installPath(rootDir)).status).toBe("error");
       if (mode === "startup") {
         await service.stop();
-        service = createTelemetryTrackedService([]);
+        service = createServiceWithoutBundledPlugins();
         expect(service.list()[0]).toMatchObject({
           status: "starting",
           statusDetail: null,
@@ -639,7 +633,6 @@ describe("plugin service", () => {
 
     const booting = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -694,7 +687,6 @@ describe("plugin service", () => {
     const makeService = (appVersion: string) =>
       createPluginService({
         aiServices: createAiServiceRegistry(),
-        telemetry: createNoopTelemetryService(),
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
@@ -786,7 +778,6 @@ describe("plugin service", () => {
 
     const upgraded = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -817,7 +808,6 @@ describe("plugin service", () => {
   it("skips the engines gate on 0.0.0 dev builds instead of marking everything incompatible", async () => {
     const devService = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -839,141 +829,6 @@ describe("plugin service", () => {
     const entry = await devService.installPath(gated);
     expect(entry.status).toBe("running");
     await devService.stop();
-  });
-
-  it("reports one anonymous plugin_installed event per user install", async () => {
-    const captured: TelemetryEvent[] = [];
-    const tracked = createTelemetryTrackedService(captured);
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-tracked",
-      serverSource: "export default function plugin() {}",
-    });
-    const installed = await tracked.installPath(rootDir);
-    expect(installed.status).toBe("running");
-    expect(captured).toEqual([
-      {
-        name: "plugin_installed",
-        properties: {
-          plugin_id: null,
-          provenance: "direct",
-          marketplace: null,
-          source_kind: "path",
-          is_fresh_install: true,
-          entry_id: null,
-        },
-      },
-    ]);
-    await tracked.reload("tracked");
-    expect(tracked.list().find((entry) => entry.id === "tracked")?.status).toBe(
-      "running",
-    );
-    expect((await tracked.setEnabled("tracked", false))?.status).toBe(
-      "disabled",
-    );
-    expect((await tracked.setEnabled("tracked", true))?.status).toBe("running");
-    expect(captured).toHaveLength(1);
-    await tracked.stop();
-  });
-
-  it("marks a reinstall of an installed plugin as not fresh", async () => {
-    const captured: TelemetryEvent[] = [];
-    const tracked = createTelemetryTrackedService(captured);
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-reinstalled",
-      serverSource: "export default function plugin() {}",
-    });
-    await tracked.installPath(rootDir);
-    await tracked.installPath(rootDir);
-    expect(
-      captured.map((event) =>
-        event.name === "plugin_installed"
-          ? event.properties.is_fresh_install
-          : undefined,
-      ),
-    ).toEqual([true, false]);
-    await tracked.stop();
-  });
-
-  it("does not report plugin_installed during boot-time reconcile", async () => {
-    const captured: TelemetryEvent[] = [];
-    const tracked = createTelemetryTrackedService(captured);
-    const rootDir = await writePlugin(workDir, {
-      name: "bb-plugin-reconciled",
-      serverSource: "export default function plugin() {}",
-    });
-    await tracked.installPath(rootDir);
-    await tracked.stop();
-    captured.length = 0;
-
-    await tracked.start();
-
-    expect(captured).toEqual([]);
-    expect(
-      tracked.list().find((entry) => entry.id === "reconciled")?.status,
-    ).toBe("running");
-    await tracked.stop();
-  });
-
-  it("hides names of plugins from third-party catalogs in the install event", () => {
-    const properties = pluginInstalledTelemetryEvent(
-      "internal-tool",
-      {
-        kind: "catalog",
-        marketplace: "acme-private",
-        entryId: "internal-tool",
-      },
-      {
-        kind: "git",
-        url: "git@github.com:acme/internal-tool.git",
-        subdirectory: null,
-        selector: { kind: "ref", ref: "main", refKind: "branch" },
-      },
-      true,
-    ).properties;
-    expect(properties).toEqual({
-      plugin_id: null,
-      provenance: "catalog",
-      marketplace: null,
-      source_kind: "git",
-      is_fresh_install: true,
-      entry_id: null,
-    });
-    const builtin = pluginInstalledTelemetryEvent(
-      "tasks",
-      { kind: "builtin" },
-      { kind: "builtin", name: "tasks" },
-      true,
-    ).properties;
-    expect(builtin.plugin_id).toBe("tasks");
-    expect(builtin.entry_id).toBeNull();
-  });
-
-  it("names public plugins in the install event so PostHog can rank them", () => {
-    expect(
-      pluginInstalledTelemetryEvent(
-        "tasks",
-        {
-          kind: "catalog",
-          marketplace: "bb-community",
-          entryId: "tasks-entry",
-        },
-        {
-          kind: "npm",
-          packageName: "@get-bb/tasks",
-          registry: "https://registry.npmjs.org",
-          requestedSpec: "^1",
-          specKind: "range",
-        },
-        true,
-      ).properties,
-    ).toEqual({
-      plugin_id: "tasks",
-      provenance: "catalog",
-      marketplace: "bb-community",
-      source_kind: "npm",
-      is_fresh_install: true,
-      entry_id: "tasks-entry",
-    });
   });
 
   it("adds marketplace discovery metadata to an installed plugin", () => {
@@ -1113,6 +968,101 @@ describe("plugin service", () => {
     ).toBe("Updated Acme tools");
   });
 
+  it("ignores the metadata of a stored retired bb-community catalog", () => {
+    upsertPluginMarketplace(db, {
+      name: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+      sourceKind: "https",
+      manifestUrl: "https://getbb.app/marketplace/v2/marketplace.json",
+      sourceGitRef: null,
+      sourceGitSubdirectory: null,
+      sourceGitCommit: null,
+      manifestJson: JSON.stringify({
+        schemaVersion: 2,
+        name: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+        displayName: "Community Picks",
+        categories: [
+          {
+            id: "community-tools",
+            displayName: "Community tools",
+            description: "Tools from the community.",
+          },
+        ],
+        collections: [
+          {
+            id: "featured",
+            displayName: "Featured",
+            pluginIds: ["community-tool"],
+          },
+        ],
+        plugins: [
+          {
+            id: "community-tool",
+            displayName: "Community tool",
+            description: "A community tool.",
+            icon: "Zap",
+            category: "community-tools",
+            screenshots: ["./screenshots/community-tool.png"],
+            publishedAt: "2026-08-20T11:47:04-07:00",
+            author: { name: "Someone" },
+            source: { npm: { package: "bb-plugin-community-tool" } },
+          },
+        ],
+      }),
+      statsJson: null,
+      etag: null,
+      lastModified: null,
+      lastSuccessfulRefreshAt: 1,
+      lastAttemptedRefreshAt: 1,
+      lastError: null,
+    });
+    upsertInstalledPlugin(db, {
+      id: "community-tool",
+      source: "npm:bb-plugin-community-tool",
+      provenance: {
+        kind: "catalog",
+        marketplace: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+        entryId: "community-tool",
+      },
+      sourceIntent: {
+        kind: "npm",
+        packageName: "bb-plugin-community-tool",
+        registry: "https://registry.npmjs.org/",
+        requestedSpec: "",
+        specKind: "default",
+      },
+      exactResolution: {
+        kind: "npm",
+        version: "1.0.0",
+        integrity: "sha512-community",
+      },
+      updateState: {
+        lastCheckAt: null,
+        availableCompatibleVersion: null,
+        newestIncompatibleVersion: null,
+        statusDetail: null,
+      },
+      activeArtifactId: null,
+      rootDir: "/managed/community-tool",
+      version: "1.0.0",
+      enabled: false,
+      enabledFollowsDefault: false,
+    });
+
+    const entry = service
+      .list()
+      .find((plugin) => plugin.id === "community-tool");
+    expect(entry).toMatchObject({
+      provenance: "catalog",
+      catalogEntryId: "community-tool",
+      publisherLabel: RETIRED_COMMUNITY_MARKETPLACE_NAME,
+      screenshots: [],
+      collections: [],
+    });
+    expect(entry).not.toHaveProperty("category");
+    expect(entry).not.toHaveProperty("categoryId");
+    expect(entry).not.toHaveProperty("publishedAt");
+  });
+
   it("times out a hung factory and reports error", async () => {
     const rootDir = await writePlugin(workDir, {
       name: "bb-plugin-hang",
@@ -1122,171 +1072,6 @@ describe("plugin service", () => {
     const entry = service.list().find((p) => p.id === "hang");
     expect(entry?.status).toBe("error");
     expect(entry?.statusDetail).toContain("timed out");
-  });
-
-  it("holds every plugin a hold names at start without running its factory or starting its services", async () => {
-    const globals = globalThis as Record<string, unknown>;
-    const db = createMigratedConnection();
-    const workDir = await mkdtemp(join(tmpdir(), "bb-plugin-hold-test-"));
-    const fixture = { db, workDir };
-    let service = createTelemetryTrackedService([], fixture);
-
-    try {
-      const heldAccountRoot = await writePlugin(workDir, {
-        name: "bb-plugin-held-account",
-        serverSource: `export default function plugin() {
-          const g = globalThis as any;
-          g.__heldFactoryRuns = (g.__heldFactoryRuns ?? 0) + 1;
-        }`,
-      });
-      const heldRoot = await writePlugin(workDir, {
-        name: "bb-plugin-held-tunnel",
-        serverSource: `export default function plugin(bb: any) {
-          const g = globalThis as any;
-          g.__heldFactoryRuns = (g.__heldFactoryRuns ?? 0) + 1;
-          bb.background.service("tunnel", {
-            start(signal: any) {
-              g.__heldServiceStarts = (g.__heldServiceStarts ?? 0) + 1;
-              return new Promise<void>((resolve) => {
-                signal.addEventListener("abort", () => resolve());
-              });
-            },
-          });
-        }`,
-      });
-      const otherRoot = await writePlugin(workDir, {
-        name: "bb-plugin-unheld",
-        serverSource: `export default function plugin() {}`,
-      });
-      const held = await service.installPath(heldRoot);
-      const heldAccount = await service.installPath(heldAccountRoot);
-      await service.installPath(otherRoot);
-      await service.stop();
-      globals.__heldFactoryRuns = 0;
-      globals.__heldServiceStarts = 0;
-      service = createTelemetryTrackedService([], fixture);
-
-      await service.start({
-        hold: {
-          sources: [held.source, heldAccount.source],
-          detail: "Held for this test.",
-          isActive: async () => true,
-        },
-      });
-
-      for (const id of ["held-tunnel", "held-account"]) {
-        expect(service.getApi(id)).toBeUndefined();
-        expect(service.list().find((entry) => entry.id === id)).toMatchObject({
-          enabled: true,
-          status: "disabled",
-          statusDetail: "Held for this test.",
-        });
-      }
-      expect(globals.__heldFactoryRuns).toBe(0);
-      expect(globals.__heldServiceStarts).toBe(0);
-      expect(service.getApi("unheld")).toBeDefined();
-    } finally {
-      try {
-        await service.stop();
-      } finally {
-        db.$client.close();
-        delete globals.__heldFactoryRuns;
-        delete globals.__heldServiceStarts;
-        await rm(workDir, { recursive: true, force: true });
-      }
-    }
-  });
-
-  describe("while a plugin is held", () => {
-    const HELD_DETAIL = "Held for this test.";
-    const globals = globalThis as Record<string, unknown>;
-    let holdActive = true;
-
-    beforeEach(async () => {
-      holdActive = true;
-      globals.__heldLoads = 0;
-      const heldRoot = await writePlugin(workDir, {
-        name: "bb-plugin-held-copy",
-        serverSource: `export default function plugin() {
-          const g = globalThis as any;
-          g.__heldLoads = (g.__heldLoads ?? 0) + 1;
-        }`,
-      });
-      const otherRoot = await writePlugin(workDir, {
-        name: "bb-plugin-free-copy",
-        serverSource: `export default function plugin() {}`,
-      });
-      const held = await service.installPath(heldRoot);
-      await service.installPath(otherRoot);
-      await service.stop();
-      globals.__heldLoads = 0;
-      service = createTelemetryTrackedService([]);
-      await service.start({
-        hold: {
-          sources: [held.source],
-          detail: HELD_DETAIL,
-          isActive: async () => holdActive,
-        },
-      });
-    });
-
-    afterEach(() => {
-      delete globals.__heldLoads;
-    });
-
-    function expectHeld(): void {
-      expect(service.getApi("held-copy")).toBeUndefined();
-      expect(
-        service.list().find((entry) => entry.id === "held-copy"),
-      ).toMatchObject({
-        enabled: true,
-        status: "disabled",
-        statusDetail: HELD_DETAIL,
-      });
-      expect(globals.__heldLoads).toBe(0);
-    }
-
-    it("keeps it unloaded when it is enabled, even when it is already enabled", async () => {
-      expect(await service.setEnabled("held-copy", true)).toMatchObject({
-        status: "disabled",
-        statusDetail: HELD_DETAIL,
-      });
-      expectHeld();
-
-      await service.setEnabled("held-copy", false);
-      expect(await service.setEnabled("held-copy", true)).toMatchObject({
-        status: "disabled",
-        statusDetail: HELD_DETAIL,
-      });
-      expectHeld();
-    });
-
-    it("keeps it unloaded on a reload of every plugin or of that plugin alone", async () => {
-      expect(await service.reload()).toMatchObject({ ok: true });
-      expectHeld();
-      expect(service.getApi("free-copy")).toBeDefined();
-
-      expect(await service.reload("held-copy")).toMatchObject({ ok: true });
-      expectHeld();
-    });
-
-    it("keeps it unloaded when its settings are updated", async () => {
-      expect(await service.updateSettings("held-copy", {})).toBeUndefined();
-      expectHeld();
-    });
-
-    it("loads it on enable or reload once the hold is released, without a restart", async () => {
-      holdActive = false;
-
-      expect(await service.setEnabled("held-copy", true)).toMatchObject({
-        status: "running",
-      });
-      expect(service.getApi("held-copy")).toBeDefined();
-      expect(globals.__heldLoads).toBe(1);
-
-      expect(await service.reload("held-copy")).toMatchObject({ ok: true });
-      expect(globals.__heldLoads).toBe(2);
-    });
   });
 
   it("enables a disabled path plugin when it is reinstalled", async () => {
@@ -1325,7 +1110,6 @@ describe("plugin service", () => {
     });
     const observing = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -1590,7 +1374,6 @@ describe("plugins-changed broadcast", () => {
     providerRegistry = createProviderRegistryService();
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,

@@ -34,13 +34,6 @@ export default async function plugin(bb: BbPluginApi) {
       description: "Create and improve BB skills.",
       default: true,
     },
-    submitPlugin: {
-      type: "boolean",
-      label: "Plugin submission skill",
-      description:
-        "Prepare and submit a BB plugin to the Community marketplace.",
-      default: true,
-    },
   });
   let current = await settings.get();
   settings.onChange((next) => {
@@ -56,7 +49,6 @@ export default async function plugin(bb: BbPluginApi) {
           ...(current.bbCli ? ["bb-cli"] : []),
           ...(current.pluginAuthoring ? ["bb-plugin-authoring"] : []),
           ...(current.skillCreator ? ["skill-creator"] : []),
-          ...(current.submitPlugin ? ["submit-a-plugin"] : []),
         ]
       : [],
   }));

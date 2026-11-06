@@ -74,7 +74,6 @@ function openSession(
         hostId: args.hostId,
         instanceId: args.instanceId,
         hostName: "Test Host",
-        hasMachineCredential: false,
         platform: "darwin",
         dataDir: "/tmp/host-daemon-reopened",
         localApiPort: null,

@@ -3,34 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   captureTrustedRemoteAddress,
   getTrustedRemoteAddress,
-  resolveRequestAccessRoute,
-  resolveRequestAppSurface,
   TRUSTED_REMOTE_ADDRESS_CONTEXT_KEY,
 } from "../src/request-context.js";
 
 describe("request context", () => {
-  it.each([
-    ["/api/v1/threads", "10.0.0.5", "direct"],
-    ["/api/v1/threads", "127.0.0.1", "loopback"],
-    ["/internal/session/events", "10.0.0.5", null],
-  ])("labels %s from %s as %s", async (path, remoteAddress, expected) => {
-    const app = new Hono();
-    app.use("*", async (context, next) => {
-      captureTrustedRemoteAddress(context);
-      await next();
-    });
-    app.all("*", (context) =>
-      context.json({ route: resolveRequestAccessRoute(context) }),
-    );
-
-    const response = await app.fetch(
-      new Request(`http://example.test${path}`),
-      { incoming: { socket: { remoteAddress } } },
-    );
-
-    await expect(response.json()).resolves.toEqual({ route: expected });
-  });
-
   it("captures the trusted remote address from node connection metadata", async () => {
     const app = new Hono();
     app.use("*", async (context, next) => {
@@ -71,27 +47,5 @@ describe("request context", () => {
     await expect(response.json()).resolves.toEqual({
       hasAddress: false,
     });
-  });
-  it("resolves the app surface from the client header and falls back to api", async () => {
-    const app = new Hono();
-    app.get("/", (context) =>
-      context.json({ surface: resolveRequestAppSurface(context) }),
-    );
-
-    const surfaceFor = async (header: string | undefined): Promise<unknown> => {
-      const response = await app.request(
-        "/",
-        header === undefined
-          ? undefined
-          : { headers: { "x-bb-app-surface": header } },
-      );
-      const body = (await response.json()) as { surface: string };
-      return body.surface;
-    };
-
-    await expect(surfaceFor("desktop")).resolves.toBe("desktop");
-    await expect(surfaceFor("mobile")).resolves.toBe("mobile");
-    await expect(surfaceFor(undefined)).resolves.toBe("api");
-    await expect(surfaceFor("tv")).resolves.toBe("api");
   });
 });

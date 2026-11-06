@@ -4,7 +4,7 @@ import { MachineRowContent } from "./MachinesSettingsSection";
 import { SettingsRowList } from "@/components/ui/settings-section";
 import {
   MANUAL_MACHINE_PROVIDER,
-  MODAL_MACHINE_PROVIDER,
+  SANDBOX_MACHINE_PROVIDER,
 } from "../../../.ladle/machine-story-fixtures";
 import { StoryCard, StoryRow } from "../../../.ladle/story-card";
 
@@ -31,20 +31,20 @@ function lifecycle(
 function sandbox(overrides: Partial<Host> = {}): Host {
   return makeHost({
     id: "host_sandbox",
-    name: "Modal sandbox 3f9a",
+    name: "Example sandbox 3f9a",
     type: "ephemeral",
-    machineProviderId: MODAL_MACHINE_PROVIDER.id,
+    machineProviderId: SANDBOX_MACHINE_PROVIDER.id,
     ...overrides,
   });
 }
 
 function Row({
   host,
-  machineProvider = MODAL_MACHINE_PROVIDER,
+  machineProvider = SANDBOX_MACHINE_PROVIDER,
   ...overrides
 }: {
   host: Host;
-  machineProvider?: typeof MODAL_MACHINE_PROVIDER | null;
+  machineProvider?: typeof SANDBOX_MACHINE_PROVIDER | null;
 } & Partial<Parameters<typeof MachineRowContent>[0]>) {
   return (
     <div className="min-w-0 flex-1">
@@ -133,7 +133,10 @@ export function Rows() {
         label="provider-made, running"
         hint="a live sandbox labeled by its provider icon and host name, without a separate kind chip"
       >
-        <Row host={sandbox({ name: "Modal sandbox 0af2" })} projectCount={1} />
+        <Row
+          host={sandbox({ name: "Example sandbox 0af2" })}
+          projectCount={1}
+        />
       </StoryRow>
       <StoryRow
         label="pausing"
@@ -141,7 +144,7 @@ export function Rows() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 91c4",
+            name: "Example sandbox 91c4",
             lifecycle: lifecycle({
               phase: "suspending",
               message: "Saving the sandbox filesystem",
@@ -170,7 +173,7 @@ export function Rows() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 7c11",
+            name: "Example sandbox 7c11",
             lifecycle: lifecycle({ phase: "removing" }),
           })}
         />
@@ -181,7 +184,7 @@ export function Rows() {
       >
         <Row
           host={sandbox({
-            name: "Modal sandbox 55de",
+            name: "Example sandbox 55de",
             status: "disconnected",
             lastSeenAt: now - 3 * 7 * 24 * 60 * 60_000,
             lifecycle: lifecycle({

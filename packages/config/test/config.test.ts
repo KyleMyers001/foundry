@@ -314,29 +314,10 @@ describe("consumer-specific config", () => {
     expect(serverConfig.BB_APP_SURFACE).toBe("web");
     expect(serverConfig.BB_APP_VERSION).toBe("0.0.0-dev");
     expect(serverConfig.BB_EXTERNAL_URL).toBe("");
-    expect(serverConfig.BB_CONNECT_GATE_KEYS_URL).toBe(
-      "https://getbb.app/.well-known/bb-connect-gate-keys.json",
-    );
     expect(serverConfig.featureFlags).toEqual({
       placeholder: false,
-      initiatorTelemetry: true,
       timelineWindowEventBudget: 1_500,
     });
-  });
-
-  it("reads and validates the connect gate keys URL override", () => {
-    expect(
-      loadServerConfig({
-        env: createServerRuntimeEnv({
-          BB_CONNECT_GATE_KEYS_URL: "http://127.0.0.1:9999/keys.json",
-        }),
-      }).BB_CONNECT_GATE_KEYS_URL,
-    ).toBe("http://127.0.0.1:9999/keys.json");
-    expect(() =>
-      loadServerConfig({
-        env: createServerRuntimeEnv({ BB_CONNECT_GATE_KEYS_URL: "" }),
-      }),
-    ).toThrow("BB_CONNECT_GATE_KEYS_URL");
   });
 
   it("validates the opt-in performance diagnostics setting", () => {
@@ -421,14 +402,21 @@ describe("consumer-specific config", () => {
     expect(serverConfig.featureFlags.placeholder).toBe(true);
   });
 
-  it("parses the initiator telemetry flag from env", () => {
+  it("ignores the retired analytics environment variables", () => {
     const serverConfig = loadServerConfig({
       env: createServerRuntimeEnv({
-        BB_FF_INITIATOR_TELEMETRY: "false",
+        BB_TELEMETRY: "true",
+        BB_POSTHOG_API_KEY: "phc_example",
+        BB_FF_INITIATOR_TELEMETRY: "true",
       }),
     });
 
-    expect(serverConfig.featureFlags.initiatorTelemetry).toBe(false);
+    expect(serverConfig).not.toHaveProperty("BB_TELEMETRY");
+    expect(serverConfig).not.toHaveProperty("BB_POSTHOG_API_KEY");
+    expect(serverConfig.featureFlags).toEqual({
+      placeholder: false,
+      timelineWindowEventBudget: 1_500,
+    });
   });
 
   it("parses the timeline window event budget from env", () => {
@@ -483,7 +471,7 @@ describe("consumer-specific config", () => {
     expect(serverConfig.BB_APP_VERSION).toBe("0.1.2");
   });
 
-  it("parses the internal app surface marker for server telemetry", () => {
+  it("parses the internal app surface marker", () => {
     const serverConfig = loadServerConfig({
       env: createServerRuntimeEnv({
         BB_APP_SURFACE: "desktop",

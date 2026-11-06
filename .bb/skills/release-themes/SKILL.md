@@ -22,8 +22,6 @@ Read these fresh every run.
 - The direction: `git show origin/main:docs/VISION.md`. Its principles are the
   candidate themes. If the person running the email has current positioning
   notes, ask for them; they decide order and emphasis.
-- Release images: `apps/web/public/changelog/<version>/` on origin/main. Often
-  there are none.
 
 ## Method
 

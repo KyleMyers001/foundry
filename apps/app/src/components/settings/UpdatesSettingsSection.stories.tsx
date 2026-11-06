@@ -48,10 +48,10 @@ const NPM_VERSION = {
   latestVersion: "0.38.0",
   currentCommit: null,
   installKind: "npm" as const,
-  source: "npm" as const,
+  source: "foundry-releases" as const,
   updateAvailable: false,
   isDevelopment: false,
-  upgradeCommand: "npx bb-app@latest",
+  releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
 };
 
 const IN_APP_UPDATE: SystemAppUpdateStatus = {
@@ -67,7 +67,7 @@ const IN_APP_UPDATE: SystemAppUpdateStatus = {
   current: { commit: null, version: "0.38.0" },
   lastResult: null,
   runningThreadCount: 0,
-  support: { kind: "supported", mode: "npm" },
+  support: { kind: "supported", mode: "source" },
 };
 
 const DESKTOP_UPDATE = {

@@ -11,7 +11,6 @@ import {
   OnboardingPluginGridSkeleton,
   ProjectsStep,
   type OnboardingAgent,
-  type OnboardingConnectState,
   type OnboardingRepo,
 } from "./OnboardingViews";
 import type { AgentSetupState, OnboardingStepId } from "./onboarding-model";
@@ -25,11 +24,6 @@ export default {
 
 const noop = () => {};
 const MACHINE_NAME = "Sawyer's MacBook Pro";
-const CONNECT_URL = "https://sawyer.getbb.app";
-const MOBILE_LINKS = {
-  ios: "https://testflight.apple.com/join/example",
-  android: "https://example.com/bb-android.apk",
-};
 
 type AgentId = "claude-code" | "codex" | "pi";
 type AgentStates = Record<AgentId, AgentSetupState>;
@@ -445,16 +439,10 @@ function PluginsFrame({
 }
 
 function DevicesFrame({
-  connect = { status: "off" },
-  connectSetupOpen = false,
   otherMachineCount = 0,
-  onToggleConnectSetup = noop,
   ...chrome
 }: StepChromeProps & {
-  connect?: OnboardingConnectState;
-  connectSetupOpen?: boolean;
   otherMachineCount?: number;
-  onToggleConnectSetup?: () => void;
 }) {
   return (
     <OnboardingLayout
@@ -468,21 +456,7 @@ function DevicesFrame({
       onSelectStep={chrome.onSelectStep ?? noop}
       onSkipAll={chrome.onSkipAll ?? noop}
     >
-      <DevicesStep
-        connect={connect}
-        connectSetup={
-          <p className="text-xs text-muted-foreground">
-            The bb connect plugin's own settings render here: sign in to your bb
-            account, then turn on remote access.
-          </p>
-        }
-        connectSetupOpen={connectSetupOpen}
-        otherMachineCount={otherMachineCount}
-        mobileLinks={MOBILE_LINKS}
-        onToggleConnectSetup={onToggleConnectSetup}
-        onCopyConnectUrl={noop}
-        onAddMachine={noop}
-      />
+      <DevicesStep otherMachineCount={otherMachineCount} onAddMachine={noop} />
     </OnboardingLayout>
   );
 }
@@ -530,7 +504,6 @@ function InteractiveFlowRun({ scenario }: { scenario: Scenario }) {
   const [enabledPluginIds, setEnabledPluginIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [connectSetupOpen, setConnectSetupOpen] = useState(false);
   const timers = useRef<number[]>([]);
 
   const later = (delayMs: number, run: () => void) => {
@@ -661,8 +634,6 @@ function InteractiveFlowRun({ scenario }: { scenario: Scenario }) {
       {view === "devices" ? (
         <DevicesFrame
           {...chrome}
-          connectSetupOpen={connectSetupOpen}
-          onToggleConnectSetup={() => setConnectSetupOpen((open) => !open)}
           onPrimary={() => setView("home")}
           onBack={() => setView("plugins")}
         />
@@ -929,36 +900,17 @@ export function Step3Plugins() {
 export function Step4Devices() {
   return (
     <Gallery>
-      <Captioned label="Default" hint="Three optional rows.">
+      <Captioned label="Default" hint="Two optional rows.">
         <StoryWindow>
           <DevicesFrame />
         </StoryWindow>
       </Captioned>
       <Captioned
-        label="Setting up bb connect"
-        hint="The connect plugin's settings section is embedded in the row."
+        label="Another machine already connected"
+        hint="Add machine opens the existing dialog."
       >
         <StoryWindow>
-          <DevicesFrame connectSetupOpen />
-        </StoryWindow>
-      </Captioned>
-      <Captioned
-        label="bb connect on, another machine already connected"
-        hint="The address is copyable; Add machine opens the existing dialog."
-      >
-        <StoryWindow>
-          <DevicesFrame
-            connect={{ status: "on", url: CONNECT_URL }}
-            otherMachineCount={1}
-          />
-        </StoryWindow>
-      </Captioned>
-      <Captioned
-        label="bb connect plugin disabled"
-        hint="No action is offered when the plugin is off."
-      >
-        <StoryWindow>
-          <DevicesFrame connect={{ status: "unavailable" }} />
+          <DevicesFrame otherMachineCount={1} />
         </StoryWindow>
       </Captioned>
     </Gallery>
