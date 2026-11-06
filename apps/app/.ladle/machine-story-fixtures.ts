@@ -4,21 +4,20 @@ import type {
 } from "@bb/server-contract";
 import { machineServerAccessBlockedReason } from "../src/components/machines/machine-server-access";
 import type { MachineAccessState } from "../src/components/settings/MachineAccessSettings";
-import modalLogoUrl from "../../../plugins/environment-modal-sandbox/modal-logo.svg";
 
 const noop = () => {};
 const noopAsync = async () => {};
 
-export const CONNECT_UNPAIRED: ServerAccessStatus = {
+export const PLUGIN_ACCESS_SETUP_REQUIRED: ServerAccessStatus = {
   providers: [
     {
-      id: "connect",
-      displayName: "bb connect",
-      description: "Use a private getbb.app address.",
-      pluginId: "connect",
+      id: "example-tunnel",
+      displayName: "Example tunnel",
+      description: "Use the address an example tunnel plugin provides.",
+      pluginId: "example-tunnel",
       availability: {
         status: "setup-required",
-        message: "Pair with bb connect",
+        message: "Sign in to the example tunnel",
       },
     },
     {
@@ -29,15 +28,16 @@ export const CONNECT_UNPAIRED: ServerAccessStatus = {
       availability: null,
     },
   ],
-  defaultProviderId: "connect",
+  defaultProviderId: "example-tunnel",
   effectiveUrl: null,
   urlSource: null,
+  notice: null,
 };
 
-export const CONNECT_PAIRED: ServerAccessStatus = {
-  ...CONNECT_UNPAIRED,
-  providers: CONNECT_UNPAIRED.providers.map((provider) =>
-    provider.id === "connect"
+export const PLUGIN_ACCESS_AVAILABLE: ServerAccessStatus = {
+  ...PLUGIN_ACCESS_SETUP_REQUIRED,
+  providers: PLUGIN_ACCESS_SETUP_REQUIRED.providers.map((provider) =>
+    provider.id === "example-tunnel"
       ? {
           ...provider,
           availability: {
@@ -49,10 +49,10 @@ export const CONNECT_PAIRED: ServerAccessStatus = {
   ),
 };
 
-export const CONNECT_UNAVAILABLE: ServerAccessStatus = {
-  ...CONNECT_UNPAIRED,
-  providers: CONNECT_UNPAIRED.providers.map((provider) =>
-    provider.id === "connect"
+export const PLUGIN_ACCESS_UNAVAILABLE: ServerAccessStatus = {
+  ...PLUGIN_ACCESS_SETUP_REQUIRED,
+  providers: PLUGIN_ACCESS_SETUP_REQUIRED.providers.map((provider) =>
+    provider.id === "example-tunnel"
       ? {
           ...provider,
           availability: {
@@ -65,7 +65,7 @@ export const CONNECT_UNAVAILABLE: ServerAccessStatus = {
 };
 
 export const MANUAL_WITHOUT_URL: ServerAccessStatus = {
-  ...CONNECT_UNPAIRED,
+  ...PLUGIN_ACCESS_SETUP_REQUIRED,
   defaultProviderId: "direct",
 };
 
@@ -73,7 +73,8 @@ export function machineAccessState(
   access: ServerAccessStatus,
   overrides: Partial<MachineAccessState> = {},
 ): MachineAccessState {
-  const selected = overrides.selected ?? access.defaultProviderId ?? "connect";
+  const selected =
+    overrides.selected ?? access.defaultProviderId ?? "example-tunnel";
   return {
     access,
     disabled: false,
@@ -107,13 +108,12 @@ export function machineProvider(
   };
 }
 
-export const MODAL_MACHINE_PROVIDER = machineProvider({
-  id: "modal-sandbox",
-  displayName: "Modal Sandbox",
-  description: "Create a sandbox in your Modal account.",
-  pluginId: "environment-modal-sandbox",
-  icon: "./modal-logo.svg",
-  logoUrl: modalLogoUrl,
+export const SANDBOX_MACHINE_PROVIDER = machineProvider({
+  id: "example-sandbox",
+  displayName: "Example Sandbox",
+  description: "Create a sandbox from an example machine provider plugin.",
+  pluginId: "example-sandbox",
+  icon: "Server",
   supportsSuspend: true,
 });
 

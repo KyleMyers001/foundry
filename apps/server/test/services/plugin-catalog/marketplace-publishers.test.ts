@@ -3,7 +3,6 @@ import {
   marketplacePublisherLabel,
   pluginPublisherLabel,
 } from "../../../src/services/plugin-catalog/marketplace-publishers.js";
-import { BUNDLED_CURATED_MARKETPLACE } from "../../../src/services/plugin-catalog/curated-marketplace.js";
 
 function publisherLabels(
   marketplaces: Array<{ marketplaceName: string; displayName: string }>,
@@ -17,9 +16,8 @@ function publisherLabels(
 }
 
 describe("marketplace publisher labels", () => {
-  it("names each marketplace by its own display name", () => {
+  it("names each marketplace by its own display name, and a retired one by its name", () => {
     const labels = publisherLabels([
-      { marketplaceName: "bb-community", displayName: "BB Community" },
       { marketplaceName: "acme", displayName: "Acme Plugins" },
     ]);
 
@@ -30,7 +28,7 @@ describe("marketplace publisher labels", () => {
         catalogMarketplaceName: "bb-community",
         labels,
       }),
-    ).toBe("BB Community");
+    ).toBe("bb-community");
     expect(
       pluginPublisherLabel({
         sourceKind: "npm",
@@ -65,7 +63,7 @@ describe("marketplace publisher labels", () => {
         marketplaceName: "bb-community",
         displayName: "BB Community",
       }),
-    ).toBe("BB Community");
+    ).toBe("bb-community");
   });
 
   it("keeps a store-installed bundled plugin on BB Official", () => {
@@ -102,9 +100,5 @@ describe("marketplace publisher labels", () => {
         labels,
       }),
     ).toBeNull();
-  });
-
-  it("does not reuse BB Official for the marketplace bb curates", () => {
-    expect(BUNDLED_CURATED_MARKETPLACE.displayName).toBe("BB Community");
   });
 });

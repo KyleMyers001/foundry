@@ -30,7 +30,6 @@ PATTERNS = {
     'api-route': r'path:\s*"([^"]+)"\s*,\s*method:\s*"([^"]+)"',
     'app-route': r'(?:export\s+)?const\s+(\w*ROUTE_PATH)\s*=\s*([^;]+);',
     'app-action': r'(?<![.\w])(?:command|paletteHiddenCommand)\(\s*"([^"]+)"',
-    'web-route': r'createFileRoute\(\s*"([^"]+)"',
     'plugin-slot': r'app\.slots\.(\w+)\(',
     'plugin-tool': r'bb\.agents\.registerTool\(\{\s*name:\s*"([^"]+)"',
 }
@@ -116,13 +115,9 @@ def collect(repo):
             continue
         slug = manifest.parent.name
         add(f'plugin:{slug}', under(f'plugins/{slug}/'), [f'plugin-{slug}'], True)
-    for app, owner in [
-        ('desktop', 'desktop'), ('mobile', 'mobile'), ('web', 'hosted-web'),
-        ('connect', 'cloud-gateway'), ('demo-server', 'developer-fixtures'),
-    ]:
+    for app, owner in [('desktop', 'desktop'), ('mobile', 'mobile')]:
         add(f'app:{app}', under(f'apps/{app}/'), [owner], True)
     add('server-and-daemon', under('apps/server/src/', 'apps/host-daemon/src/'), CORE_PAGES)
-    add('dev-harness', [name for name in under('scripts/') if 'cloud-dev' in name], ['developer-fixtures'])
     return {'schemaVersion': 1, 'groups': dict(sorted(groups.items()))}
 
 

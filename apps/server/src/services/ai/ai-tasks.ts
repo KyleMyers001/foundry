@@ -1,10 +1,12 @@
 import { getAiServiceSelections } from "@bb/db";
-import type {
-  AiServiceSelection,
-  AiServiceStatus,
-  AiTask,
-  AiTextTask,
-  JsonObject,
+import {
+  AI_TASKS,
+  type AiServiceSelection,
+  type AiServiceSelections,
+  type AiServiceStatus,
+  type AiTask,
+  type AiTextTask,
+  type JsonObject,
 } from "@bb/domain";
 import type { LoggedWorkSessionDeps } from "../../types.js";
 import { runtimeErrorLogFields } from "../lib/error-log-fields.js";
@@ -70,16 +72,45 @@ function compareIds(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+const RETIRED_AI_SERVICE_PLUGIN_IDS: ReadonlySet<string> = new Set(["bb-ai"]);
+
+const RETIRED_AI_SERVICE_MESSAGE =
+  "bb AI is no longer available in Foundry, so this task is off. Choose another service in Settings → AI services";
+
+export const RETIRED_AI_SERVICE_NOTICE =
+  "bb AI is no longer available in Foundry. Tasks that used it are off until you choose another service.";
+
+export interface EffectiveAiServiceSelections {
+  selections: AiServiceSelections;
+  retiredTasks: AiTask[];
+}
+
+export function readAiServiceSelections(
+  deps: Pick<AiTaskDeps, "db">,
+): EffectiveAiServiceSelections {
+  const stored = getAiServiceSelections(deps.db);
+  const selections: AiServiceSelections = { ...stored };
+  const retiredTasks: AiTask[] = [];
+  for (const task of AI_TASKS) {
+    const selection = stored[task];
+    if (
+      selection.mode === "service" &&
+      RETIRED_AI_SERVICE_PLUGIN_IDS.has(selection.pluginId)
+    ) {
+      selections[task] = { mode: "off" };
+      retiredTasks.push(task);
+    }
+  }
+  return { selections, retiredTasks };
+}
+
 export function orderedAiServices(
   deps: Pick<AiTaskDeps, "aiServices">,
 ): AiServiceRegistration[] {
   return deps.aiServices
     .list()
     .sort(
-      (a, b) =>
-        Number(b.pluginId === "bb-ai") - Number(a.pluginId === "bb-ai") ||
-        compareIds(a.pluginId, b.pluginId) ||
-        compareIds(a.id, b.id),
+      (a, b) => compareIds(a.pluginId, b.pluginId) || compareIds(a.id, b.id),
     );
 }
 
@@ -118,7 +149,7 @@ export function isAiTaskAvailable(
   deps: Pick<AiTaskDeps, "aiServices" | "db">,
   task: AiTask,
 ): boolean {
-  const selection = getAiServiceSelections(deps.db)[task];
+  const selection = readAiServiceSelections(deps).selections[task];
   return aiTaskServices(deps, task, selection).some(
     (service) =>
       deps.aiServices.peekStatus(aiServiceKey(service))?.ready === true,
@@ -179,7 +210,8 @@ export async function runAiTask<T>(
   args: RunAiTaskArgs<T>,
 ): Promise<AiTaskOutcome<T>> {
   const startedAt = Date.now();
-  const selection = getAiServiceSelections(deps.db)[args.task];
+  const effective = readAiServiceSelections(deps);
+  const selection = effective.selections[args.task];
   const fail = (
     reason: AiTaskFailureReason,
     message: string,
@@ -190,7 +222,12 @@ export async function runAiTask<T>(
     durationMs: Date.now() - startedAt,
   });
   if (selection.mode === "off") {
-    return fail("off", "Turned off in Settings → AI services");
+    return fail(
+      "off",
+      effective.retiredTasks.includes(args.task)
+        ? RETIRED_AI_SERVICE_MESSAGE
+        : "Turned off in Settings → AI services",
+    );
   }
   if (args.signal?.aborted) {
     return fail("cancelled", REQUEST_CANCELLED_MESSAGE);

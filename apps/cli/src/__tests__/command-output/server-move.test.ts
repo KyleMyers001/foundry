@@ -267,7 +267,7 @@ describe("bb server move", () => {
 
     expect(startMove).not.toHaveBeenCalled();
     expect(collectLogPayloads(vi.mocked(console.error))).toEqual([
-      "Error: This bb server uses a direct address, so the new server needs one too. Re-run with --address <url>: the URL every machine and app will use to reach bb on desktop, such as a Tailscale Serve URL.",
+      "Error: The new server needs an address. Re-run with --address <url>: the URL every machine and app will use to reach bb on desktop, such as a Tailscale Serve URL.",
     ]);
   });
 
@@ -879,7 +879,7 @@ describe("bb server move status and cancel", () => {
     );
     expect(collectLogPayloads(vi.mocked(console.error))).toEqual([
       "The move to desktop wasn't confirmed. Abandoning rolls back the switch and keeps the server on this computer.",
-      "If desktop already took over, two servers will run with the same data and bb connect credential. Stop the server on desktop first.",
+      "If desktop already took over, two servers will run with the same data. Stop the server on desktop first.",
     ]);
   });
 

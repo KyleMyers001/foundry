@@ -111,8 +111,8 @@ under `<bb-data-dir>/plugins/<id>/` (SQLite database, secrets, logs).
   bb marketplace remove <name>   Forget a marketplace. Plugins installed from
                                  it keep running as direct installs and keep
                                  updating from their recorded source.
-                                 bb-official and bb-community cannot be
-                                 removed
+                                 bb-official cannot be removed; a saved
+                                 bb-community copy can
 
 Installed plugins and their settings also appear under Settings → Installed
 plugins.
@@ -155,9 +155,9 @@ Each bundled plugin documents its commands and behavior in its own skill.
 - Thread list (builtin): owns the sidebar's layout preferences, synced to
   every window. `bb thread-list prefs list|get|set|reset`; see the
   `thread-list` skill.
-- Push notifications (builtin): notifies mobile, web, and desktop clients
-  when a thread needs attention.
-  `bb push-notifications status|list|add|remove|test|thread`; see the
+- Push notifications (builtin): notifies web and desktop clients when a
+  thread needs attention.
+  `bb push-notifications status|test|send|thread`; see the
   `push-notifications` skill.
 - Secrets (builtin): `bb secret request <NAME...> --write-env <path>` collects
   credentials through a secure form into a dotenv file without exposing them
@@ -166,8 +166,10 @@ Each bundled plugin documents its commands and behavior in its own skill.
   fenced `inline-vis` code block or a `::inline-vis{file="demo.html"}`
   workspace or thread-storage file; see the `inline-vis` skill.
 - MCP server (builtin, disabled by default): `bb plugin enable bb--mcp` lets
-  ChatGPT, Claude, or another MCP client control this bb; an approved app can
-  run any `bb` command. `bb mcp status|clients|revoke`; see the `mcp` skill.
+  an MCP client control this bb through an address on the bb server's port; it
+  can run any `bb` command. It needs no sign-in and refuses only web-page and
+  bb connect gate requests, so anything that can reach the server port can use
+  it. `bb mcp status`; see the `mcp` skill.
 - Storage & retention (builtin, disabled by default): enable with
   `bb plugin enable bb--storage-retention`. Owns thread retention policies
   and machine storage cleanup through its sidebar panel and `bb storage`
@@ -188,10 +190,6 @@ Each bundled plugin documents its commands and behavior in its own skill.
 - Tasks (official, `bb plugin install tasks`): a task tracker with agent
   delegation. `bb tasks show|list|comment|update|attach`, and
   `bb tasks --help` for the rest; see the `tasks` skill.
-- Modal sandboxes (official, `bb plugin install environment-modal-sandbox`):
-  reusable Modal cloud machines. `bb modal account inspect`,
-  `bb machine create --provider modal-sandbox`, and `bb modal image|sandbox`;
-  see the `modal-sandboxes` skill.
 
 Multi-plugin repositories
 
@@ -231,15 +229,13 @@ and never uses the network; install its entries by bare name or qualified name
 (`bb plugin install docs` or `bb plugin install docs@bb-official`). An app
 update also updates the bundled copy.
 
-`bb-community` lists reviewed plugins that live outside the app bundle, read
-from https://getbb.app/marketplace/v2/marketplace.json at startup and every two
-hours. Set BB_MARKETPLACE_URL (read at startup) to override the URL. An invalid
-manifest keeps the last valid catalog. `bb plugin search` shows install counts
-that bb measures through anonymous telemetry, so they undercount; third-party
-marketplaces have none. Builtins show "Built in", and a plugin under 25
-installs that was published in the last 30 days shows "New".
-`bb plugin search --json` returns the raw `installs`, `installedByDefault`,
-and long-form `overview` fields.
+Foundry does not include the upstream `bb-community` catalog. A copy saved by
+an older version is kept but not listed, searched, refreshed, or used for
+installs or plugin details; plugins installed from it stay installed.
+`bb marketplace remove bb-community` deletes that copy and keeps its plugins as
+direct installs. Builtins show "Built in".
+`bb plugin search --json` returns the raw `installs` (always null),
+`installedByDefault`, and long-form `overview` fields.
 
 Anyone can host a third-party marketplace:
 

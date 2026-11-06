@@ -991,7 +991,6 @@ it("resumes workspace setup when the same daemon reconnects", async () => {
         hostId: host.id,
         instanceId: session.instanceId,
         hostName: host.name,
-        hasMachineCredential: false,
         platform: "darwin",
         dataDir: "/tmp/provision-reconnect-host-data",
         localApiPort: null,

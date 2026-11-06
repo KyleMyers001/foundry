@@ -19,31 +19,26 @@ machine cannot be removed.
 
 ## Open bb from another browser
 
-The simplest managed route is **bb connect**. Sign the server in to your bb
-account from Settings → bb connect (or `bb account login`, or
-`bb connect --code ...` with a dashboard code), then open its getbb.app URL.
-The server owns the tunnel and reconnects after restart.
-
-For a private tailnet route, keep bb on its loopback default and publish it
-through Tailscale Serve:
+Foundry has no hosted route such as bb connect. For a private tailnet route,
+keep bb on its loopback default and publish it through Tailscale Serve:
 
 ```bash
 tailscale serve --bg --https=443 http://127.0.0.1:38886
-npx bb-app config set BB_APP_URL https://<machine>.<tailnet>.ts.net
+pnpm start config set BB_APP_URL https://<machine>.<tailnet>.ts.net
 ```
 
-Start bb with `npx bb-app` and open the HTTPS URL. Tailscale ACLs are the access
-boundary for this route; do not expose the server through Funnel or the public
-internet. bb connect URLs require the paired account owner's session.
+Start bb with `pnpm start` (or the desktop app) and open the HTTPS URL.
+Tailscale ACLs are the access boundary for this route; do not expose the server
+through Funnel or the public internet.
 
 Existing remote host daemons that target a direct tailnet IP or
 `http://<machine>.<tailnet>.ts.net:38886` must migrate before restarting an
-upgraded server. Prefer pairing bb connect and re-adding the machine from
-Settings → Machines so its installer records the account-gated route. The
-private alternative is to open bb through the Tailscale Serve URL and re-run
-the Add machine installer from there.
+upgraded server. Open bb through the Tailscale Serve URL and re-run the Add
+machine installer from there. Machines added through bb connect by an older
+version also need that: set a server URL reachable by machines, then reconnect
+them from Settings → Machines or with `bb machine reconnect <id-or-name>`.
 
-For compatibility only, `npx bb-app --server-bind-host 0.0.0.0` restores direct
+For compatibility only, `pnpm start --server-bind-host 0.0.0.0` restores direct
 IPv4 network access. The public API is unauthenticated and permits command
 execution and file reads, so use wildcard binding only behind a trusted network
 boundary and never through Funnel or the public internet.
@@ -56,7 +51,7 @@ remain separate from bb's bind setting.
 ### Use editors installed on the browser device
 
 Local editor integration is optional. It connects the remote bb page to the
-loopback-only helper started by the bb desktop app or `npx bb-app` on the
+loopback-only helper started by the bb desktop app or `pnpm start` on the
 computer running the browser. The helper discovers installed editors and opens
 paths without exposing its API to the network.
 
@@ -65,7 +60,7 @@ sure bb is running on the browser device. Verify `ssh <work-host>` succeeds
 there, then map the server/work-host to that SSH target:
 
 ```bash
-npx bb-app client ssh-target set <bb-server-origin> <ssh-target> --host-id <work-host-id>
+pnpm start client ssh-target set <bb-server-origin> <ssh-target> --host-id <work-host-id>
 ```
 
 Copy the work-host ID from `bb machine list`. `--host-id` may be omitted when
@@ -81,63 +76,35 @@ loads; it is only needed for discovering and launching local editors.
 
 If Settings reports that it cannot connect to the helper:
 
-1. Confirm the bb desktop app or `npx bb-app` is running on the browser device.
+1. Confirm the bb desktop app or `pnpm start` is running on the browser device.
 2. Confirm the browser allows local network access for the bb page.
 3. A helper enrolled with this exact server trusts its origin automatically.
    For a separate local bb helper serving a custom HTTPS or Tailscale browser,
    configure that exact origin with
-   `npx bb-app config set BB_APP_URL <origin>` and restart bb.
+   `pnpm start config set BB_APP_URL <origin>` and restart bb.
 4. Return to Settings → Files and choose **Retry**.
 
 Phones and tablets need no helper; editor-launch actions are simply unavailable.
 
 ## Use the bb mobile app
 
-The bb mobile app is a client for a bb server; it runs nothing itself. Over
-bb connect it pairs the same way the desktop app does: the phone enrolls as a
-connect machine with its own credential, which the getbb.app dashboard lists
-and can revoke.
-
-1. Sign the bb server in to your bb account first (Settings → bb account, `bb account login`, or `bb connect --code …`).
-2. Mint a pairing code for the phone: Settings → Mobile → **Add mobile device** (QR code plus the code as text, with a countdown), or run
-   `bb connect machine-code` (`--json` prints
-   `{code, serverUrl, apex, expiresAt}`).
-3. In the mobile app, add a server over bb connect and scan the QR code or type
-   the code. Codes last 10 minutes and work once.
-
-The phone keeps its credential in the device keychain and mints sessions from
-it; it never holds the server's pairing secret. A session lasts seven days and
-renews while the phone is in use. To cut a phone off, revoke it in the
-getbb.app dashboard machine list; its session stops working within about 20
-seconds. Every phone takes one of
-the account's machine slots, so a machine-limit error means an unused device
-should be revoked first. On a trusted network the app can also use a direct
-server URL (Tailscale Serve or `--server-bind-host 0.0.0.0`) with the same
-caveats as a browser. What the phone cannot do is listed in
+The bb mobile app is a client for a bb server; it runs nothing itself.
+Foundry does not publish mobile builds; build one from
+[`apps/mobile`](../apps/mobile/README.md). On a trusted network the app uses a
+direct server URL (Tailscale Serve or `--server-bind-host 0.0.0.0`) with the
+same caveats as a browser. A server saved over bb connect by an older build
+stays listed but cannot connect; add it again by its direct URL. Foundry sends
+no mobile push notifications; browser and desktop notifications still work.
+What the phone cannot do is listed in
 [platform-support.md](platform-support.md#mobile-app).
-
-### Push notifications on a self-hosted server
-
-The built-in Push notifications plugin sends each notification's thread title
-and a short plain-text preview through Expo, so a self-hosted server must reach
-`https://exp.host`; it needs no Apple or Google key. An Expo push token can only
-send notifications to one app installation, but treat it as private. Device
-commands are in the `push-notifications` plugin skill; the relay URL and proxy
-settings are in [configuration.md](configuration.md).
 
 ## Point the desktop app at another bb
 
-The desktop app's Server menu lists "This Mac", every bb connect server on the
-account, and a custom URL. When you select a remote server, the app stops
-starting a bb server on this Mac. It starts one again only when you select
-"This Mac".
-
-To reach bb connect without a local server, the app enrolls itself once as a
-connect machine. That step needs the local server, so the first switch to a
-remote server still starts it. The app keeps its own credential, encrypted with
-the OS keychain, and never holds the server's pairing secret. The app appears in
-the getbb.app dashboard machine list, where you can revoke it. After a revoke,
-the app drops the credential and asks the local server again.
+The desktop app's Server menu lists "This Mac" and your custom server URLs.
+When you select a remote server, the app stops starting a bb server on this
+Mac. It starts one again only when you select "This Mac". A bb connect server
+saved by an older version is kept but never dialed; the app shows a page that
+asks you to add the server again by its direct URL.
 
 A remote server has no realtime link for keybindings and theme. The app re-reads
 them when it starts, when it becomes active, and every five minutes.
@@ -148,12 +115,10 @@ Open Settings → Machines and choose Add a machine. Run the generated one-line
 installer on the computer that should
 execute work. Choose Windows in the dialog for a PowerShell command; a Windows
 machine needs Node.js 22.19 or newer and Git for Windows, and its daemon starts
-when you sign in to Windows. It installs and enrolls a host daemon; when bb connect is paired,
-the installer also configures the machine credential used to reach the server
-through the account gate. Without bb connect, open the server through a
-Tailscale Serve URL before generating the installer; the loopback listener is
-not directly reachable from another machine. When bb connect is not paired and
-the server URL is a loopback or unspecified address, the dialog does not show an
+when you sign in to Windows. It installs and enrolls a host daemon. Open the
+server through a Tailscale Serve URL before generating the installer; the
+loopback listener is not directly reachable from another machine. When the
+server URL is a loopback or unspecified address, the dialog does not show an
 installer. It asks you to set up machine access first by choosing the address
 machines should use. Once access is ready, the dialog also names the server
 machine the new machine will depend on.
@@ -212,8 +177,7 @@ After it connects:
 
 Machine names are conveniences and may be duplicated; CLI targeting by name
 requires an unambiguous match. IDs are always accepted. Removing a machine from
-Settings stops bb from dispatching new work to it; revoke a lost machine's bb
-connect access from the getbb.app dashboard as well.
+Settings stops bb from dispatching new work to it.
 
 Browser access and execution remain independent: opening bb on a laptop does
 not enroll that laptop, and enrolling it as a machine does not expose the bb UI.

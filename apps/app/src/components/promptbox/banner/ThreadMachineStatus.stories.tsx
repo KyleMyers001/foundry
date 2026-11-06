@@ -1,5 +1,4 @@
 import type { SystemMachineProvider } from "@bb/server-contract";
-import modalLogoUrl from "../../../../../../plugins/environment-modal-sandbox/modal-logo.svg?url";
 import { StoryCard, StoryRow } from "../../../../.ladle/story-card";
 import { ResponsiveStage } from "./banner-story-stages";
 import { ThreadMachineStatusBanner } from "./ThreadMachineStatus";
@@ -11,12 +10,12 @@ export default {
 const noop = () => {};
 
 const modalProvider: SystemMachineProvider = {
-  id: "modal-sandbox",
-  displayName: "Modal Sandbox",
+  id: "example-sandbox",
+  displayName: "Example Sandbox",
   description: "Run a machine for development.",
-  icon: "./modal-logo.svg",
-  logoUrl: modalLogoUrl,
-  pluginId: "environment-modal-sandbox",
+  icon: "Box",
+  logoUrl: null,
+  pluginId: "example-sandbox",
   inputs: null,
   acceptsEmptyInputs: true,
   supportsSuspend: true,

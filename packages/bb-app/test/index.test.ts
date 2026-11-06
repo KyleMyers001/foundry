@@ -22,9 +22,11 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { waitForProcessExit } from "@bb/config/child-process-exit";
 import { resolvePortFromEnv } from "@bb/config/runtime";
+import { LEGACY_CONNECT_ENROLLMENT_MESSAGE } from "@bb/config/bb-app-managed-config";
 import {
   assertBbAppArtifacts,
   assertBbHostArtifacts,
+  assertNoLegacyConnectEnrollment,
   completeFullStackSupervision,
   createDaemonEnv,
   createHostEnrollKeyRequestBody,
@@ -51,6 +53,7 @@ import type {
   DelayMillisecondsArgs,
   DelayMillisecondsFn,
   FullStackSupervisionResult,
+  LauncherCliOptions,
   ManagedFullStackProcesses,
   ManagedProcessName,
   ManagedProcessRun,
@@ -165,10 +168,8 @@ const startupOnlyManagedEnvCases: StartupOnlyManagedEnvCase[] = [
   { key: "BB_INHERITED_SKILLS_ROOTS", value: "/tmp/bb-skills" },
   { key: "BB_LOG_LEVEL", value: "debug" },
   { key: "BB_MANAGED_DEV_BUILTIN_PLUGIN_HOT_RELOAD", value: "1" },
-  { key: "BB_POSTHOG_API_KEY", value: "test-posthog-key" },
   { key: "BB_SERVER_BIND_HOST", value: "127.0.0.1" },
   { key: "BB_SERVER_PORT", value: "48886" },
-  { key: "BB_TELEMETRY", value: "false" },
 ];
 
 const packageMetadataSchema = z.object({
@@ -935,11 +936,123 @@ describe("bb-app launcher", () => {
     });
     expect(
       JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8")),
-    ).toMatchObject({
-      machineCredential: "bbcm_machine",
-      connectMachineId: "machine-1",
-      serverUrl: "https://bb.example.test",
+    ).toEqual({ serverUrl: "https://bb.example.test" });
+  });
+
+  it("re-enrolls a bb connect machine on a direct URL without its connect credentials", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-remote-join-"));
+    const context = { ...createTestStartContext(), dataDir };
+    writeFileSync(
+      join(dataDir, "config.json"),
+      JSON.stringify({
+        serverUrl: "https://laptop.connect.example",
+        serverHeaders: {
+          "x-bb-connect-machine": "bbcm_old",
+          "x-proxy-auth": "kept",
+        },
+        machineCredential: "bbcm_old",
+        connectMachineId: "machine-1",
+        config: { BB_LOG_LEVEL: "debug" },
+      }),
+    );
+
+    await createHostDaemonJoinEnv({
+      context,
+      env: { BB_HOST_ENROLL_KEY: "bbde_supplied", BB_HOST_ID: "host_remote" },
+      serverUrl: "https://laptop.tailnet.example",
     });
+
+    expect(
+      JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8")),
+    ).toEqual({
+      serverUrl: "https://laptop.tailnet.example",
+      serverHeaders: { "x-proxy-auth": "kept" },
+      config: { BB_LOG_LEVEL: "debug" },
+    });
+  });
+
+  it("will not dial a saved bb connect address or forward its credential", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-legacy-connect-"));
+    const legacyConfig = JSON.stringify({
+      serverUrl: "https://laptop.connect.example",
+      serverHeaders: {
+        "x-bb-connect-machine": "bbcm_secret",
+        "x-proxy-auth": "kept",
+      },
+      machineCredential: "bbcm_secret",
+      connectMachineId: "machine-1",
+    });
+    writeFileSync(join(dataDir, "config.json"), legacyConfig);
+    try {
+      const resolve = (options: LauncherCliOptions) =>
+        resolveBbAppRuntimeState({
+          entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+            .href,
+          env: { BB_DATA_DIR: dataDir },
+          homeDir: "/home/tester",
+          options,
+          serverUrlMode: "managed",
+        });
+
+      const saved = await resolve(parseLauncherArgs([]).options);
+      expect(() => assertNoLegacyConnectEnrollment(saved)).toThrow(
+        LEGACY_CONNECT_ENROLLMENT_MESSAGE,
+      );
+      expect(() => assertNoLegacyConnectEnrollment(saved)).not.toThrow(
+        /bbcm_secret/u,
+      );
+      expect(saved.env.BB_SERVER_URL).not.toBe(
+        "https://laptop.connect.example",
+      );
+
+      for (const replayedUrl of [
+        "https://laptop.connect.example",
+        "https://laptop.connect.example/",
+      ]) {
+        const oldInstallerService = await resolve(
+          parseLauncherArgs([
+            "host-daemon",
+            "--auto-update",
+            "--host-daemon-port",
+            "39911",
+            "--server-url",
+            replayedUrl,
+          ]).options,
+        );
+        expect(() =>
+          assertNoLegacyConnectEnrollment(oldInstallerService),
+        ).toThrow(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+      }
+      const replayedByEnv = await resolveBbAppRuntimeState({
+        entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+          .href,
+        env: {
+          BB_DATA_DIR: dataDir,
+          BB_SERVER_URL: "https://laptop.connect.example",
+        },
+        homeDir: "/home/tester",
+        options: parseLauncherArgs([]).options,
+        serverUrlMode: "managed",
+      });
+      expect(() => assertNoLegacyConnectEnrollment(replayedByEnv)).toThrow(
+        LEGACY_CONNECT_ENROLLMENT_MESSAGE,
+      );
+
+      const direct = await resolve(
+        parseLauncherArgs(["--server-url", "https://laptop.tailnet.example"])
+          .options,
+      );
+      expect(() => assertNoLegacyConnectEnrollment(direct)).not.toThrow();
+      expect(direct.env.BB_SERVER_URL).toBe("https://laptop.tailnet.example");
+      expect(JSON.parse(direct.env.BB_SERVER_HEADERS ?? "{}")).toEqual({
+        "x-proxy-auth": "kept",
+      });
+      expect(readFileSync(join(dataDir, "config.json"), "utf8")).toBe(
+        legacyConfig,
+      );
+    } finally {
+      rmSync(dataDir, { recursive: true, force: true });
+    }
   });
 
   it("requires the join-code host ID on a fresh machine", async () => {
@@ -1083,7 +1196,6 @@ describe("bb-app launcher", () => {
           BB_INHERITED_SKILLS_ROOTS: "/stored/skills",
           BB_SERVER_BIND_HOST: "0.0.0.0",
           BB_SERVER_PORT: "48886",
-          BB_TELEMETRY: "true",
           OPENAI_API_KEY: "stored-openai-key",
         },
       }),
@@ -1121,7 +1233,6 @@ describe("bb-app launcher", () => {
         BB_INHERITED_SKILLS_ROOTS: "/worktree/skills",
         BB_SERVER_BIND_HOST: "127.0.0.1",
         BB_SERVER_PORT: "47886",
-        BB_TELEMETRY: "false",
         OPENAI_API_KEY: "stored-openai-key",
       });
       expect(env.BB_DEV_APP_PORT).toBeUndefined();
@@ -1658,7 +1769,6 @@ describe("bb-app launcher", () => {
           BB_FF_PLACEHOLDER: "true",
           BB_SERVER_BIND_HOST: "0.0.0.0",
           BB_SERVER_PORT: "48886",
-          BB_TELEMETRY: "false",
         },
       }),
       "utf8",
@@ -1679,7 +1789,7 @@ describe("bb-app launcher", () => {
 
       expect(output).toContain("Reloaded running bb server config.");
       expect(output).toContain(
-        "Startup-only settings currently configured (BB_FF_PLACEHOLDER, BB_LOG_LEVEL, BB_SERVER_BIND_HOST, BB_SERVER_PORT, BB_TELEMETRY) apply on the next full bb-app restart.",
+        "Startup-only settings currently configured (BB_FF_PLACEHOLDER, BB_LOG_LEVEL, BB_SERVER_BIND_HOST, BB_SERVER_PORT) apply on the next full bb-app restart.",
       );
     } finally {
       await server.close();

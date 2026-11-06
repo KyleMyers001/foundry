@@ -365,12 +365,6 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/windows-dependency-cache
 
-      - name: Restore React Compiler cache
-        if: ${{ contains(matrix.filter, '--filter=@bb/demo-server') }}
-        timeout-minutes: 1
-        continue-on-error: true
-        uses: ./.github/actions/cache-react-compiler
-
       - name: Restore workspace caches
         id: cache
         timeout-minutes: 1
@@ -644,12 +638,6 @@ jobs:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
 
-      - name: Restore React Compiler cache
-        if: ${{ contains(matrix.filter, '--filter=@bb/demo-server') }}
-        timeout-minutes: 1
-        continue-on-error: true
-        uses: ./.github/actions/cache-react-compiler
-
       - name: Restore workspace caches
         id: cache
         timeout-minutes: 1
@@ -673,14 +661,11 @@ jobs:
           TURBO_CACHE_RESTORE_OUTCOME: ${{ steps.cache.outcome }}
           PNPM_CACHE_RESTORE_OUTCOME: ${{ steps.pnpm-cache.outcome }}
           APP_SHARD: ${{ startsWith(matrix.shard, 'app-') }}
-          DEMO_ONLY: ${{ matrix.filter == '--filter=@bb/demo-server' }}
           MOBILE_TESTS: ${{ matrix.mobile }}
         run: |
           filters=()
           if [[ "$APP_SHARD" == "true" ]]; then
             filters=(--ignore-scripts --filter bb --filter '@bb/app...' --filter '@bb/db...')
-          elif [[ "$DEMO_ONLY" == "true" ]]; then
-            filters=(--ignore-scripts --filter bb --filter '@bb/demo-server...' --filter '@bb/db...')
           elif [[ "$MOBILE_TESTS" != "true" ]]; then
             filters=(--filter '!@bb/mobile')
           fi

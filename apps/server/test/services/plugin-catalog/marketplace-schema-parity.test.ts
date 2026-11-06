@@ -11,13 +11,13 @@ import {
 const SCHEMA_PATHS = {
   1: fileURLToPath(
     new URL(
-      "../../../../web/public/schemas/marketplace.schema.json",
+      "./fixtures/marketplace.schema.json",
       import.meta.url,
     ),
   ),
   2: fileURLToPath(
     new URL(
-      "../../../../web/public/schemas/marketplace-v2.schema.json",
+      "./fixtures/marketplace-v2.schema.json",
       import.meta.url,
     ),
   ),

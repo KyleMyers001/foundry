@@ -53,6 +53,8 @@ import {
   bbAppManagedEnvFileSchema,
   formatBbAppConfigPath,
   formatBbAppEnvPath,
+  hasLegacyConnectEnrollment,
+  LEGACY_CONNECT_ENROLLMENT_MESSAGE,
   parseBbAppManagedConfig,
   REMOVED_AI_SERVICE_CONFIG_KEYS,
   REMOVED_AI_SERVICE_CONFIG_MESSAGE,
@@ -61,6 +63,7 @@ import {
   type BbAppManagedConfigValues,
   type BbAppManagedEnvConfig,
   type BbAppManagedEnvFile,
+  withoutLegacyConnectHeader,
 } from "@bb/config/bb-app-managed-config";
 import {
   formatClientConfigPath,
@@ -199,10 +202,8 @@ const STARTUP_ONLY_MANAGED_ENV_KEYS = new Set<string>([
   "BB_LOG_LEVEL",
   "BB_PERF_DIAGNOSTICS",
   "BB_MANAGED_DEV_BUILTIN_PLUGIN_HOT_RELOAD",
-  "BB_POSTHOG_API_KEY",
   "BB_SERVER_BIND_HOST",
   "BB_SERVER_PORT",
-  "BB_TELEMETRY",
 ]);
 const PORTABLE_ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const SECRET_SHAPED_ENV_NAME_PATTERN =
@@ -326,6 +327,7 @@ interface BbAppRuntimeState {
   config: ManagedConfig;
   context: BbAppStartContext;
   env: NodeJS.ProcessEnv;
+  legacyConnectEnrollment: boolean;
   serverEnv: NodeJS.ProcessEnv;
 }
 
@@ -366,7 +368,7 @@ interface InvalidCommand {
   kind: "invalid";
 }
 
-interface LauncherCliOptions {
+export interface LauncherCliOptions {
   autoUpdate?: boolean;
   bundled?: boolean;
   dataDir?: string;
@@ -999,7 +1001,6 @@ function applyWorktreeRuntimePolicy(
     BB_INHERITED_SKILLS_ROOTS: policy.inheritedSkillsRoots,
     BB_SERVER_BIND_HOST: policy.serverBindHost,
     BB_SERVER_PORT: String(policy.serverPort),
-    BB_TELEMETRY: "false",
   };
   delete nextEnv.BB_DEV_APP_PORT;
   return nextEnv;
@@ -1064,21 +1065,66 @@ export function resolveServerListenerUrl(
 function applyManagedConfigEnv(
   args: ApplyManagedConfigEnvArgs,
 ): NodeJS.ProcessEnv {
+  const serverHeaders = withoutLegacyConnectHeader(args.config.serverHeaders);
   return {
     ...args.env,
-    ...(args.config.serverHeaders !== undefined ||
-    args.config.machineCredential !== undefined
-      ? {
-          BB_SERVER_HEADERS: JSON.stringify(
-            args.config.serverHeaders ?? {
-              "x-bb-connect-machine": args.config.machineCredential,
-            },
-          ),
-        }
+    ...(serverHeaders !== undefined
+      ? { BB_SERVER_HEADERS: JSON.stringify(serverHeaders) }
       : {}),
     ...args.config.config,
     ...args.envFile.env,
   };
+}
+
+export function assertNoLegacyConnectEnrollment(
+  runtime: Pick<BbAppRuntimeState, "legacyConnectEnrollment">,
+): void {
+  if (runtime.legacyConnectEnrollment) {
+    throw new Error(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+  }
+}
+
+class RetiredConnectDestinationError extends Error {
+  override readonly name = "RetiredConnectDestinationError";
+}
+
+function isSameServerUrl(left: string, right: string): boolean {
+  try {
+    return (
+      normalizeServerUrlForComparison(left) ===
+      normalizeServerUrlForComparison(right)
+    );
+  } catch {
+    return left === right;
+  }
+}
+
+function dialsLegacyConnectAddress(args: {
+  config: ManagedConfig;
+  serverUrl: string | undefined;
+}): boolean {
+  if (!hasLegacyConnectEnrollment(args.config)) return false;
+  return (
+    args.serverUrl === undefined ||
+    (args.config.serverUrl !== undefined &&
+      isSameServerUrl(args.serverUrl, args.config.serverUrl))
+  );
+}
+
+function formatRetiredConnectMoveMessage(movedFile: ServerMovedFile): string {
+  return `This bb server moved to ${movedFile.toHostName} at a bb connect address (${movedFile.serverUrl}), which Foundry no longer supports, so this computer will not connect to it. Its saved identity is kept. Add this computer again from ${movedFile.toHostName} with a direct or Tailscale URL (Settings → Machines → Add machine) and run the command shown there on this computer.`;
+}
+
+function withoutLegacyConnectEnrollment(
+  config: ManagedConfigForWrite,
+): ManagedConfigForWrite {
+  const next: ManagedConfigForWrite = { ...config };
+  delete next.machineCredential;
+  delete next.connectMachineId;
+  const serverHeaders = withoutLegacyConnectHeader(config.serverHeaders);
+  if (serverHeaders === undefined) delete next.serverHeaders;
+  else next.serverHeaders = serverHeaders;
+  return next;
 }
 
 function createServerBaseEnv(args: CreateServerBaseEnvArgs): NodeJS.ProcessEnv {
@@ -1444,14 +1490,19 @@ export async function resolveBbAppRuntimeState(
         homeDir: args.homeDir,
       }),
       env: localEnv,
+      legacyConnectEnrollment: false,
       serverEnv: localServerEnv,
     };
   }
 
+  const legacyConnect = hasLegacyConnectEnrollment(config);
+  const explicitServerUrl =
+    toOptionalString(args.options.serverUrl) ??
+    toOptionalString(managedEnv.BB_SERVER_URL);
   const finalEnv = {
     ...managedEnv,
     BB_SERVER_URL: resolveServerUrl({
-      config,
+      config: legacyConnect ? { ...config, serverUrl: undefined } : config,
       defaultServerUrl: initialContext.serverUrl,
       env: managedEnv,
       optionServerUrl: args.options.serverUrl,
@@ -1465,6 +1516,10 @@ export async function resolveBbAppRuntimeState(
       homeDir: args.homeDir,
     }),
     env: finalEnv,
+    legacyConnectEnrollment: dialsLegacyConnectAddress({
+      config,
+      serverUrl: explicitServerUrl,
+    }),
     serverEnv: stripThreadContextEnv(
       applyRuntimePolicy(
         createServerBaseEnv({
@@ -1584,9 +1639,7 @@ Startup-only server and launcher keys:
   BB_APP_SURFACE, BB_APP_URL, BB_DATA_DIR, BB_DEV_APP_PORT,
   BB_EXTERNAL_URL, BB_HOST_DAEMON_PORT, BB_INHERITED_SKILLS_ROOTS,
   BB_LOG_LEVEL, BB_MANAGED_DEV_BUILTIN_PLUGIN_HOT_RELOAD, BB_PERF_DIAGNOSTICS,
-  BB_POSTHOG_API_KEY,
-  BB_SERVER_BIND_HOST, BB_SERVER_PORT, BB_TELEMETRY, and BB_FF_* feature
-  flags.
+  BB_SERVER_BIND_HOST, BB_SERVER_PORT, and BB_FF_* feature flags.
   Changes require a full bb-app restart with bb-app stop && bb-app start,
   or a desktop app restart. BB_APP_URL can instead be changed live with
   bb-app config.
@@ -2646,6 +2699,17 @@ export async function resolveMovedDaemonLaunch(
       : { worktreePolicy: args.worktreePolicy }),
   });
   const serverUrl = runtime.config.serverUrl ?? args.movedFile.serverUrl;
+  if (dialsLegacyConnectAddress({ config: runtime.config, serverUrl })) {
+    throw new RetiredConnectDestinationError(LEGACY_CONNECT_ENROLLMENT_MESSAGE);
+  }
+  if (
+    args.movedFile.mode === "connect" &&
+    isSameServerUrl(serverUrl, args.movedFile.serverUrl)
+  ) {
+    throw new RetiredConnectDestinationError(
+      formatRetiredConnectMoveMessage(args.movedFile),
+    );
+  }
   return {
     context: runtime.context,
     env: createDaemonEnv({
@@ -2691,19 +2755,12 @@ export async function createHostDaemonJoinEnv(
     toOptionalString(args.env.BB_HOST_ID) ??
     (await readPersistedHostId(args.context.dataDir));
   const suppliedJoinCode = toOptionalString(args.env.BB_HOST_ENROLL_KEY);
-  const machineCredential = toOptionalString(
-    args.env.BB_CONNECT_MACHINE_CREDENTIAL,
-  );
-  const connectMachineId = toOptionalString(args.env.BB_CONNECT_MACHINE_ID);
   const writeJoinConfig = (): Promise<void> =>
-    writeManagedConfig({
-      config: {
-        serverUrl: args.serverUrl,
-        ...(machineCredential !== undefined ? { machineCredential } : {}),
-        ...(connectMachineId !== undefined ? { connectMachineId } : {}),
-      },
-      dataDir: args.context.dataDir,
-    });
+    mutateManagedConfig(args.context.dataDir, (current) =>
+      withoutLegacyConnectEnrollment(
+        mergeManagedConfig(current, { serverUrl: args.serverUrl }),
+      ),
+    );
   if (suppliedJoinCode !== undefined) {
     if (requestedHostId === null) {
       throw new Error("--host-id is required when --join-code is supplied");
@@ -2790,6 +2847,7 @@ export async function runBbCli(
     serverUrlMode: "managed",
   });
   assertBbHostArtifacts(runtime.context);
+  assertNoLegacyConnectEnrollment(runtime);
   process.exitCode = await runBundledCliCommand({
     args: cliArgs,
     context: runtime.context,
@@ -3088,6 +3146,7 @@ Usage:
     serverUrlMode: "managed",
   });
   assertBbHostArtifacts(runtime.context);
+  assertNoLegacyConnectEnrollment(runtime);
   await runHostDaemonOnly({
     args: parsedArgs.positionals,
     context: runtime.context,
@@ -3621,6 +3680,14 @@ export async function runMovedMode(
     }
   };
 
+  const waitForMovedModeToEnd = async (): Promise<void> => {
+    while (!isMovedModeOver()) {
+      await args.delayMilliseconds({
+        ms: MOVED_MODE_MARKER_POLL_INTERVAL_MS,
+      });
+    }
+  };
+
   await syncResponder();
   const watcher = watchMarkers();
   try {
@@ -3632,13 +3699,10 @@ export async function runMovedMode(
         green("●"),
         `A background service runs this computer as a machine (${machineService}); not starting another host daemon`,
       );
-      while (!isMovedModeOver()) {
-        await args.delayMilliseconds({
-          ms: MOVED_MODE_MARKER_POLL_INTERVAL_MS,
-        });
-      }
+      await waitForMovedModeToEnd();
     } else if (!isMovedModeOver()) {
       beginStep("Starting host daemon");
+      let retiredDestination = false;
       try {
         await args.startDaemon();
         endStep(green("✓"), "Host daemon running");
@@ -3646,23 +3710,32 @@ export async function runMovedMode(
           context: args.context,
           movedFile: args.movedFile,
         });
-      } catch {
+      } catch (error) {
+        retiredDestination = error instanceof RetiredConnectDestinationError;
         if (!isMovedModeOver()) {
           endStep(red("✗"), "Host daemon failed to start");
-          logManagedProcessStartupFailureContext({
-            context: args.context,
-            processName: "daemon",
-          });
+          if (error instanceof RetiredConnectDestinationError) {
+            log(yellow("!"), error.message);
+          } else {
+            logManagedProcessStartupFailureContext({
+              context: args.context,
+              processName: "daemon",
+            });
+          }
         }
       }
-      await superviseMovedDaemonProcess({
-        context: args.context,
-        delayMilliseconds: args.delayMilliseconds,
-        isMovedModeOver,
-        isServerUnlocked,
-        processes: args.processes,
-        startDaemon: args.startDaemon,
-      });
+      if (retiredDestination) {
+        await waitForMovedModeToEnd();
+      } else {
+        await superviseMovedDaemonProcess({
+          context: args.context,
+          delayMilliseconds: args.delayMilliseconds,
+          isMovedModeOver,
+          isServerUnlocked,
+          processes: args.processes,
+          startDaemon: args.startDaemon,
+        });
+      }
     }
   } finally {
     stopWatching();
@@ -4112,6 +4185,7 @@ export async function runBbApp(
 
   if (command.kind === "host-daemon") {
     assertBbHostArtifacts(runtime.context);
+    assertNoLegacyConnectEnrollment(runtime);
     await runHostDaemonOnly({
       args: command.args,
       context: runtime.context,
