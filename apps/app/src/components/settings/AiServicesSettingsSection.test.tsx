@@ -10,6 +10,7 @@ import {
 } from "./AiServicesSettingsSection";
 
 const VIEW: SystemAiServicesResponse = {
+  notice: null,
   selections: {
     "thread-title": { mode: "automatic" },
     "commit-message": {

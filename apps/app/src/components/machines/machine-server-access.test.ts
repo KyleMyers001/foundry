@@ -21,6 +21,7 @@ function status(
     defaultProviderId: "relay",
     effectiveUrl: null,
     urlSource: null,
+    notice: null,
     ...overrides,
   };
 }

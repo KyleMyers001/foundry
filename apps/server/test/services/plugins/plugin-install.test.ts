@@ -48,7 +48,6 @@ import {
   type PluginService,
 } from "../../../src/services/plugins/plugin-service.js";
 import { testLogger } from "../../helpers/test-app.js";
-import { createNoopTelemetryService } from "../../../src/services/system/telemetry.js";
 
 const logger = testLogger as unknown as Logger;
 const run = promisify(execFile);
@@ -441,7 +440,6 @@ describe("plugin install flows", () => {
     materializationCount = 0;
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
-      telemetry: createNoopTelemetryService(),
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
@@ -773,15 +771,17 @@ describe("plugin install flows", () => {
     });
 
     it("refuses a git plugin that shadows a builtin after materialization", async () => {
-      const repoDir = join(workDir, "repo-connect");
-      await writePluginFixture(repoDir, { name: "bb-plugin-connect" });
+      const repoDir = join(workDir, "repo-automations");
+      await writePluginFixture(repoDir, { name: "bb-plugin-automations" });
       await initGitRepo(repoDir);
       await commitAll(repoDir, "init");
 
       await expect(
         service.install(`git:${repoDir}@main`, { kind: "root" }),
-      ).rejects.toThrowError(/reserved by the bundled plugin.*builtin:connect/);
-      expect(getInstalledPluginRegistration(db, "connect")).toBeUndefined();
+      ).rejects.toThrowError(
+        /reserved by the bundled plugin.*builtin:automations/,
+      );
+      expect(getInstalledPluginRegistration(db, "automations")).toBeUndefined();
     });
 
     it("installs a pinned commit sha via clone + checkout", async () => {
@@ -1034,7 +1034,6 @@ describe("plugin install flows", () => {
 
       service = createPluginService({
         aiServices: createAiServiceRegistry(),
-        telemetry: createNoopTelemetryService(),
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
@@ -1134,7 +1133,6 @@ describe("plugin install flows", () => {
       await writeFile(join(`${entry.rootDir}.promoting`, "partial"), "copy");
       service = createPluginService({
         aiServices: createAiServiceRegistry(),
-        telemetry: createNoopTelemetryService(),
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
@@ -1769,17 +1767,29 @@ describe("plugin install flows", () => {
 
   it("refuses an npm package whose derived id shadows a builtin before install", async () => {
     await expect(
-      service.install("npm:bb-plugin-connect@1.2.3", { kind: "root" }),
-    ).rejects.toThrowError(/reserved by the bundled plugin.*builtin:connect/);
-    expect(getInstalledPluginRegistration(db, "connect")).toBeUndefined();
+      service.install("npm:bb-plugin-automations@1.2.3", { kind: "root" }),
+    ).rejects.toThrowError(/reserved by the bundled plugin.*builtin:automations/);
+    expect(getInstalledPluginRegistration(db, "automations")).toBeUndefined();
   });
 
   it("refuses a path plugin whose manifest id shadows a builtin", async () => {
+    const rootDir = join(workDir, "bb-plugin-automations");
+    await writePluginFixture(rootDir, { name: "bb-plugin-automations" });
+    await expect(service.installPath(rootDir)).rejects.toThrowError(
+      /reserved by the bundled plugin.*builtin:automations/,
+    );
+    expect(getInstalledPluginRegistration(db, "automations")).toBeUndefined();
+  });
+
+  it("refuses a plugin that would take over a discontinued plugin's saved data", async () => {
     const rootDir = join(workDir, "bb-plugin-connect");
     await writePluginFixture(rootDir, { name: "bb-plugin-connect" });
     await expect(service.installPath(rootDir)).rejects.toThrowError(
-      /reserved by the bundled plugin.*builtin:connect/,
+      /discontinued plugin "bb connect"/,
     );
+    await expect(
+      service.install("npm:bb-plugin-connect@1.2.3", { kind: "root" }),
+    ).rejects.toThrowError(/discontinued plugin "bb connect"/);
     expect(getInstalledPluginRegistration(db, "connect")).toBeUndefined();
   });
 

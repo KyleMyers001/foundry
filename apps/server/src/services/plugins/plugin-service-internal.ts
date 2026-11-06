@@ -1,4 +1,3 @@
-import type { TunnelIngressLease } from "../connect-next/tunnel-ingress.js";
 import type { EnvironmentRemoval } from "@bb/domain";
 import type { MachineEnrollmentService } from "../machines/machine-services.js";
 import type { AiServiceRegistry } from "../ai/ai-service-registry.js";
@@ -10,7 +9,6 @@ import type {
   ThreadQueuedMessage,
 } from "@bb/domain";
 import type {
-  HostDaemonConnectTunnelIdentity,
   HostDaemonContributedEnvEntry,
 } from "@bb/host-daemon-contract";
 import type {
@@ -18,10 +16,10 @@ import type {
   PluginRuntimeStatus,
 } from "@bb/server-contract";
 import type { ServerLogger } from "../../types.js";
-import type { TelemetryService } from "../system/telemetry.js";
 import type { NotificationHub } from "../../ws/hub.js";
 import type {
   BundledPluginRegistration,
+  DiscontinuedBuiltinPlugin,
   RetiredBundledPlugin,
 } from "./builtin-registry.js";
 import type { PluginManifest } from "./manifest.js";
@@ -30,7 +28,6 @@ import type {
   PluginBackgroundServiceRecord,
   PluginMentionTrigger,
 } from "./plugin-api.js";
-import type { HostSharedPortCoordinator } from "../../ws/host-shared-ports.js";
 import type { ProviderRegistryService } from "../providers/provider-registry.js";
 import type { PluginHostArtifactRegistry } from "./plugin-host-artifact-registry.js";
 
@@ -69,19 +66,6 @@ export interface PluginHostArtifactSnapshot {
 export interface PluginServiceDeps {
   machineEnrollments?: MachineEnrollmentService;
   db: DbConnection;
-  sharedPorts?: Pick<
-    HostSharedPortCoordinator,
-    | "declareSharedPorts"
-    | "validateSharedPortDeclaration"
-    | "replaceDeclarationsForOwner"
-    | "clearDeclarationsForOwner"
-    | "setNextTunnelConfig"
-    | "listNextTunnelStatuses"
-    | "onNextTunnelStatusChange"
-  >;
-  ensureSharedPortTunnel?: (
-    hostId: string,
-  ) => Promise<HostDaemonConnectTunnelIdentity>;
   providerRegistry?: ProviderRegistryService;
   pluginHostArtifacts?: PluginHostArtifactRegistry;
   aiServices: AiServiceRegistry;
@@ -110,7 +94,6 @@ export interface PluginServiceDeps {
     | "onWatchedTargets"
   >;
   logger: ServerLogger;
-  telemetry: TelemetryService;
   pendingInteractions?: Pick<
     import("../interactions/pending-interactions.js").PendingInteractionLifecycle,
     | "requestPluginInteraction"
@@ -123,6 +106,7 @@ export interface PluginServiceDeps {
   appVersion: string;
   bundledPlugins?: readonly BundledPluginRegistration[];
   retiredBundledPlugins?: readonly RetiredBundledPlugin[];
+  discontinuedBuiltinPlugins?: readonly DiscontinuedBuiltinPlugin[];
   watchBuiltinPluginSources?: boolean;
   loadTimeoutMs?: number;
   /** How long an install waits for `bb.onInstall` handlers. Defaults to 30s. */
@@ -167,7 +151,6 @@ export interface PluginServiceDeps {
     pluginId: string;
     generation: string;
   }) => Promise<void>;
-  openTunnelIngress?: (audience: string) => Promise<TunnelIngressLease>;
 }
 
 export interface PluginAgentToolContribution {

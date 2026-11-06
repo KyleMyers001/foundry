@@ -23,10 +23,6 @@ import type { PluginService } from "../services/plugins/plugin-service.js";
 import { COMMAND_TIMEOUT_MS } from "../constants.js";
 import { ApiError } from "../errors.js";
 import {
-  getGateAuthKind,
-  type GateAuthHeaderReader,
-} from "../request-context.js";
-import {
   listPublicHostsWithStatus,
   requireNonDestroyedHostWithStatus,
   requirePublicStandardProject,
@@ -79,15 +75,6 @@ function requireMutableHost(deps: AppDeps, hostId: string) {
   return host;
 }
 
-function assertHostManagementAllowed(context: GateAuthHeaderReader): void {
-  if (getGateAuthKind(context) === "machine") {
-    throw new ApiError(
-      403,
-      "machine_host_management_forbidden",
-      "Machine credentials cannot manage hosts",
-    );
-  }
-}
 
 function assertNotServerMachine(deps: AppDeps, hostId: string): void {
   if (isServerMachineHost(deps, hostId)) {
@@ -95,37 +82,6 @@ function assertNotServerMachine(deps: AppDeps, hostId: string): void {
       400,
       "server_host_lifecycle_refused",
       "The server machine can't be suspended or resumed. Move the server to another machine first.",
-    );
-  }
-}
-
-async function revokeConnectMachineCredential(
-  deps: AppDeps,
-  plugins: PluginService,
-  machineId: string,
-): Promise<void> {
-  try {
-    const connectPlugin = plugins
-      .list()
-      .find((plugin) => plugin.source === "builtin:connect");
-    if (!connectPlugin) throw new Error("connect plugin is not installed");
-    const handler = plugins.getRpcHandler(connectPlugin.id, "revokeMachine");
-    if (handler.outcome !== "found") {
-      throw new Error(`connect plugin revoke handler is ${handler.outcome}`);
-    }
-    const result = await plugins.invokeRpcHandler(
-      handler.owner,
-      "revokeMachine",
-      handler.value,
-      { machineId },
-      { kind: "client" },
-      null,
-    );
-    if (!result.ok) throw new Error(result.error.message);
-  } catch (error) {
-    deps.logger.error(
-      { err: error, machineId },
-      "Host was removed locally, but its bb connect machine credential could not be revoked. Revoke this machine manually from the getbb.app dashboard.",
     );
   }
 }
@@ -142,12 +98,10 @@ export function registerHostRoutes(
   const routes = publicApiRoutes.hosts;
 
   post(routes.create, async (context, payload) => {
-    assertHostManagementAllowed(context);
     return context.json(await submitMachine(deps, payload), 201);
   });
 
   post(routes.createJoinCode, async (context) => {
-    assertHostManagementAllowed(context);
     const issued = await issueHostEnrollKey(deps, {
       enrollSource: "public-multi-machine",
     });
@@ -176,7 +130,6 @@ export function registerHostRoutes(
     const session = getLatestSessionForHost(deps.db, { hostId });
     return context.json({
       ...host,
-      connectMachineId: requireMutableHost(deps, hostId).connectMachineId,
       threadStorageRootPath:
         session === null
           ? null
@@ -185,7 +138,6 @@ export function registerHostRoutes(
   });
 
   get(routes.enrollmentCommand, async (context) => {
-    assertHostManagementAllowed(context);
     requireMutableHost(deps, context.req.param("id"));
     return context.json(
       await manualHostCommand(
@@ -196,7 +148,6 @@ export function registerHostRoutes(
   });
 
   post(routes.reconnect, async (context) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     const host = requireMutableHost(deps, hostId);
     if (resolvePrimaryHostId(deps) === hostId || host.phase !== "active")
@@ -215,7 +166,6 @@ export function registerHostRoutes(
   });
 
   patch(routes.update, (context, payload) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     requireMutableHost(deps, hostId);
     const updated = updateHost(deps.db, deps.hub, hostId, {
@@ -229,7 +179,6 @@ export function registerHostRoutes(
   });
 
   patch(routes.updatePermissionCeiling, (context, payload) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     requireMutableHost(deps, hostId);
     const updated = updateHost(deps.db, deps.hub, hostId, {
@@ -243,7 +192,6 @@ export function registerHostRoutes(
   });
 
   post(routes.retryUpdate, (context) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     const host = requireMutableHost(deps, hostId);
     if (host.lastRejectedProtocolVersion === null) {
@@ -265,14 +213,12 @@ export function registerHostRoutes(
   });
 
   post(routes.reconcile, (context) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     startMachineReconciliation(deps, hostId);
     return context.json(requireNonDestroyedHostWithStatus(deps, hostId), 202);
   });
 
   post(routes.suspend, (context) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     assertNotServerMachine(deps, hostId);
     startMachineSuspension(deps, hostId);
@@ -280,7 +226,6 @@ export function registerHostRoutes(
   });
 
   post(routes.resume, (context) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     assertNotServerMachine(deps, hostId);
     startMachineResume(deps, hostId);
@@ -288,13 +233,11 @@ export function registerHostRoutes(
   });
 
   post(routes.retryCleanup, async (context) => {
-    assertHostManagementAllowed(context);
     await retryMachineCleanup(deps, context.req.param("id"));
     return context.json({ ok: true as const });
   });
 
   del(routes.delete, async (context, query) => {
-    assertHostManagementAllowed(context);
     const hostId = context.req.param("id");
     if (query.force === "true") {
       await forceMachineRemoval(deps, hostId);
@@ -330,13 +273,6 @@ export function registerHostRoutes(
     });
     deps.lifecycleDedupers.providerModelCatalogs.forgetHost(deps, hostId);
     if (destroyed !== null) emitPluginHostDeleted(destroyed);
-    if (host.connectMachineId !== null) {
-      await revokeConnectMachineCredential(
-        deps,
-        plugins,
-        host.connectMachineId,
-      );
-    }
     return context.json({ ok: true });
   });
 

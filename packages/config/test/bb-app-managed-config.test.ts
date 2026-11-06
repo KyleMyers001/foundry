@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseBbAppManagedConfig } from "../src/bb-app-managed-config.js";
+import {
+  hasLegacyConnectEnrollment,
+  parseBbAppManagedConfig,
+  withoutLegacyConnectHeader,
+} from "../src/bb-app-managed-config.js";
 
 function parseWithWarnings(rawConfig: unknown) {
   const warnings: Record<string, unknown>[] = [];
@@ -131,5 +135,22 @@ describe("parseBbAppManagedConfig", () => {
         sharedSkillRoots: { user: [], project: [], absolute: ["/srv/skills"] },
       }),
     ).toThrow(/Unrecognized key/u);
+  });
+});
+
+describe("legacy bb connect enrollment", () => {
+  it("detects and strips the connect machine header in any letter case", () => {
+    const serverHeaders = {
+      "X-BB-Connect-Machine": "bbcm_secret",
+      "x-proxy-auth": "kept",
+    };
+
+    expect(hasLegacyConnectEnrollment({ serverHeaders })).toBe(true);
+    expect(withoutLegacyConnectHeader(serverHeaders)).toEqual({
+      "x-proxy-auth": "kept",
+    });
+    expect(
+      hasLegacyConnectEnrollment({ serverHeaders: { "x-proxy-auth": "kept" } }),
+    ).toBe(false);
   });
 });

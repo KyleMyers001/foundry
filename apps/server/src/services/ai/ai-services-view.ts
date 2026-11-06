@@ -1,4 +1,4 @@
-import { getAiServiceSelections, setAiServiceSelection } from "@bb/db";
+import { setAiServiceSelection } from "@bb/db";
 import { promptInputSchema, type AiTextTask } from "@bb/domain";
 import type {
   SetAiServiceSelectionRequest,
@@ -13,7 +13,12 @@ import {
   aiServiceSupportsTask,
   aiServiceTasks,
 } from "./ai-service-registry.js";
-import { orderedAiServices, runTextAiTask } from "./ai-tasks.js";
+import {
+  orderedAiServices,
+  readAiServiceSelections,
+  RETIRED_AI_SERVICE_NOTICE,
+  runTextAiTask,
+} from "./ai-tasks.js";
 import {
   buildCommitMessagePrompt,
   sanitizeGeneratedCommitMessage,
@@ -55,8 +60,10 @@ export async function buildAiServicesView(
   const statuses = await Promise.all(
     services.map((service) => deps.aiServices.status(aiServiceKey(service))),
   );
+  const { selections, retiredTasks } = readAiServiceSelections(deps);
   return {
-    selections: getAiServiceSelections(deps.db),
+    selections,
+    notice: retiredTasks.length > 0 ? RETIRED_AI_SERVICE_NOTICE : null,
     services: services.map((service, index) => ({
       id: service.id,
       displayName: service.displayName,
@@ -91,6 +98,9 @@ export async function updateAiServiceSelection(
     }
   }
   setAiServiceSelection(deps.db, task, selection);
+  for (const retired of readAiServiceSelections(deps).retiredTasks) {
+    setAiServiceSelection(deps.db, retired, { mode: "off" });
+  }
   deps.hub.notifySystem(["config-changed"]);
   return buildAiServicesView(deps);
 }

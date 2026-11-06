@@ -112,7 +112,7 @@ import type { LocalHostDaemonAccessState } from "@/lib/local-host-daemon-access"
 import { openUrlInExternalBrowser } from "@/lib/url-open-routing";
 
 const LOCAL_EDITOR_INTEGRATION_DOCS_URL =
-  "https://github.com/get-bb/bb/blob/main/docs/multiple-devices.md#open-bb-from-another-browser";
+  "https://github.com/KyleMyers001/foundry/blob/main/docs/multiple-devices.md#open-bb-from-another-browser";
 
 interface ThemePreferenceOption {
   label: string;
@@ -196,8 +196,6 @@ interface GeneralSettingsSectionProps {
 interface PrivacySettingsSectionProps {
   onStreamerModeChange: (enabled: boolean) => void;
   streamerMode: boolean;
-  telemetryEnabled: boolean;
-  onTelemetryEnabledChange: (enabled: boolean) => void;
   disabled: boolean;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
@@ -1069,8 +1067,6 @@ export function PrivacySettingsSection({
   onEnabledChange,
   streamerMode,
   onStreamerModeChange,
-  telemetryEnabled,
-  onTelemetryEnabledChange,
 }: PrivacySettingsSectionProps) {
   return (
     <SettingsSection title="Privacy & diagnostics">
@@ -1084,18 +1080,6 @@ export function PrivacySettingsSection({
             disabled={disabled}
             onCheckedChange={onStreamerModeChange}
             aria-label={STREAMER_MODE_SETTING_LABEL}
-          />
-        </SettingsWithControl>
-
-        <SettingsWithControl
-          label="Share anonymous usage data"
-          description="Send anonymous usage data, such as app starts, setup progress and feature use, to help improve bb. Turning this off takes effect immediately for this server."
-        >
-          <Switch
-            checked={telemetryEnabled}
-            disabled={disabled}
-            onCheckedChange={onTelemetryEnabledChange}
-            aria-label="Share anonymous usage data"
           />
         </SettingsWithControl>
 
@@ -1498,12 +1482,6 @@ export function SettingsView() {
         <CliSkillsSettingsSection />
         <VoiceInputSettingsSection />
         <PrivacySettingsSection
-          telemetryEnabled={generalSettings.telemetryEnabled}
-          onTelemetryEnabledChange={(enabled) =>
-            updateGeneralSettingsMutation.mutate({
-              telemetryEnabled: enabled,
-            })
-          }
           streamerMode={generalSettings.streamerMode}
           onStreamerModeChange={(enabled) =>
             updateGeneralSettingsMutation.mutate({

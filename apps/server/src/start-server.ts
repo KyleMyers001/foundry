@@ -45,24 +45,18 @@ import {
   type ProviderRegistryService,
 } from "./services/providers/provider-registry.js";
 import type { PluginService } from "./services/plugins/plugin-service.js";
-import {
-  appInstallFromServerConfig,
-  createTelemetryService,
-} from "./services/system/telemetry.js";
 import { TerminalSessionLifecycle } from "./services/terminals/terminal-session-lifecycle.js";
 import { createLifecycleDedupers } from "./lifecycle-dedupers.js";
 import type { ServerLogger, ServerRuntimeConfig } from "./types.js";
 import { NotificationHub } from "./ws/hub.js";
 import { startDaemonLivenessChecks } from "./ws/daemon-protocol.js";
 import { WatchInterestCoordinator } from "./ws/watch-interests.js";
-import { HostSharedPortCoordinator } from "./ws/host-shared-ports.js";
 import { disconnectImportedDaemonSessions } from "./internal/session-owner-side-effects.js";
 import {
   applyServerImportAtBoot,
   refuseInterruptedServerImport,
   repairLastServerMoveHostName,
 } from "./services/server-move/pending-boot.js";
-import { createConnectHold } from "./services/server-move/connect-hold.js";
 import { isServerMoveFrozen } from "./services/server-move/freeze-state.js";
 import { reconcileServerMoveRunAtBoot } from "./services/server-move/reconcile.js";
 import {
@@ -88,8 +82,7 @@ export function startHttpListener(args: StartHttpListenerArgs) {
 }
 
 export interface StartServerPluginsArgs {
-  dataDir: string;
-  logger: Pick<ServerLogger, "error" | "warn">;
+  logger: Pick<ServerLogger, "error">;
   pluginService: Pick<PluginService, "start" | "startPeriodicUpdateChecks">;
   providerRegistry: Pick<ProviderRegistryService, "markRegistrationsSettled">;
 }
@@ -98,9 +91,7 @@ export function startServerPlugins(
   args: StartServerPluginsArgs,
 ): Promise<void> {
   return args.pluginService
-    .start({
-      hold: createConnectHold({ dataDir: args.dataDir, logger: args.logger }),
-    })
+    .start()
     .catch((error: unknown) => {
       args.logger.error({ err: error }, "Plugin startup failed");
     })
@@ -159,7 +150,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       : null;
   const hub = new NotificationHub();
   const watchInterests = new WatchInterestCoordinator({ db, hub });
-  const sharedPorts = new HostSharedPortCoordinator({ db, hub });
   const lifecycleDedupers = createLifecycleDedupers();
   const appUrl = toOptionalString(serverConfig.BB_APP_URL);
 
@@ -172,8 +162,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
   const runtimeConfig: ServerRuntimeConfig = {
     appVersion: serverConfig.BB_APP_VERSION,
     builtinSkillsRootPath: resolveBuiltinSkillsRootPath(),
-    marketplaceUrl: serverConfig.BB_MARKETPLACE_URL,
-    connectGateKeysUrl: serverConfig.BB_CONNECT_GATE_KEYS_URL,
     customModels: [],
     dataDir: serverConfig.BB_DATA_DIR,
     featureFlags: serverConfig.featureFlags,
@@ -218,18 +206,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     logger,
   });
 
-  const telemetry = await createTelemetryService({
-    apiKey: serverConfig.BB_POSTHOG_API_KEY,
-    appInstall: appInstallFromServerConfig(serverConfig),
-    appSurface: serverConfig.BB_APP_SURFACE,
-    appVersion: serverConfig.BB_APP_VERSION,
-    dataDir: serverConfig.BB_DATA_DIR,
-    enabled:
-      serverConfig.BB_TELEMETRY && isProduction && pendingServerMove === null,
-    telemetryEnabled: getAppSettings(db).telemetryEnabled,
-    logger,
-  });
-
   const machineAuth = await createMachineAuthService({
     dataDir: serverConfig.BB_DATA_DIR,
     db,
@@ -254,7 +230,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     pluginHostArtifacts,
     aiServices,
     skillTreeRegistry,
-    telemetry,
     terminalSessions,
   });
   pendingInteractions.start();
@@ -264,7 +239,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     installKind: serverConfig.BB_APP_INSTALL_KIND ?? null,
     sourceCommit: serverConfig.BB_APP_SOURCE_COMMIT ?? null,
     config: runtimeConfig,
-    logger,
   });
   const appUpdateMode = serverConfig.BB_APP_UPDATE_MODE ?? null;
   const desktopUpdateChannel =
@@ -279,7 +253,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
               ? (serverConfig.BB_APP_SOURCE_COMMIT ?? null)
               : null,
           appSurface: serverConfig.BB_APP_SURFACE,
-          appVersion,
           config: runtimeConfig,
           countRunningThreads: () => listRunningThreads(db).length,
           launcher:
@@ -310,7 +283,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     pluginCatalogService,
     pluginService,
     serverMove,
-    tunnelIngress,
   } = createApp(
     {
       appUpdate,
@@ -330,10 +302,8 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       providerLiveCommands,
       aiServices,
       skillTreeRegistry,
-      telemetry,
       terminalSessions,
       watchInterests,
-      sharedPorts,
     },
     {
       serverMove: {
@@ -361,7 +331,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       pluginHostArtifacts,
       aiServices,
       skillTreeRegistry,
-      telemetry,
       terminalSessions,
     },
     { sessions: serverImport.importedDaemonSessions },
@@ -389,9 +358,7 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     providerRegistry,
     pluginHostArtifacts,
     aiServices,
-    sharedPorts,
     skillTreeRegistry,
-    telemetry,
     terminalSessions,
   });
 
@@ -409,7 +376,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     skillTreeRegistry,
     pluginSchedules: pluginService,
     plugins: pluginService,
-    telemetry,
     terminalSessions,
   };
   const providerModelCatalogPrewarm =
@@ -448,7 +414,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
   });
   let sweepInterval: ReturnType<typeof setInterval> | null = null;
   if (pendingServerMove === null) {
-    telemetry.capture({ name: "app_started" });
     if (serverMoveRun?.kind === "completed") {
       logger.info(
         { moveId: serverMoveRun.run.status.moveId },
@@ -457,7 +422,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       providerRegistry.markRegistrationsSettled();
     } else {
       void startServerPlugins({
-        dataDir: serverConfig.BB_DATA_DIR,
         logger,
         pluginService,
         providerRegistry,
@@ -511,7 +475,6 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
           resolve();
         });
       });
-      await tunnelIngress.closeAll();
       await closeWebSockets();
       await closeServer;
     })();

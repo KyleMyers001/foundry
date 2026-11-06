@@ -4,7 +4,7 @@ import { applyFoundryRuntimeDefaults } from "../src/foundry-runtime-defaults.js"
 import { createDesktopReleaseInfo } from "../src/desktop-update-provider.js";
 
 describe("foundry runtime defaults", () => {
-  it("keeps a packaged app away from an installed bb's data, ports, and telemetry", () => {
+  it("keeps a packaged app away from an installed bb's data and ports", () => {
     const env: NodeJS.ProcessEnv = {};
 
     applyFoundryRuntimeDefaults({ env, homeDir: "/Users/test" });
@@ -13,7 +13,6 @@ describe("foundry runtime defaults", () => {
       BB_DATA_DIR: join("/Users/test", ".foundry"),
       BB_HOST_DAEMON_PORT: "38987",
       BB_SERVER_PORT: "38986",
-      BB_TELEMETRY: "false",
     });
   });
 
@@ -22,7 +21,6 @@ describe("foundry runtime defaults", () => {
       BB_DATA_DIR: "/custom",
       BB_HOST_DAEMON_PORT: "1002",
       BB_SERVER_PORT: "1001",
-      BB_TELEMETRY: "true",
     };
 
     applyFoundryRuntimeDefaults({ env, homeDir: "/Users/test" });
@@ -31,7 +29,6 @@ describe("foundry runtime defaults", () => {
       BB_DATA_DIR: "/custom",
       BB_HOST_DAEMON_PORT: "1002",
       BB_SERVER_PORT: "1001",
-      BB_TELEMETRY: "true",
     });
   });
 

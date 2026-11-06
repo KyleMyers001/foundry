@@ -15,6 +15,7 @@ export function makeSystemConfig(
       defaultProviderId: "direct",
       effectiveUrl: null,
       urlSource: null,
+      notice: null,
     },
     generalSettings: defaultAppSettings,
     keybindings: [],

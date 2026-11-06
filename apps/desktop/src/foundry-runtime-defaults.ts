@@ -25,5 +25,4 @@ export function applyFoundryRuntimeDefaults(args: {
   );
   setWhenUnset(args.env, "BB_SERVER_PORT", FOUNDRY_SERVER_PORT);
   setWhenUnset(args.env, "BB_HOST_DAEMON_PORT", FOUNDRY_HOST_DAEMON_PORT);
-  setWhenUnset(args.env, "BB_TELEMETRY", "false");
 }

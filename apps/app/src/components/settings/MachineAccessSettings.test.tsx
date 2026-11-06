@@ -24,6 +24,7 @@ it("follows access availability through setup, readiness, revocation, and recove
       defaultProviderId: "relay",
       effectiveUrl: null,
       urlSource: null,
+      notice: null,
       providers: [
         {
           id: "relay",

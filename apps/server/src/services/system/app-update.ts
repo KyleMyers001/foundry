@@ -1,5 +1,4 @@
 import {
-  isNightlyAppVersion,
   sourceUpdateCheckSchema,
   type AppRevision,
   type AppUpdateActivity,
@@ -21,7 +20,7 @@ import type {
 } from "@bb/server-contract";
 import { ApiError } from "../../errors.js";
 import type { ServerLogger, ServerRuntimeConfig } from "../../types.js";
-import type { AppVersionService } from "./app-version.js";
+import { FOUNDRY_RELEASES_URL } from "./app-version.js";
 import type { LauncherChannel } from "./launcher-channel.js";
 
 const SOURCE_CHECK_TTL_MS = 60 * 60 * 1000;
@@ -39,7 +38,6 @@ export interface AppUpdateService {
 interface CreateAppUpdateServiceArgs {
   currentCommit: string | null;
   appSurface: AppSurface;
-  appVersion: AppVersionService;
   config: Pick<ServerRuntimeConfig, "appVersion" | "isDevelopment">;
   countRunningThreads: () => number;
   launcher: LauncherChannel | null;
@@ -114,8 +112,10 @@ function unsupportedMessage(support: SystemAppUpdateSupport): string {
       return "In-app updates are unavailable in development mode.";
     case "desktop":
       return "The desktop app updates itself; use its update controls.";
+    case "manual":
+      return `This install updates manually. Download the latest Foundry release from ${FOUNDRY_RELEASES_URL}.`;
     case "unmanaged":
-      return "In-app updates are off. Start bb with `npx bb-app start` or `pnpm start`, without `--no-in-app-updates`, to turn them on.";
+      return "In-app updates are off. Start Foundry from its source checkout with `pnpm start`, without `--no-in-app-updates`, to turn them on.";
   }
 }
 
@@ -181,10 +181,13 @@ export function createAppUpdateService(
     if (args.config.isDevelopment) {
       return { kind: "unsupported", reason: "development" };
     }
+    if (args.mode === "npm") {
+      return { kind: "unsupported", reason: "manual" };
+    }
     if (args.mode === null || args.launcher === null || !launcherConnected) {
       return { kind: "unsupported", reason: "unmanaged" };
     }
-    return { kind: "supported", mode: args.mode };
+    return { kind: "supported", mode: "source" };
   };
 
   const refreshSourceCheck = (
@@ -246,33 +249,6 @@ export function createAppUpdateService(
   }> => {
     if (support.kind !== "supported" || args.launcher === null) {
       return { available: null, blocked: null };
-    }
-    if (support.mode === "npm") {
-      const version = await args.appVersion.getSystemVersion({ forceRefresh });
-      if (version.latestVersion === null) {
-        return {
-          available: null,
-          blocked: {
-            reason: "fetch-failed",
-            message: "Couldn't check for a newer bb release.",
-          },
-        };
-      }
-      if (!version.updateAvailable) {
-        return { available: null, blocked: null };
-      }
-      return {
-        available: {
-          channel: isNightlyAppVersion(version.latestVersion)
-            ? "nightly"
-            : "latest",
-          commit: null,
-          commitCount: null,
-          subjects: [],
-          version: version.latestVersion,
-        },
-        blocked: null,
-      };
     }
     const check = await readSourceCheck(args.launcher, forceRefresh);
     if (check === null)
@@ -366,10 +342,7 @@ export function createAppUpdateService(
           "An update is already in progress.",
         );
       }
-      const support = resolveSupport();
-      const status = await getStatus({
-        forceRefresh: support.kind === "supported" && support.mode === "source",
-      });
+      const status = await getStatus({ forceRefresh: true });
       if (status.blocked !== null) {
         throw new ApiError(409, "app_update_blocked", status.blocked.message);
       }
@@ -394,11 +367,9 @@ export function createAppUpdateService(
         );
       }
       const target: AppUpdateTarget | null =
-        status.support.kind === "supported" && status.support.mode === "npm"
-          ? { kind: "npm", version: available.version }
-          : available.commit === null
-            ? null
-            : { commit: available.commit, kind: "source" };
+        available.commit === null
+          ? null
+          : { commit: available.commit, kind: "source" };
       if (target === null) {
         throw new ApiError(
           409,

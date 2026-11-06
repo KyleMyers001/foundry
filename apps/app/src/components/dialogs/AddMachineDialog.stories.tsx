@@ -2,8 +2,8 @@ import { useState } from "react";
 import { MachineAccessGate, ManualMachineSetupView } from "./AddMachineDialog";
 import { MachineAccessControlsContent } from "@/components/settings/MachineAccessSettings";
 import {
-  CONNECT_UNAVAILABLE,
-  CONNECT_UNPAIRED,
+  PLUGIN_ACCESS_UNAVAILABLE,
+  PLUGIN_ACCESS_SETUP_REQUIRED,
   MANUAL_WITHOUT_URL,
   machineAccessState,
 } from "../../../.ladle/machine-story-fixtures";
@@ -40,25 +40,25 @@ export function AccessGate() {
         </DialogStage>
       </StoryRow>
       <StoryRow
-        label="bb connect unpaired"
+        label="Plugin access needs setup"
         hint="default provider is setup-required — the primary action leaves for plugin settings"
       >
         <DialogStage>
           <MachineAccessGate state={{ status: "blocked" }}>
             <MachineAccessControlsContent
-              machineAccess={machineAccessState(CONNECT_UNPAIRED)}
+              machineAccess={machineAccessState(PLUGIN_ACCESS_SETUP_REQUIRED)}
             />
           </MachineAccessGate>
         </DialogStage>
       </StoryRow>
       <StoryRow
-        label="bb connect unavailable"
+        label="Plugin access unavailable"
         hint="paired once, now refused — a status line appears because there is a verdict to report"
       >
         <DialogStage>
           <MachineAccessGate state={{ status: "blocked" }}>
             <MachineAccessControlsContent
-              machineAccess={machineAccessState(CONNECT_UNAVAILABLE)}
+              machineAccess={machineAccessState(PLUGIN_ACCESS_UNAVAILABLE)}
             />
           </MachineAccessGate>
         </DialogStage>

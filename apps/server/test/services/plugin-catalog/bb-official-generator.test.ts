@@ -154,6 +154,29 @@ describe("bb-official marketplace generator", () => {
     ).toThrow(/unknown bundled plugin blocks: gamma/u);
   });
 
+  it("accepts https screenshots on any host and rejects other schemes", () => {
+    const plugins = [{ name: "alpha", pluginId: "alpha" }];
+    const screenshot = "https://example.com/screens/alpha.png";
+
+    expect(
+      parseBbOfficialCatalogFields(
+        { alpha: { category: "utilities", screenshots: [screenshot] } },
+        plugins,
+      ).alpha?.screenshots,
+    ).toEqual([screenshot]);
+    expect(() =>
+      parseBbOfficialCatalogFields(
+        {
+          alpha: {
+            category: "utilities",
+            screenshots: ["http://example.com/screens/alpha.png"],
+          },
+        },
+        plugins,
+      ),
+    ).toThrow(/must be an https URL/u);
+  });
+
   it("folds a bundled plugin PLUGIN_OVERVIEW.md into its entry and rejects unsafe text", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "bb-official-overview-"));
     cleanup.push(root);

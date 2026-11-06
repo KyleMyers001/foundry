@@ -209,10 +209,10 @@ describe("system cache effects", () => {
       latestVersion: "0.0.6",
       currentCommit: null,
       installKind: "npm",
-      source: "npm",
+      source: "foundry-releases",
       updateAvailable: true,
       isDevelopment: false,
-      upgradeCommand: "npx bb-app@latest",
+      releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
     });
 
     invalidateRealtimeQueriesAfterServerReconnect({

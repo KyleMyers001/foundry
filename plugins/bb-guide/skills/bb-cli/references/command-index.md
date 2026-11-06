@@ -10,7 +10,6 @@ This index lists every command path that the core CLI registers, including alias
 
 - `bb settings`
 - `bb settings show`
-- `bb settings mobile-app`
 - `bb settings ai-services`
 - `bb settings ai-services show`
 - `bb settings ai-services set`
@@ -111,7 +110,6 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb server export`
 - `bb server import`
 - `bb server unlock`
-- `bb server allow-connect`
 - `bb server delete-old-copy`
 - `bb server install-machine-service`
 

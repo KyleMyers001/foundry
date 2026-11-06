@@ -29,7 +29,7 @@ import { makeSystemConfig } from "../src/test/fixtures/system-config";
 import { systemMachineProvidersQueryKey } from "../src/hooks/queries/query-keys";
 import {
   MANUAL_MACHINE_PROVIDER,
-  MODAL_MACHINE_PROVIDER,
+  SANDBOX_MACHINE_PROVIDER,
 } from "./machine-story-fixtures";
 import { makeProviderInfo } from "@bb/test-helpers/domain-fixtures";
 import {
@@ -70,6 +70,7 @@ const STORY_GLOBAL_VARIABLES = [
 ];
 
 const STORY_AI_SERVICES: SystemAiServicesResponse = {
+  notice: null,
   selections: {
     "thread-title": { mode: "automatic" },
     "commit-message": { mode: "automatic" },
@@ -233,13 +234,13 @@ const systemConfig = makeSystemConfig({
 
 const systemVersion = {
   currentVersion: "0.39.0",
-  latestVersion: "0.39.0",
+  latestVersion: null,
   currentCommit: null,
   installKind: "npm",
-  source: "npm",
+  source: "foundry-releases",
   updateAvailable: false,
   isDevelopment: false,
-  upgradeCommand: "npx bb-app@latest",
+  releasesUrl: "https://github.com/KyleMyers001/foundry/releases/latest",
 } satisfies SystemVersionResponse;
 
 const systemProviders = [
@@ -363,7 +364,7 @@ function createSettingsStoryQueryClient(hosts: Host[] = SETTINGS_STORY_HOSTS) {
   });
   queryClient.setQueryData(systemMachineProvidersQueryKey(), [
     MANUAL_MACHINE_PROVIDER,
-    MODAL_MACHINE_PROVIDER,
+    SANDBOX_MACHINE_PROVIDER,
   ]);
   return queryClient;
 }

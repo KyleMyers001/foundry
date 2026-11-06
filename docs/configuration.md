@@ -1,22 +1,24 @@
 # Configuration
 
-The packaged `npx bb-app` flow stores persistent package settings under
+The `bb-app` launcher stores persistent package settings under
 `~/.bb/config.json`, provider environment values under `~/.bb/env.json`, and
 client SSH target mappings under `~/.bb/client.json`. A packaged Foundry desktop
 app keeps the same files under `~/.foundry`; see
 [foundry-desktop-release.md](foundry-desktop-release.md#running-beside-bb).
 
 Use `bb-app config` for non-secret bb settings and `bb-app env` for provider
-credentials and provider-specific environment:
+credentials and provider-specific environment. Foundry publishes no npm
+package, so from a source checkout run each `bb-app` command as `pnpm start`
+followed by its arguments, for example `pnpm start config list`:
 
 ```bash
-npx bb-app config set BB_APP_URL https://<machine>.<tailnet>.ts.net
-npx bb-app config list
-npx bb-app config unset BB_APP_URL
-npx bb-app config refresh
-npx bb-app env set OPENAI_API_KEY <key>
-npx bb-app env list
-npx bb-app env unset OPENAI_API_KEY
+bb-app config set BB_APP_URL https://<machine>.<tailnet>.ts.net
+bb-app config list
+bb-app config unset BB_APP_URL
+bb-app config refresh
+bb-app env set OPENAI_API_KEY <key>
+bb-app env list
+bb-app env unset OPENAI_API_KEY
 ```
 
 `bb-app config list` shows non-secret values. `bb-app env list` redacts every
@@ -114,7 +116,7 @@ over shell variables. Source-development commands still load `.env` files
 After `bb-app config` writes `~/.bb/config.json` or `bb-app env` writes
 `~/.bb/env.json`, it asks the running local server to reload. If bb is not
 running, the new values apply on the next start. If you edit either file by
-hand, run `npx bb-app config refresh` to apply it to a running server.
+hand, run `bb-app config refresh` to apply it to a running server.
 
 The live reload applies the `BB_APP_URL` config key, `customModels`,
 `sharedSkillRoots`, and provider env values. `BB_APP_URL` stored with
@@ -125,9 +127,8 @@ These entries are startup-only:
 - `BB_APP_SURFACE`, `BB_APP_URL` (when set through `bb-app env`),
   `BB_DATA_DIR`, `BB_DEV_APP_PORT`, and `BB_EXTERNAL_URL`
 - `BB_HOST_DAEMON_PORT` and `BB_INHERITED_SKILLS_ROOTS`
-- `BB_CONNECT_GATE_KEYS_URL`, `BB_LOG_LEVEL`,
-  `BB_MANAGED_DEV_BUILTIN_PLUGIN_HOT_RELOAD`, `BB_MARKETPLACE_URL`,
-  `BB_PERF_DIAGNOSTICS`, `BB_POSTHOG_API_KEY`, and `BB_TELEMETRY`
+- `BB_LOG_LEVEL`,
+  `BB_MANAGED_DEV_BUILTIN_PLUGIN_HOT_RELOAD`, and `BB_PERF_DIAGNOSTICS`
 - `BB_SERVER_BIND_HOST`, `BB_SERVER_PORT`, and all `BB_FF_*` feature flags
 
 Setting or unsetting one still reloads any other pending changes, but running
@@ -141,7 +142,7 @@ startup-only keys present in `config.json` or `env.json`.
 
 A running `bb-app start` writes `<dataDir>/bb-app-runtime.json` (launcher
 process id, server URL, version, start time, and launch mode) and removes it on
-exit. Do not edit it. `npx bb-app stop` uses it to stop the bb that owns the
+exit. Do not edit it. `bb-app stop` uses it to stop the bb that owns the
 data directory; pass the same `--data-dir` you started with when it is not the
 default `~/.bb/`. The macOS desktop app uses it to offer stopping a bb it did
 not start. Both verify the recorded process is a bb launcher before signalling
@@ -161,7 +162,7 @@ SDK methods are `system.experimental_cliCommand()`,
 `system.experimental_removeCliCommand()`, over
 `GET /api/v1/system/cli-command` and `POST .../install` and `.../remove`.
 
-- Every start of an installed bb (`npx bb-app` or the desktop app) writes a
+- Every start of an installed bb (`bb-app` or the desktop app) writes a
   small launcher to `<dataDir>/bin/bb` (`bb.cmd` on Windows). It runs the bb
   CLI of the install that started last, with that install's own Node runtime,
   so the desktop app needs no separate Node. The launcher carries that install's
@@ -187,25 +188,24 @@ do not set it yourself.
 
 ## In-App Updates
 
-In-app updates are on when you start bb with `npx bb-app start` (or a global
-`bb-app`) or with `pnpm start` from a source checkout. bb runs under a small
-update shim, so Settings → Updates and `bb updates app apply` can update bb
-without a terminal. Pass `--no-in-app-updates` to turn them off: bb then starts
-without the shim and Settings → Updates shows the npm upgrade command for
-release installs. `--in-app-updates`, which earlier releases needed, is still
-accepted and changes nothing. Source checkouts show their
-Git revision, or a labeled build version when unavailable, and are never compared
-with npm releases. Without the update shim, no freshness indicator is shown.
-Failed checks report “Latest unknown”; release checks can be retried in the UI,
-with `sdk.system.version({ force: true })`, or by rerunning `bb updates`.
-`GET /api/v1/system/version` and `sdk.system.version()` expose nullable
-`installKind` (`desktop`, `npm`, or `source`) and `currentCommit` fields.
+In-app updates are on when you start Foundry with `pnpm start` from a source
+checkout. bb runs under a small update shim, so Settings → Updates and
+`bb updates app apply` can update it without a terminal. Pass
+`--no-in-app-updates` to turn them off. `--in-app-updates`, which earlier
+releases needed, is still accepted and changes nothing. Source checkouts show
+their Git revision, or a labeled build version when unavailable. Without the
+update shim, no freshness indicator is shown. Failed checks report “Latest
+unknown” and can be retried in the UI or by rerunning `bb updates`.
 
-- **npm installs** download the release into
-  `<dataDir>/app-versions/<version>/` and restart into it. The shim runs
-  whichever is newer, that install or the launched `npx` copy; `--bundled`
-  always runs the launched copy. bb keeps the running and previous versions.
-  Stable installs follow the `latest` dist-tag and nightly builds `nightly`.
+Foundry is not published to npm and never checks npm for a newer release. An
+install started through the `bb-app` npm launcher reports the app-update
+support reason `manual`, and Settings → Updates and `bb updates` link to
+https://github.com/KyleMyers001/foundry/releases/latest instead of an upgrade
+command. `GET /api/v1/system/version` and `sdk.system.version()` return
+`source: "foundry-releases"`, that `releasesUrl`, `latestVersion: null`,
+`updateAvailable: false`, and nullable `installKind` (`desktop`, `npm`, or
+`source`) and `currentCommit` fields.
+
 - **Source checkouts** update only from a clean `main` that fast-forwards to
   `origin/main`; bb fast-forwards, runs `pnpm install --frozen-lockfile`,
   rebuilds, and restarts.
@@ -243,14 +243,11 @@ change the host-daemon protocol.
 | ------------------------------ | -------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `BB_APP_URL`                   | `bb-app config`                                    | Optional for remote use | Human-facing app URL used for generated links, allowed browser origins, and the allowed DNS hostname for requests. Leave empty for local-only use. Live when set with `bb-app config`.                                                                                     |
 | `BB_EXTERNAL_URL`              | `bb-app env`, or environment                       | Startup-only            | Internet-facing HTTPS base URL for generated public links; the fallback for `machineServerUrl`.                                                                                                                                                                            |
-| `BB_MARKETPLACE_URL`           | `bb-app env`, or environment                       | Startup-only testing    | Manifest URL of the reserved `bb-community` marketplace. Default `https://getbb.app/marketplace/v2/marketplace.json` (falls back to v1 on 404); a custom URL is requested without fallback. Changes only `bb-community`.                                                   |
-| `BB_CONNECT_GATE_KEYS_URL`     | `bb-app env`, or environment                       | Startup-only testing    | Public key set the bb connect next tunnel ingress verifies gate assertions with. Default `https://getbb.app/.well-known/bb-connect-gate-keys.json`. See [connect-next.md](connect-next.md).                                                                                |
-| `BB_SERVER_URL`                | `bb-app config`                                    | Remote CLI/host use     | Server targeted by the standalone `bb` CLI and `host-daemon` commands on this machine. Defaults to `http://127.0.0.1:38886`. It does not change where `npx bb-app` binds.                                                                                                  |
+| `BB_SERVER_URL`                | `bb-app config`                                    | Remote CLI/host use     | Server targeted by the standalone `bb` CLI and `host-daemon` commands on this machine. Defaults to `http://127.0.0.1:38886`. It does not change where `bb-app` binds.                                                                                                      |
 | `BB_SERVER_BIND_HOST`          | `bb-app env`, environment, or `--server-bind-host` | Startup-only            | Server listener host: `127.0.0.1` (default) or `0.0.0.0`. Not a `bb-app config` key. See [Startup Flags](#startup-flags).                                                                                                                                                  |
 | `BB_SERVER_PORT`               | `bb-app env`, environment, or `--server-port`      | Startup-only            | HTTP listener port. Defaults to `38886`.                                                                                                                                                                                                                                   |
 | `BB_HOST_DAEMON_PORT`          | `bb-app env`, environment, or `--host-daemon-port` | Startup-only            | Local host-daemon API port. Defaults to `38887`.                                                                                                                                                                                                                           |
 | `BB_LOG_LEVEL`                 | `bb-app config`                                    | Startup-only debugging  | `trace`, `debug`, `info`, `warn`, `error`, or `fatal`.                                                                                                                                                                                                                     |
-| `BB_TELEMETRY`                 | `bb-app env`, or environment                       | Startup-only            | `false` always disables anonymous usage telemetry, overriding the `telemetryEnabled` setting.                                                                                                                                                                              |
 | `BB_SKIP_ONBOARDING`           | Environment                                        | Startup-only            | Default false. `1` marks first-run setup completed at startup when it is not yet, so the setup screen is skipped. Settings → General can still replay it. `pnpm dev`, `pnpm start:worktree`, and `pnpm desktop:worktree` default it to `1`; an explicit `0` retains setup. |
 | `BB_PERF_DIAGNOSTICS`          | `bb-app env`, environment, or `--perf-diagnostics` | Startup-only            | Default false. Permits the `performanceDiagnostics` experiment; see [Experiments](#experiments).                                                                                                                                                                           |
 | `BB_CLI_ERROR_LOG`             | Environment of the `bb` process                    | Optional                | `0` stops the CLI recording failed invocations (command path, error code, no argument values) to `<dataDir>/logs/cli-errors.jsonl`. See `bb guide overview`.                                                                                                               |
@@ -262,8 +259,7 @@ Tailscale IPs), or the hostname in `BB_APP_URL`. For a custom DNS name or
 reverse proxy, set `BB_APP_URL` (for example `https://bb.example.com`) before
 connecting, including from the CLI or SDK; a matching `Host`/`Origin` or
 `X-Forwarded-Host` cannot authorize an unconfigured name. A proxy can preserve
-the configured host or forward to localhost. bb connect needs no additional
-configuration.
+the configured host or forward to localhost.
 
 ## General settings
 
@@ -287,7 +283,6 @@ for the command surface.
 | `managedBranchPrefix`                                                      | `bb/`                               | Settings → General → New branch prefix. Prefix for branches bb creates for worktrees and new checkout branches (`bb/fix-login-flow-thr_ab12cd34ef`); empty for none. At most 64 characters and must start a valid git branch name (no space or leading `-`). Existing branches and worktrees keep their names.                                                                                                                                                                                                                                 |
 | `providerOrder`                                                            | `[]`                                | Settings → Providers (move a provider up or down). JSON list of provider ids that lead the picker, such as `'["claude-code","codex"]'`; unlisted ids follow in plugin install order and unknown ids are ignored.                                                                                                                                                                                                                                                                                                                               |
 | `defaultProviderId`                                                        | `null`                              | Settings → Providers. Provider for new threads when neither caller nor project chose one; `null` means the first available provider in picker order.                                                                                                                                                                                                                                                                                                                                                                                           |
-| `telemetryEnabled`                                                         | `true`                              | Settings → General → Privacy & diagnostics → Share anonymous usage data. Takes effect immediately; `BB_TELEMETRY=false` overrides it.                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `earlyAdopter`                                                             | `false`                             | Settings → Experiments → Become an early adopter. Turns on experiments marked Early adopter unless you set them yourself; see [Experiments](#experiments).                                                                                                                                                                                                                                                                                                                                                                                     |
 | `machineServerUrl`, `defaultMachineAccess`, `machineGitCredentialsEnabled` | See [Multi-machine](#multi-machine) | Machine access and credential forwarding.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
@@ -339,42 +334,10 @@ General → Setup guide, clears it so the guide shows again. The projects step
 lists what `bb project discover` and
 `bb.sdk.hosts.experimental_discoverRepos({ hostId })` return.
 
-**Anonymous usage telemetry.** PostHog events carry a random install id, app
-version, install kind, platform, OS release, architecture, and Node version.
-The server sends events such as `app_started`, `telemetry_disabled`, `thread_created`,
-`user_message_sent`, `turn_finished`, and `plugin_installed`. The app reports setup-guide and
-first-send events through `POST /api/v1/system/telemetry/events`
-(`sdk.system.experimental_recordTelemetryEvent`), such as `onboarding_started`,
-`onboarding_step_reached`, `onboarding_step_completed`,
-`onboarding_step_skipped`, `onboarding_finished`, `onboarding_agent_state`,
-`onboarding_sign_in`, `new_thread_submit` (started, accepted, or failed),
-`plugin_creation_started` (no properties; sent when you choose New plugin in
-the app or run `bb plugin new`, so it records intent, not a finished plugin),
-and `release_notes_opened` from Settings → Updates (`view` `inline` when the
-notes open under the bb row, `web` for the full notes on getbb.app).
-`bb plugin new` sends `plugin_creation_started` with `app_surface` `api`, skips
-it inside a bb agent thread (so an agent acting on New plugin isn't counted
-twice), and skips it silently when no bb server answers within 2 seconds. The
-route accepts only allow-listed events and values, plus a
-`release_version` of digits and dots (such as `0.47.0`): no custom provider ids,
-account details, prompts, release-note text, project or file names, terminal
-output, error messages, or session ids. Sign-in `exited` means the command exited before
-readiness was observed, not that authentication succeeded; `new_thread_submit`
-`accepted` means the thread was created, not that the provider answered.
-By default (`BB_FF_INITIATOR_TELEMETRY=false` turns it off), `thread_created` and `user_message_sent` also carry
-`initiator`: `user`, `agent`, `automation` (started by the automations
-plugin), `plugin` (any other plugin), or `system` (bb's own retries and follow-ups). Sends from a plugin carry its ID (the plugin SDK adds `originPluginId`), so automation
-runs into an existing thread report `automation`. `bb thread spawn` run inside a thread
-sends that thread as `senderThreadId`; the new thread reports `agent` when the sender has a
-turn running, and `user` otherwise.
-
-`turn_finished` sends `outcome` (`succeeded`, `failed`, or `stopped`),
-`error_category` (`none`, `auth`, `billing`, `rate_limit`, `limit_reached`,
-`provider_unavailable`, `start_failed`, `process_exited`, `host_lost`, or `other`),
-`provider` (a shipped built-in provider ID, otherwise `other`), and
-`install_turn_number`, in addition to the standard event properties. The stored
-per-install number increments atomically on each enabled finish. It pauses while
-telemetry is off and resumes at the next number when enabled again.
+**Usage analytics.** Foundry sends no usage analytics. A `telemetryEnabled`
+setting, `BB_TELEMETRY`, `BB_POSTHOG_API_KEY`, or `BB_FF_INITIATOR_TELEMETRY`
+value saved by an older version is ignored, and the old `telemetry-id` file in
+the data directory is left in place.
 
 ## AI services
 
@@ -383,20 +346,20 @@ voice transcripts come from AI services that plugins register. Each task
 (`thread-title`, `commit-message`, `voice`) is `automatic` (default), `off`,
 or a service id; set it in Settings → AI services or with
 `bb settings ai-services set <task> <value> [--plugin <plugin-id>]` (see
-`bb guide customization`). Automatic tries bb cloud (the `bb-ai` plugin, for a
-signed-in bb account) first, then every other registered service supporting
+`bb guide customization`). Automatic tries every registered service supporting
 the task in lexicographic order of plugin id and service id; unavailable
 services and failed requests fall through. A picked service is used alone; if
 it fails, titles fall back to the start of the prompt and commits to
-`bb: automated commit`. `bb ai off|on` turns bb cloud off and on; see the
-`bb-cloud-ai` skill.
+`bb: automated commit`. Foundry has no hosted bb AI. A task that an older
+version pointed at the retired `bb-ai` service is off, with a notice in
+Settings → AI services, until you choose another service.
 
 The removed `BB_INFERENCE`, `BB_INFERENCE_FALLBACK`, and `BB_TRANSCRIPTION`
 keys are ignored with a warning in `~/.bb/config.json`, and `bb-app config set`
 refuses them.
 
 bb accepts voice recordings up to 25 MB; a service may set a lower limit, and
-Codex transcribes up to 20 MB and bb cloud up to 10 MB. With a ChatGPT
+Codex transcribes up to 20 MB. With a ChatGPT
 subscription login, Codex transcription can be blocked by Cloudflare bot
 protection on some networks; run `codex login --with-api-key` on the primary
 machine or pick another voice service.
@@ -551,9 +514,9 @@ that works after `ssh`, such as `devbox`, `user@devbox`, or a `Host` entry in
 terminals. Without a helper, local editor actions are unavailable.
 
 ```bash
-npx bb-app client ssh-target set https://bb.example.test devbox --host-id host_abc
-npx bb-app client ssh-target list
-npx bb-app client ssh-target remove https://bb.example.test --host-id host_abc
+bb-app client ssh-target set https://bb.example.test devbox --host-id host_abc
+bb-app client ssh-target list
+bb-app client ssh-target remove https://bb.example.test --host-id host_abc
 ```
 
 Use `--host-id` (from `bb machine list`) when the server has more than one
@@ -625,7 +588,7 @@ the registry's `npx` or `uvx` package on the thread's host.
 
 Register extra picker models with top-level `customModels` in
 `~/.bb/config.json`, for a model the provider accepts but does not list. There
-is no set/unset CLI: edit the JSON, then run `npx bb-app config refresh` or
+is no set/unset CLI: edit the JSON, then run `bb-app config refresh` or
 restart bb. `bb-app config list` prints the entries.
 
 ```json
@@ -696,7 +659,7 @@ Top-level `sharedSkillRoots` in `~/.bb/config.json` adds one provider-neutral
 skill collection: `{"user": [...], "project": [...]}` relative paths, resolved
 from the home directory and the workspace. bb indexes them read-only and
 injects selected skills into every provider; bb user and project skills win on
-a name collision. Apply edits with `npx bb-app config refresh`.
+a name collision. Apply edits with `bb-app config refresh`.
 
 bb also indexes each provider's native skill roots for that provider's `/`
 menu, the Skills page, and `bb skill list`. The shipped provider plugins
@@ -724,7 +687,7 @@ Grok and Claude-compatible plugin skills.
 ## Multi-machine
 
 Multi-machine execution lets this server dispatch work to host daemons on
-other machines; it is independent of browser access (Tailscale, bb connect).
+other machines; it is independent of browser access (for example Tailscale).
 Add, rename, and remove machines in Settings → Machines; see
 `bb guide machines` for the CLI.
 
@@ -738,7 +701,10 @@ the SDK and CLI, and machine credentials cannot change it. Read it with
 **Machine server access.** `machineServerUrl` (Settings → Machines → Server URL
 reachable by machines; HTTP or HTTPS without embedded credentials) falls back
 to `BB_EXTERNAL_URL` when unset. `defaultMachineAccess` selects the access
-provider; unset selects bb connect, and `direct` (Manual) uses your own URL.
+provider; unset selects the first registered provider, or `direct` (Manual,
+your own URL) when none is registered. A `connect` selection saved by an older
+version uses `direct` instead, and Settings → Machines says machines added
+through bb connect need to be reconnected with the server URL.
 An explicit provider must be installed and available. Set them with
 `bb settings general machineServerUrl <url-or-null>` and
 `bb settings general defaultMachineAccess <provider-id-or-null>`.
@@ -772,8 +738,10 @@ changing them:
 - `serverHeaders`: private request headers from the access provider, passed to
   the daemon and its bundled `bb` CLI through `BB_SERVER_HEADERS` (a JSON
   string map) for enrollment, HTTP, WebSocket, and proxy requests.
-- `machineCredential` and `connectMachineId`: the legacy bb connect form;
-  `machineCredential` is sent as the `x-bb-connect-machine` header.
+- `machineCredential` and `connectMachineId`: written by older versions for
+  bb connect. Foundry keeps them but no longer uses them; the installer refuses
+  to adopt such a machine and asks you to add it again over a direct or
+  Tailscale URL.
 
 These secret fields are omitted from `bb-app config list`.
 
@@ -822,16 +790,16 @@ ui_preference_conflict`. Read and write them with `bb settings ui
 list|get|set|reset` or `sdk.system.uiPreferences` (see
 `bb guide customization`).
 
-| Key                           | Value                                                                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one |
-| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`       |
-| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                           |
-| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                         |
-| `sidebar.footerOrder`         | Footer action order                                                                                                                                    |
-| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                         |
-| `threadContextCard.pinned`   | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
-| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)          |
+| Key                           | Value                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one    |
+| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`          |
+| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                              |
+| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                            |
+| `sidebar.footerOrder`         | Footer action order                                                                                                                                       |
+| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                            |
+| `threadContextCard.pinned`    | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
+| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)             |
 
 A legacy `__builtin__` thread list selection resolves to the bundled plugin.
 Footer IDs are `builtin:settings` (top list layout only), `builtin:mobile`,
@@ -984,8 +952,7 @@ off. An experiment you set yourself keeps your value either way.
 - `websocketCompression` (on for early adopters) lets the realtime client
   WebSocket (`/ws`) negotiate `permessage-deflate`, so messages of 1 KB or more,
   such as timeline pushes, are compressed (about 4x for timeline JSON). It
-  helps clients that reach the server over a network, including bb connect
-  next; the bb connect relay re-frames messages and does not carry it.
+  helps clients that reach the server over a network.
   Terminal, host daemon, and plugin WebSockets are never compressed. The server
   reads the experiment when a client connects, so a toggle applies when the
   app reconnects.
@@ -1026,8 +993,12 @@ Plugin state lives under the data dir:
                                    plugin-commands skill)
 ```
 
-Marketplace catalogs live in the bb database. The reserved `bb-community`
-marketplace comes from `BB_MARKETPLACE_URL`. A `git:` marketplace reads
+Marketplace catalogs live in the bb database. Foundry does not include the
+upstream `bb-community` catalog: a copy saved by an older version stays in the
+database but is not listed, searched, refreshed, or used for installs or plugin
+details, and plugins installed from it stay installed.
+`bb marketplace remove bb-community` deletes that copy and keeps its plugins as
+direct installs. A `git:` marketplace reads
 `marketplace.json` from the repository root, or from the directory saved with
 `bb marketplace add --subdirectory <relative-path>`. The server checks installed
 plugins for updates every 6 hours but never applies them.
@@ -1066,9 +1037,9 @@ identity, branding, entry points, or engine ranges. Select an entry with
 ### BB guide
 
 BB guide is installed and enabled by default. Its boolean settings, all
-default `true`, are `introduction` (the BB introduction), `skills` (all four
-bundled skills), and `bbCli`, `pluginAuthoring`, `skillCreator`, and
-`submitPlugin` (individual skills). They apply the next time agent
+default `true`, are `introduction` (the BB introduction), `skills` (all three
+bundled skills), and `bbCli`, `pluginAuthoring`, and `skillCreator`
+(individual skills). They apply the next time agent
 configuration is assembled. Disabling the plugin removes its introduction and
 skills.
 
@@ -1134,10 +1105,10 @@ all-or-selected host list, set on its autosaving plugin page or with
 
 ### Push notifications
 
-The builtin Push notifications plugin's `mobileEnabled`, `webEnabled`, and
-`desktopEnabled` booleans default to `true`. `expoPushUrl` (default
-`https://exp.host/--/api/v2/push/send`) is the relay URL, read on every send.
-`defaultLevel` (default `all`) and `childLevel` (default `input-only`) set
+The builtin Push notifications plugin's `webEnabled` and `desktopEnabled`
+booleans default to `true`. Foundry sends no mobile push notifications; the
+`mobileEnabled` and `expoPushUrl` values and device registrations saved by an
+older version are kept but unused. `defaultLevel` (default `all`) and `childLevel` (default `input-only`) set
 top-level and child thread levels. Set them with
 `bb plugin config push-notifications set <key> <value>`. Web and desktop
 notifications need an open bb tab or window, HTTPS or localhost, and
@@ -1271,61 +1242,20 @@ or a plugin's `<pluginId>/<actionId>`. Bare legacy ids and `core/<id>` keys
 migrate to current keys. A key whose action is hidden for a row, or whose
 plugin is not installed, is skipped on that row.
 
-### Connect and bb account
+### Removed bb services
 
-Remote access makes this server reachable at `https://<handle>.getbb.app` once
-it is signed in to a getbb.app account. The builtin bb account plugin holds the
-server credential in its plugin KV (in `bb.db`); the builtin connect plugin
-holds the tunnel while the server runs. See the `bb-account` skill for signing
-in and the `share-server-links` skill for `bb connect` and port shares.
+Foundry has no bb account, bb connect, Connect next, or hosted bb AI. The
+`bb-account`, `bb-ai`, `connect`, `bb--connect-next`, and
+`environment-modal-sandbox` plugins are discontinued: their stored settings,
+secrets, and records stay in `bb.db` but they never load, and their ids stay
+reserved so nothing else can claim them. `BB_CONNECT_FRPC`,
+`BB_CONNECT_NEXT_SERVER`, `BB_CONNECT_GATE_KEYS_URL`,
+`BB_CONNECT_MACHINE_CREDENTIAL`, and `BB_DEV_CONNECT_BASE_URL` are no longer
+read.
 
-| Connect setting          | Default | Effect                                                                                                                 |
-| ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `remoteAccess`           | `true`  | The Remote access switch; `false` closes the tunnel and machine shares without signing out. Also `bb connect off\|on`. |
-| `sendRemoteInstructions` | `true`  | "Tell agents about remote access"; `false` suppresses Connect's remote-use agent message without disabling sharing.    |
-
-`bb plugin disable connect` cuts off all remote access. `--server` and
-`--base-url` on `bb connect` and `bb account login` accept only
-`https://getbb.app` and `https://vibecodethis.site` (plus
-`http://bb.localhost:<port>` in a development build).
-
-Settings → Mobile links the iOS TestFlight and Android APK downloads and pairs
-the bb mobile app (`bb connect machine-code`, see `bb guide machines`). Mobile
-builds, the optional `GOOGLE_SERVICES_JSON` Firebase config, and publishing
-are documented in [`apps/mobile/README.md`](../apps/mobile/README.md).
-
-### Connect next (beta)
-
-The builtin connect-next plugin is disabled by default. Enabled
-(`bb plugin enable bb--connect-next`) and switched on, it also makes this server
-reachable at `https://<label>.next.getbb.app` through the Fly gate, next to
-its connect address. The domain follows the bb account: `next.<host of the
-account's base URL>` (`next.vibecodethis.site` on staging). While it is on,
-every enrolled machine's daemon also serves the ports shared from it with
-`bb connect expose <port> --host <machine>` at
-`https://<machine-label>--<port>.next.getbb.app`, downloading `frpc` into
-`<daemon data dir>/connect-next/frp/`. See the `connect-next` skill and
-[`connect-next.md`](connect-next.md).
-
-| Connect next setting | Default | Effect                                                                      |
-| -------------------- | ------- | --------------------------------------------------------------------------- |
-| `enabled`            | `true`  | "Reach this bb at its next address (beta)". Also `bb connect-next on\|off`. |
-
-| Variable                 | Effect                                                                                                                            |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `BB_CONNECT_FRPC`        | Path of an `frpc` binary to run instead of the frp 0.71.0 release the plugin (or a host daemon) downloads and verifies.           |
-| `BB_CONNECT_NEXT_SERVER` | `ws://host:port` or `wss://host:port` of the frp server to dial instead of `wss://tunnel.<next domain>` derived from the account. |
-
-### Modal machines
-
-The Modal sandbox plugin creates machines on Modal. Its settings:
-`tokenId` and `tokenSecret` (secret; a Modal API token), `appName` (default
-`bb-sandboxes`), and `idleMinutes` (default 15; `0` disables idle suspension,
-maximum 1440). Sandboxes run for at most Modal's 24-hour sandbox lifetime.
-Without a size preset, a new machine reserves 1 CPU and 2 GiB. The plugin page
-also holds named image definitions (the bundled Standard Dockerfile, extra
-Dockerfiles, or Modal image IDs) and CPU/memory presets; a saved image applies
-to the next new machine. See the `modal-sandboxes` skill.
+Foundry does not publish mobile app builds. Settings → Mobile shows how to
+reach this server from a phone; building the app yourself is documented in
+[`apps/mobile/README.md`](../apps/mobile/README.md).
 
 ### Browser Automation
 
@@ -1340,11 +1270,12 @@ isolated development smoke tests only, `DEV_BROWSER_SMOKE_BINARY` and
 
 The bundled MCP server plugin is disabled by default; enable it with
 `bb plugin enable bb--mcp`. It serves a Model Context Protocol endpoint at
-`/mcp` on the bb connect address and at `/api/v1/plugins/bb--mcp/http/mcp` on
-loopback (`bb mcp status` prints both). Remote apps sign in through the bb
-account, and an approved app can run any `bb` command; `bb mcp clients` lists
-them and `bb mcp revoke <grant-id>` disconnects one. The loopback address needs
-no sign-in and has the same trust as the local `bb` CLI. See the `mcp` skill.
+`/api/v1/plugins/bb--mcp/http/mcp` on the bb server's port (`bb mcp status`
+prints the loopback address). The endpoint needs no sign-in and has the same
+trust as the `bb` CLI; an app that uses it can run any `bb` command. It refuses
+requests from web pages and bb connect gate requests and checks nothing else, so
+anything that can reach the server port can use it. Foundry has no signed-in
+remote MCP address. See the `mcp` skill.
 
 ## Desktop browser cookie discovery
 
@@ -1359,7 +1290,7 @@ are ignored), and Flatpak and Snap data directories are also searched. See
 Use launcher flags for per-run startup details:
 
 ```bash
-npx bb-app --data-dir ~/.bb-test --server-port 48886 --host-daemon-port 48887
+bb-app --data-dir ~/.bb-test --server-port 48886 --host-daemon-port 48887
 ```
 
 The server listens on `127.0.0.1` by default. Set
@@ -1404,9 +1335,9 @@ For source development only, `pnpm dev`, `pnpm start:worktree`,
   setup screen; set `BB_SKIP_ONBOARDING=0` to retain setup or replay it from Settings.
 - `pnpm start:worktree` loads the same cascade and checkout-specific data
   directory and ports, builds production artifacts, and serves the bundle from
-  the main server (no Vite or hot reload). Telemetry stays disabled and
-  first-run setup is skipped, as with `pnpm dev`. Its data
-  directory, ports, inherited skills, listener host, and telemetry policy take
+  the main server (no Vite or hot reload). First-run setup is skipped, as
+  with `pnpm dev`. Its data directory, ports, inherited skills, and listener
+  host take
   precedence over that instance's `config.json` or `env.json`.
 - `pnpm start:worktree-remote` does the same but binds the main server to
   `0.0.0.0`; protect the port with a trusted network boundary.
@@ -1417,13 +1348,6 @@ For source development only, `pnpm dev`, `pnpm start:worktree`,
   prints the resolved ports and paths, and exits without starting services or
   migrating data. See [Prepared Worktree
   Restarts](debugging-and-qa.md#prepared-worktree-restarts).
-
-`pnpm dev` injects `BB_DEV_CONNECT_BASE_URL=http://bb.localhost:<worktree-cloud-port>`
-(`pnpm dev --staging` injects `https://vibecodethis.site`). With
-`NODE_ENV=development`, the bb account plugin uses it as the sign-in default
-and the connect plugin for its signed-out dashboard link. It is
-launcher-managed, not a `bb-app config` setting, and packaged builds keep
-`https://getbb.app`.
 
 `pnpm bb`, `pnpm bb:dev`, and `pnpm reset` wrap `@bb/scripts` and force
 `NODE_ENV` to the intended mode. `pnpm reset` and `pnpm reset:dev` clear

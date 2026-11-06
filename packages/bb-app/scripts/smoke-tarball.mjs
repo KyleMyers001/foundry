@@ -44,7 +44,6 @@ const EXPECTED_RUNNING_BUILTIN_PLUGINS = [
   "provider-claude-code",
   "provider-codex",
   "push-notifications",
-  "connect",
   "custom-instructions",
   "inline-vis",
   "keep-awake",
@@ -70,7 +69,6 @@ const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptsDir, "..");
 const tempRoot = await mkdtemp(join(tmpdir(), "bb-app-tarball-"));
 const smokeProcessEnv = {
-  BB_TELEMETRY: "false",
 };
 const stopManagedProcess = createManagedProcessStop(PROCESS_STOP_TIMEOUT_MS);
 

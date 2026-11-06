@@ -203,9 +203,12 @@ export function AiServicesSettingsSection() {
   return (
     <SettingsSection
       title="AI services"
-      description="Choose services for thread titles, commit messages, and voice input. Automatic prefers bb cloud, then other available services. A service you choose stays selected."
+      description="Choose services for thread titles, commit messages, and voice input. Automatic uses the first available service. A service you choose stays selected."
     >
       <div className="space-y-5">
+        {view?.notice != null && (
+          <p className="text-xs text-subtle-foreground">{view.notice}</p>
+        )}
         {AI_TASK_ROWS.map((row) => {
           if (view === undefined) {
             return (

@@ -69,22 +69,6 @@
         "app-route: packages/client-core/src/routes/route-paths.ts: TOOLS_SKILL_DETAIL_ROUTE_PATH \"/extensions/skills/library/:skillId\""
       ]
     },
-    "app:connect": {
-      "recipes": [
-        "features/cloud-gateway.md"
-      ],
-      "sourceFiles": 15,
-      "sourceDigest": "b21e4dde4f89fde9f8b77d7969e72a465fb85407393e00a6c33bd5b0e3280a42",
-      "declarations": []
-    },
-    "app:demo-server": {
-      "recipes": [
-        "features/developer-fixtures.md"
-      ],
-      "sourceFiles": 11,
-      "sourceDigest": "f25b01bad3754c1483d9e1c6967961cfb0f0762d12cd1aa4df1cc46da1392f9b",
-      "declarations": []
-    },
     "app:desktop": {
       "recipes": [
         "features/desktop.md"
@@ -101,35 +85,6 @@
       "sourceDigest": "313f8e6a7a79da3ddc6889683576133ca0b5b95f1fb7fb25d570784ab6d7c01e",
       "declarations": [
         "app-route: apps/mobile/src/lib/shell/shell-links.ts: SHELL_ROUTE_PATH \"/webview\""
-      ]
-    },
-    "app:web": {
-      "recipes": [
-        "features/hosted-web.md"
-      ],
-      "sourceFiles": 86,
-      "sourceDigest": "4ff0375d75e37c9de556c5f22ced1f098760cba78b06d34d72afed2a9f89bbfa",
-      "declarations": [
-        "web-route: apps/web/src/routes/[.]well-known.apple-app-site-association.tsx: /.well-known/apple-app-site-association",
-        "web-route: apps/web/src/routes/[.]well-known.assetlinks[.]json.tsx: /.well-known/assetlinks.json",
-        "web-route: apps/web/src/routes/api.auth.$.tsx: /api/auth/$",
-        "web-route: apps/web/src/routes/api.connect.machine-code.tsx: /api/connect/machine-code",
-        "web-route: apps/web/src/routes/api.connect.redeem-machine.tsx: /api/connect/redeem-machine",
-        "web-route: apps/web/src/routes/api.connect.redeem.tsx: /api/connect/redeem",
-        "web-route: apps/web/src/routes/api.connect.revoke-machine.tsx: /api/connect/revoke-machine",
-        "web-route: apps/web/src/routes/api.subscribe.tsx: /api/subscribe",
-        "web-route: apps/web/src/routes/blog.tsx: /blog",
-        "web-route: apps/web/src/routes/blog_.$slug.tsx: /blog_/$slug",
-        "web-route: apps/web/src/routes/changelog.tsx: /changelog",
-        "web-route: apps/web/src/routes/dashboard.tsx: /dashboard",
-        "web-route: apps/web/src/routes/download.macos.tsx: /download/macos",
-        "web-route: apps/web/src/routes/index.tsx: /",
-        "web-route: apps/web/src/routes/marketplace.v1.$.tsx: /marketplace/v1/$",
-        "web-route: apps/web/src/routes/marketplace.v2.$.tsx: /marketplace/v2/$",
-        "web-route: apps/web/src/routes/marketplace_.$pluginId.tsx: /marketplace_/$pluginId",
-        "web-route: apps/web/src/routes/marketplace_.author.$github.tsx: /marketplace_/author/$github",
-        "web-route: apps/web/src/routes/marketplace_.tsx: /marketplace_",
-        "web-route: apps/web/src/routes/privacy.tsx: /privacy"
       ]
     },
     "cli-runtime": {
@@ -491,14 +446,6 @@
         "cli-command: apps/cli/src/commands/voice.ts: voice"
       ]
     },
-    "dev-harness": {
-      "recipes": [
-        "features/developer-fixtures.md"
-      ],
-      "sourceFiles": 3,
-      "sourceDigest": "193dd0a30669936ada47ac885460696682274cf8329d062e4dd58a34df722ba2",
-      "declarations": []
-    },
     "domain-contracts": {
       "recipes": [
         "features/navigation.md",
@@ -585,24 +532,6 @@
         "cli-name-candidate: plugins/concurrency-limit/server.ts: host",
         "cli-name-candidate: plugins/concurrency-limit/server.ts: status",
         "plugin-slot: plugins/concurrency-limit/app.tsx: settingsSection"
-      ]
-    },
-    "plugin:connect": {
-      "recipes": [
-        "features/plugin-connect.md"
-      ],
-      "sourceFiles": 16,
-      "sourceDigest": "abe8c24e7a8ea3a1a92d07554a96fe809c9f6198f91787ff5fd9501c16d8c488",
-      "declarations": [
-        "cli-name-candidate: plugins/connect/src/cli.ts: connect",
-        "cli-name-candidate: plugins/connect/src/cli.ts: expose",
-        "cli-name-candidate: plugins/connect/src/cli.ts: machine-code",
-        "cli-name-candidate: plugins/connect/src/cli.ts: off",
-        "cli-name-candidate: plugins/connect/src/cli.ts: servers",
-        "cli-name-candidate: plugins/connect/src/cli.ts: shares",
-        "cli-name-candidate: plugins/connect/src/cli.ts: status",
-        "cli-name-candidate: plugins/connect/src/cli.ts: unexpose",
-        "plugin-slot: plugins/connect/app.tsx: settingsSection"
       ]
     },
     "plugin:custom-instructions": {
