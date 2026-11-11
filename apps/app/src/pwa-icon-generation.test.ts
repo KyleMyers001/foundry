@@ -20,7 +20,7 @@ import { expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 const appDir = resolve(import.meta.dirname, "..");
-const sourcePath = resolve(appDir, "../../assets/foundry-aperture.png");
+const sourcePath = resolve(appDir, "../../assets/foundry-monolith.png");
 const installIcons = [
   ["icon-192.png", 192],
   ["icon-512.png", 512],
@@ -33,8 +33,9 @@ async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "bb-pwa-icons-"));
   const fixture = join(root, "apps/app");
   await mkdir(join(fixture, "scripts"), { recursive: true });
-  await mkdir(join(root, "assets"));
-  await cp(sourcePath, join(root, "assets/foundry-aperture.png"));
+  await cp(resolve(appDir, "../../assets"), join(root, "assets"), {
+    recursive: true,
+  });
   await cp(join(appDir, "public"), join(fixture, "public"), {
     recursive: true,
   });
@@ -56,7 +57,7 @@ it("regenerates opaque install icons from the unchanged approved artwork", async
       createHash("sha256")
         .update(await readFile(sourcePath))
         .digest("hex"),
-    ).toBe("558794a7d257f9ce454cca148866a06428d75344bcdf800c84d49e412b32fec4");
+    ).toBe("77fa064fe0046addd644ca89327737350ed3a9580a8479683f420fe4c3a6b333");
     for (const [file, size] of installIcons) {
       const actual = await sharp(join(fixture, "public", file))
         .ensureAlpha()
@@ -94,13 +95,38 @@ it("extracts the approved mark into transparent glyphs instead of square alpha m
       ...mark.data.subarray((y * 1024 + x) * 4, (y * 1024 + x) * 4 + 4),
     ];
     expect(pixel(0, 0)[3]).toBe(0);
-    expect(pixel(512, 440)[3]).toBe(0);
-    expect(pixel(512, 512)).toEqual([216, 138, 238, 255]);
-    expect(pixel(512, 200)).toEqual([184, 104, 231, 255]);
+    for (const [x, y] of [
+      [350, 520],
+      [450, 460],
+      [512, 440],
+      [600, 375],
+    ]) {
+      expect(pixel(x, y), `diagonal void at ${x},${y}`).toEqual([8, 15, 35, 0]);
+    }
+    expect(pixel(512, 512)).toEqual([125, 59, 204, 255]);
+    expect(pixel(512, 200)).toEqual([202, 148, 242, 255]);
+    for (const [x, y, rgb] of [
+      [610, 310, [64, 24, 123]],
+      [640, 600, [58, 22, 112]],
+      [550, 800, [57, 21, 111]],
+    ] as const) {
+      expect(pixel(x, y), `shadow facet at ${x},${y}`).toEqual([...rgb, 255]);
+    }
+    expect(pixel(598, 149)).toEqual([17, 16, 47, 0]);
+    expect(pixel(594, 131)).toEqual([27, 17, 61, 128]);
+    expect(pixel(608, 193)).toEqual([36, 18, 75, 255]);
     let solid = 0;
     let soft = 0;
     let faithful = true;
+    let cleanBackground = true;
     for (let index = 0; index < mark.data.length; index += 4) {
+      const difference = Math.max(
+        Math.abs(source[index] - 8),
+        Math.abs(source[index + 1] - 15),
+        Math.abs(source[index + 2] - 35),
+      );
+      if (difference <= 12 && mark.data[index + 3] !== 0)
+        cleanBackground = false;
       if (mark.data[index + 3] === 255) solid++;
       if (mark.data[index + 3] > 0 && mark.data[index + 3] < 255) soft++;
       if (
@@ -112,8 +138,9 @@ it("extracts the approved mark into transparent glyphs instead of square alpha m
         faithful = false;
     }
     expect(faithful).toBe(true);
-    expect(solid / (1024 * 1024)).toBeGreaterThan(0.25);
-    expect(solid / (1024 * 1024)).toBeLessThan(0.5);
+    expect(cleanBackground).toBe(true);
+    expect(solid / (1024 * 1024)).toBeGreaterThan(0.15);
+    expect(solid / (1024 * 1024)).toBeLessThan(0.17);
     expect(soft).toBeGreaterThan(100);
     for (const size of [192, 512]) {
       const mono = await sharp(
@@ -149,6 +176,25 @@ it("extracts the approved mark into transparent glyphs instead of square alpha m
         expect([favicon.info.width, favicon.info.height]).toEqual([size, size]);
         expect(favicon.data.equals(resized), file).toBe(true);
         expect(favicon.data[3]).toBe(0);
+        const alpha = (x: number, y: number) =>
+          favicon.data[(y * size + x) * 4 + 3];
+        const center = Math.floor(size * 0.5);
+        expect(alpha(center, Math.floor(size * 0.25))).toBeGreaterThan(220);
+        expect(alpha(center, Math.floor(size * 0.65))).toBeGreaterThan(220);
+        expect(
+          Math.min(
+            ...Array.from(
+              { length: Math.ceil(size * 0.47) - Math.floor(size * 0.38) },
+              (_, offset) => alpha(center, Math.floor(size * 0.38) + offset),
+            ),
+          ),
+        ).toBeLessThan(128);
+        for (let edge = 0; edge < size; edge++) {
+          expect(alpha(edge, 0)).toBeLessThanOrEqual(2);
+          expect(alpha(edge, size - 1)).toBeLessThanOrEqual(2);
+          expect(alpha(0, edge)).toBeLessThanOrEqual(2);
+          expect(alpha(size - 1, edge)).toBeLessThanOrEqual(2);
+        }
         expect(
           favicon.data.some((value, index) => index % 4 === 3 && value > 200),
         ).toBe(true);
