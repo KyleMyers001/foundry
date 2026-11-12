@@ -7,7 +7,7 @@ import sharp from "sharp";
 const appDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const publicDir = join(appDir, "public");
 const sourceArtwork = await readFile(
-  join(appDir, "../../assets/foundry-aperture.png"),
+  join(appDir, "../../assets/foundry-monolith.png"),
 );
 const source = await sharp(sourceArtwork)
   .ensureAlpha()
@@ -37,9 +37,14 @@ const mismatches = [];
 
 function extractedMark() {
   const data = Buffer.from(source.data);
+  const background = source.data.subarray(0, 3);
   for (let index = 0; index < data.length; index += 4) {
-    const brightness = Math.max(data[index], data[index + 1], data[index + 2]);
-    const coverage = Math.max(0, Math.min(1, (brightness - 40) / 40));
+    const difference = Math.max(
+      Math.abs(data[index] - background[0]),
+      Math.abs(data[index + 1] - background[1]),
+      Math.abs(data[index + 2] - background[2]),
+    );
+    const coverage = Math.max(0, Math.min(1, (difference - 12) / 28));
     data[index + 3] = Math.round(data[index + 3] * coverage);
   }
   return data;
