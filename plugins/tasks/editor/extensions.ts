@@ -8,14 +8,15 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import Placeholder from "@tiptap/extension-placeholder";
-import Table from "@tiptap/extension-table";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import TableRow from "@tiptap/extension-table-row";
-import { Markdown } from "tiptap-markdown";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
+import { Placeholder } from "@tiptap/extensions";
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@tiptap/extension-table";
+import { Markdown, type MarkdownStorage } from "tiptap-markdown";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   Fragment,
@@ -25,6 +26,12 @@ import {
 import { Suggestion, type SuggestionProps } from "@tiptap/suggestion";
 import type { IconSvgElement } from "@hugeicons/react";
 import BubbleChatIcon from "@hugeicons/core-free-icons/BubbleChatIcon";
+
+declare module "@tiptap/core" {
+  interface Storage {
+    markdown: MarkdownStorage;
+  }
+}
 
 export type MentionItem =
   | { type: "task"; id: string; key: string; title: string }
@@ -77,6 +84,14 @@ const TightTaskList = TaskList.extend({
         }),
       },
     };
+  },
+});
+
+const UntitledLink = Link.extend({
+  addAttributes() {
+    const attributes = { ...this.parent?.() };
+    delete attributes.title;
+    return attributes;
   },
 });
 
@@ -367,8 +382,13 @@ export function createEditorExtensions(options?: {
   mentionHandle?: MentionSuggestionHandle;
 }): Extensions {
   return [
-    StarterKit,
-    Link.configure({ openOnClick: false, autolink: true }),
+    StarterKit.configure({
+      link: false,
+      listKeymap: false,
+      trailingNode: false,
+      underline: false,
+    }),
+    UntitledLink.configure({ openOnClick: false, autolink: true }),
     Image.configure({ allowBase64: false }),
     TightTaskList,
     TaskItem.configure({ nested: true }),
