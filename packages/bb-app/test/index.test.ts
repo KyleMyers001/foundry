@@ -1204,6 +1204,75 @@ describe("bb-app launcher", () => {
     expect(runtime.env.BB_SERVER_URL).toBe("http://127.0.0.1:48886");
   });
 
+  describe("saved BB_SERVER_PORT", () => {
+    function createDataDirWithSavedPort(savedPort: string): string {
+      const dataDir = mkdtempSync(join(tmpdir(), "bb-app-saved-port-"));
+      writeFileSync(
+        join(dataDir, "env.json"),
+        JSON.stringify({ env: { BB_SERVER_PORT: savedPort } }),
+        "utf8",
+      );
+      return dataDir;
+    }
+
+    function resolveRuntime(args: {
+      dataDir: string;
+      env?: NodeJS.ProcessEnv;
+      options?: { serverPort?: string };
+      serverUrlMode: "local" | "managed";
+    }) {
+      return resolveBbAppRuntimeState({
+        entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js")
+          .href,
+        env: { BB_DATA_DIR: args.dataDir, ...args.env },
+        homeDir: "/home/tester",
+        options: { help: false, ...args.options },
+        serverUrlMode: args.serverUrlMode,
+      });
+    }
+
+    it("loses to a caller BB_SERVER_URL", async () => {
+      const runtime = await resolveRuntime({
+        dataDir: createDataDirWithSavedPort("48886"),
+        env: { BB_SERVER_URL: "https://caller.example.com" },
+        serverUrlMode: "managed",
+      });
+
+      expect(runtime.context.serverUrl).toBe("https://caller.example.com");
+    });
+
+    it("loses to an explicit --server-port when connecting as a client", async () => {
+      const runtime = await resolveRuntime({
+        dataDir: createDataDirWithSavedPort("48886"),
+        options: { serverPort: "49886" },
+        serverUrlMode: "managed",
+      });
+
+      expect(runtime.context.serverUrl).toBe("http://127.0.0.1:49886");
+    });
+
+    it("beats an explicit --server-port when starting the local server", async () => {
+      const runtime = await resolveRuntime({
+        dataDir: createDataDirWithSavedPort("48886"),
+        options: { serverPort: "49886" },
+        serverUrlMode: "local",
+      });
+
+      expect(runtime.context.serverPort).toBe(48886);
+      expect(runtime.context.serverUrl).toBe("http://127.0.0.1:48886");
+    });
+
+    it("rejects an invalid saved port instead of falling back", async () => {
+      await expect(
+        resolveRuntime({
+          dataDir: createDataDirWithSavedPort("not-a-port"),
+          env: { BB_SERVER_PORT: "47886" },
+          serverUrlMode: "managed",
+        }),
+      ).rejects.toThrow("BB_SERVER_PORT must be a valid TCP port");
+    });
+  });
+
   it("applies the worktree policy after conflicting saved environment values", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "bb-app-worktree-policy-"));
     const storedDataDir = join(dataDir, "stored-data");
