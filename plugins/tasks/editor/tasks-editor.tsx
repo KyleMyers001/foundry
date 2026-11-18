@@ -415,13 +415,8 @@ export function TasksEditor({
           editor,
           element: bubbleRef.current,
           updateDelay: 150,
-          tippyOptions: {
-            duration: 120,
-            placement: "top",
-            maxWidth: "none",
-            zIndex: 40,
-            appendTo: () => rootRef.current?.parentElement ?? document.body,
-          },
+          appendTo: () => rootRef.current?.parentElement ?? document.body,
+          options: { placement: "top", offset: 10 },
           shouldShow: ({ editor: bubbleEditor, state, from, to }) => {
             const { selection } = state;
             if (!bubbleEditor.isEditable || selection.empty) return false;
@@ -432,7 +427,7 @@ export function TasksEditor({
       );
     }
     editor.on("update", () => {
-      const markdown = editor.storage.markdown.getMarkdown() as string;
+      const markdown = editor.storage.markdown.getMarkdown();
       lastMarkdownRef.current = markdown;
       changeRef.current(markdown);
     });
@@ -462,7 +457,7 @@ export function TasksEditor({
     const editor = editorRef.current;
     if (!editor || value === lastMarkdownRef.current) return;
     lastMarkdownRef.current = value;
-    editor.commands.setContent(value, false);
+    editor.commands.setContent(value, { emitUpdate: false });
   }, [value]);
 
   useEffect(() => {
@@ -542,8 +537,8 @@ export function TasksEditor({
           ref={bubbleRef}
           role="toolbar"
           aria-label="Formatting"
-          style={{ visibility: "hidden" }}
-          className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 text-popover-foreground shadow-md"
+          style={{ visibility: "hidden", position: "absolute" }}
+          className="z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 text-popover-foreground shadow-md"
         >
           {BUBBLE_ACTIONS.map((action) => (
             <Button

@@ -1,18 +1,18 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
-import Table from "@tiptap/extension-table";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import TableRow from "@tiptap/extension-table-row";
-import TaskItem from "@tiptap/extension-task-item";
-import TaskList from "@tiptap/extension-task-list";
-import StarterKit from "@tiptap/starter-kit";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 import { describe, expect, it } from "vitest";
 import { loadMarkdownBlocks, saveMarkdownBlocks } from "./markdown-blocks";
 import { HtmlBlock, HtmlSource } from "./raw-html";
+import { DocsLink, DocsStarterKit } from "./editor-extensions";
 
 const VIDEO = `<div style="margin-block: 1rem;">
   <video src="/a.mp4" autoplay loop muted playsinline></video>
@@ -38,8 +38,8 @@ const DOCUMENT = `${[
 function open(markdown: string) {
   const editor = new Editor({
     extensions: [
-      StarterKit,
-      Link.configure({ openOnClick: false, autolink: true }),
+      DocsStarterKit,
+      DocsLink,
       Image,
       TaskList,
       TaskItem.configure({ nested: true }),

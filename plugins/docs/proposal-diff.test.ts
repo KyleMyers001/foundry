@@ -1,31 +1,33 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
-import Table from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@tiptap/extension-table";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, describe, expect, it } from "vitest";
 import { createProposalDiff, proposalDiffKey } from "./proposal-diff";
+import { DocsStarterKit } from "./editor-extensions";
 
 const editors: Editor[] = [];
+const elements: HTMLElement[] = [];
 afterEach(() => {
-  for (const editor of editors.splice(0)) {
-    editor.destroy();
-    editor.options.element.remove();
-  }
+  for (const editor of editors.splice(0)) editor.destroy();
+  for (const element of elements.splice(0)) element.remove();
 });
 
 function fixture(before: string, after: string) {
   let base: ProseMirrorNode | null = null;
   const element = document.createElement("div");
   document.body.append(element);
+  elements.push(element);
   const editor = new Editor({
     element,
     extensions: [
-      StarterKit,
+      DocsStarterKit,
       Table,
       TableRow,
       TableCell,

@@ -57,17 +57,17 @@ import {
   Node,
   mergeAttributes,
 } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import Placeholder from "@tiptap/extension-placeholder";
-import Table from "@tiptap/extension-table";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import TableRow from "@tiptap/extension-table-row";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
+import { Placeholder } from "@tiptap/extensions";
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
+import { DocsLink, DocsStarterKit } from "./editor-extensions.js";
 import {
   loadMarkdownBlocks,
   saveMarkdownBlocks,
@@ -517,9 +517,9 @@ function TiptapEditor(props: {
     editor = new Editor({
       element: rootRef.current,
       extensions: [
-        StarterKit,
+        DocsStarterKit,
         createProposalDiff({ getBaseDocument: () => baselineRef.current }),
-        Link.configure({ openOnClick: false, autolink: true }),
+        DocsLink,
         Image.configure({ allowBase64: false }),
         TaskList,
         TaskItem.configure({ nested: true }),

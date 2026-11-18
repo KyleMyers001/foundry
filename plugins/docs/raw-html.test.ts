@@ -1,18 +1,16 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
-import TaskItem from "@tiptap/extension-task-item";
-import TaskList from "@tiptap/extension-task-list";
-import StarterKit from "@tiptap/starter-kit";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Markdown } from "tiptap-markdown";
 import { describe, expect, it } from "vitest";
 import { HtmlBlock, HtmlSource } from "./raw-html";
+import { DocsLink, DocsStarterKit } from "./editor-extensions";
 
 function createEditor(content: string) {
   return new Editor({
     extensions: [
-      StarterKit,
-      Link.configure({ openOnClick: false, autolink: true }),
+      DocsStarterKit,
+      DocsLink,
       TaskList,
       TaskItem.configure({ nested: true }),
       HtmlBlock,
