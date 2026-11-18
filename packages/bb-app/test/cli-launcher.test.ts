@@ -46,37 +46,71 @@ function writeExecutable(path: string, content: string): void {
   chmodSync(path, 0o755);
 }
 
+interface EndpointScenario {
+  name: string;
+  env: Record<string, string>;
+  envFile?: Record<string, string>;
+  config: Record<string, string>;
+  serverUrl: string;
+  daemonPort: number;
+}
+
+const endpointScenarios: EndpointScenario[] = [
+  {
+    name: "fresh shell",
+    env: {},
+    config: {},
+    serverUrl: "http://127.0.0.1:38986",
+    daemonPort: 38987,
+  },
+  {
+    name: "caller ports",
+    env: { BB_SERVER_PORT: "41001", BB_HOST_DAEMON_PORT: "41002" },
+    config: {},
+    serverUrl: "http://127.0.0.1:41001",
+    daemonPort: 41002,
+  },
+  {
+    name: "caller URL",
+    env: { BB_SERVER_URL: "https://caller.example.com" },
+    config: {},
+    serverUrl: "https://caller.example.com",
+    daemonPort: 38987,
+  },
+  {
+    name: "managed remote",
+    env: {},
+    config: { serverUrl: "https://remote.example.com" },
+    serverUrl: "https://remote.example.com",
+    daemonPort: 38987,
+  },
+  {
+    name: "caller URL and managed remote",
+    env: { BB_SERVER_URL: "https://caller.example.com" },
+    config: { serverUrl: "https://remote.example.com" },
+    serverUrl: "https://remote.example.com",
+    daemonPort: 38987,
+  },
+  {
+    name: "managed env file ports over the launcher defaults",
+    env: {},
+    envFile: { BB_SERVER_PORT: "42001", BB_HOST_DAEMON_PORT: "42002" },
+    config: {},
+    serverUrl: "http://127.0.0.1:42001",
+    daemonPort: 42002,
+  },
+  {
+    name: "managed env file ports over caller ports",
+    env: { BB_SERVER_PORT: "41001", BB_HOST_DAEMON_PORT: "41002" },
+    envFile: { BB_SERVER_PORT: "42001", BB_HOST_DAEMON_PORT: "42002" },
+    config: {},
+    serverUrl: "http://127.0.0.1:42001",
+    daemonPort: 42002,
+  },
+];
+
 describe("bb command launcher", () => {
-  posixIt.each([
-    {
-      name: "fresh shell",
-      env: {},
-      config: {},
-      serverUrl: "http://127.0.0.1:38986",
-      daemonPort: 38987,
-    },
-    {
-      name: "caller ports",
-      env: { BB_SERVER_PORT: "41001", BB_HOST_DAEMON_PORT: "41002" },
-      config: {},
-      serverUrl: "http://127.0.0.1:41001",
-      daemonPort: 41002,
-    },
-    {
-      name: "caller URL",
-      env: { BB_SERVER_URL: "https://caller.example.com" },
-      config: {},
-      serverUrl: "https://caller.example.com",
-      daemonPort: 38987,
-    },
-    {
-      name: "managed remote",
-      env: {},
-      config: { serverUrl: "https://remote.example.com" },
-      serverUrl: "https://remote.example.com",
-      daemonPort: 38987,
-    },
-  ])(
+  posixIt.each(endpointScenarios)(
     "resolves Foundry's generated command endpoints for $name",
     async (scenario) => {
       const root = scratchDir();
@@ -86,6 +120,12 @@ describe("bb command launcher", () => {
         join(dataDir, "config.json"),
         JSON.stringify(scenario.config),
       );
+      if (scenario.envFile !== undefined) {
+        writeFileSync(
+          join(dataDir, "env.json"),
+          JSON.stringify({ env: scenario.envFile }),
+        );
+      }
       const entryPath = join(root, "bb.mjs");
       writeFileSync(
         entryPath,
@@ -326,6 +366,31 @@ describe("bb command launcher", () => {
       "exit /b %bb_exit%",
       "",
     ]);
+  });
+
+  it("lets the Windows batch launcher keep every caller setting", () => {
+    const lines = renderCliLauncher({
+      dataDir: "C:\\Users\\me\\.foundry",
+      serverPort: 41001,
+      daemonPort: 41002,
+      platform: "win32",
+      target: {
+        electron: false,
+        entryPath: "C:\\bb\\dist\\bb.js",
+        kind: "direct",
+        runtimePath: "C:\\bb\\node.exe",
+      },
+    }).split("\r\n");
+    const run = lines.findIndex((line) => line.includes('bb.js" %*'));
+    const settings = lines.filter((line) => /BB_[A-Z_]+=/.test(line));
+
+    expect(settings).toHaveLength(3);
+    for (const line of settings) {
+      expect(line).toMatch(/^if not defined (BB_[A-Z_]+) set "\1=/);
+      expect(lines.indexOf(line)).toBeLessThan(run);
+    }
+    expect(settings.join("\n")).toContain('BB_SERVER_PORT=41001"');
+    expect(settings.join("\n")).toContain('BB_HOST_DAEMON_PORT=41002"');
   });
 
   it("leaves a launcher file that bb did not write", async () => {

@@ -93,7 +93,15 @@ An installed bb keeps `~/.bb` and ports `38886` and `38887`, so the two do not
 share threads, projects, or settings. The `bb` CLI inside a Foundry thread comes
 from `~/.foundry/bin/bb`. The same launcher works from a fresh terminal: it
 preserves the installation's resolved server and daemon ports as defaults, while
-honoring caller port/URL overrides and managed remote-server configuration.
+honoring caller overrides unless a saved value or managed config sets the same
+key. Managed remote-server config and values saved with `bb-app env` beat the
+caller's environment, and the caller's environment beats the launcher's
+defaults. After saving a port with `bb-app env set BB_SERVER_PORT <port>`, the
+`bb` command follows it right away, but a running server keeps its old port
+until you restart bb-app. Each start rewrites the launcher with the ports of
+that start, so a one-off `--server-port` changes it until Foundry starts
+normally again. That applies only when no port is saved: a saved
+`BB_SERVER_PORT` beats `--server-port` when the server starts.
 Its Electron update cache is also separate from bb:
 `~/Library/Caches/foundry-desktop-updater` on macOS. Nightly builds use
 `foundry-desktop-nightly-updater`. Source checkouts and `pnpm dev:desktop` are

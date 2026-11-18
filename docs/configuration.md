@@ -166,10 +166,20 @@ SDK methods are `system.experimental_cliCommand()`,
   small launcher to `<dataDir>/bin/bb` (`bb.cmd` on Windows). It runs the bb
   CLI of the install that started last, with that install's own Node runtime,
   so the desktop app needs no separate Node. The launcher carries that install's
-  server and daemon ports as defaults; caller environment overrides and managed
-  remote-server configuration still apply. After bb moves or updates, start
-  it once to refresh the launcher. Source checkouts (`pnpm start`, `pnpm dev`)
-  write no launcher and do not show the setting.
+  server and daemon ports as defaults. It honors caller overrides unless a saved
+  value or managed config sets the same key. The server URL comes from managed
+  remote-server config (`serverUrl`) first, then `BB_SERVER_URL`, then the port.
+  Values saved with `bb-app env` and managed remote-server config beat the
+  caller's environment, and the caller's `BB_SERVER_URL`, `BB_SERVER_PORT`, and
+  `BB_HOST_DAEMON_PORT` beat the launcher's defaults. Saving a port with
+  `bb-app env set BB_SERVER_PORT <port>` changes where `bb` connects right
+  away; restart bb-app after saving so the running server moves too. Each start
+  rewrites the launcher with that start's ports, so a one-off `--server-port`
+  changes it until bb starts normally again. That applies only when no port is
+  saved: a saved `BB_SERVER_PORT` beats `--server-port` when the server starts.
+  After bb moves or updates, start it once to refresh the launcher. Source
+  checkouts (`pnpm start`, `pnpm dev`) write no launcher and do not show the
+  setting.
 - Install acts on the computer that runs the bb server. On macOS and Linux it
   links the launcher into the first usable folder of `/opt/homebrew/bin` and
   `/usr/local/bin` (macOS only), `~/.local/bin`, and `~/bin`, preferring one

@@ -1503,7 +1503,11 @@ export async function resolveBbAppRuntimeState(
     ...managedEnv,
     BB_SERVER_URL: resolveServerUrl({
       config: legacyConnect ? { ...config, serverUrl: undefined } : config,
-      defaultServerUrl: initialContext.serverUrl,
+      defaultServerUrl: resolveBbAppStartContext({
+        entrypointUrl: args.entrypointUrl,
+        env: createEnvFromOptions({ env: managedEnv, options: args.options }),
+        homeDir: args.homeDir,
+      }).serverUrl,
       env: managedEnv,
       optionServerUrl: args.options.serverUrl,
     }),
