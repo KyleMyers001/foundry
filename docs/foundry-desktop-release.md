@@ -94,6 +94,11 @@ share threads, projects, or settings. The `bb` CLI inside a Foundry thread comes
 from `~/.foundry/bin/bb`. The same launcher works from a fresh terminal: it
 preserves the installation's resolved server and daemon ports as defaults, while
 honoring caller port/URL overrides and managed remote-server configuration.
+Those ports are only the lowest-priority default: managed remote-server config
+and values saved with `bb-app env` take precedence over the caller's
+environment, and the caller's environment takes precedence over the launcher.
+Each start rewrites the launcher with the ports of that start, including a
+one-off `--server-port`, so start Foundry normally to restore its defaults.
 Its Electron update cache is also separate from bb:
 `~/Library/Caches/foundry-desktop-updater` on macOS. Nightly builds use
 `foundry-desktop-nightly-updater`. Source checkouts and `pnpm dev:desktop` are

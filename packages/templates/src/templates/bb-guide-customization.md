@@ -161,8 +161,11 @@ folder such as `~/.local/bin` (on Windows it adds `~/.bb/bin` to the user
 PATH). bb never replaces another `bb`: install is refused while one runs first
 in a new terminal. Only an installed bb, such as the Foundry desktop app,
 offers this; a source checkout does not. The launcher defaults to the install's
-server and daemon ports, while preserving caller endpoint overrides and managed
-remote-server settings.
+server and daemon ports. Managed remote-server config and values saved with
+`bb-app env` take precedence over the caller's environment, and the caller's
+environment takes precedence over the launcher's defaults. Each start rewrites
+the launcher with that start's ports, so a one-off `--server-port` changes it
+until bb starts normally again.
 
 Completed turns: `bb settings completed-turns` lists how each provider shows a
 finished turn: `collapse` folds the turn's work into one "Worked for" row and

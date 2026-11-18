@@ -1183,6 +1183,27 @@ describe("bb-app launcher", () => {
     expect(runtime.serverEnv.OPENAI_API_KEY).toBe("stored-openai-key");
   });
 
+  it("targets the saved BB_SERVER_PORT over the caller's port when connecting as a client", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-env-port-"));
+    writeFileSync(
+      join(dataDir, "env.json"),
+      JSON.stringify({ env: { BB_SERVER_PORT: "48886" } }),
+      "utf8",
+    );
+
+    const runtime = await resolveBbAppRuntimeState({
+      entrypointUrl: pathToFileURL("/repo/packages/bb-app/dist/bb-app.js").href,
+      env: { BB_DATA_DIR: dataDir, BB_SERVER_PORT: "47886" },
+      homeDir: "/home/tester",
+      options: { help: false },
+      serverUrlMode: "managed",
+    });
+
+    expect(runtime.context.serverPort).toBe(48886);
+    expect(runtime.context.serverUrl).toBe("http://127.0.0.1:48886");
+    expect(runtime.env.BB_SERVER_URL).toBe("http://127.0.0.1:48886");
+  });
+
   it("applies the worktree policy after conflicting saved environment values", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "bb-app-worktree-policy-"));
     const storedDataDir = join(dataDir, "stored-data");

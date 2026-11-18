@@ -166,9 +166,14 @@ SDK methods are `system.experimental_cliCommand()`,
   small launcher to `<dataDir>/bin/bb` (`bb.cmd` on Windows). It runs the bb
   CLI of the install that started last, with that install's own Node runtime,
   so the desktop app needs no separate Node. The launcher carries that install's
-  server and daemon ports as defaults; caller environment overrides and managed
-  remote-server configuration still apply. After bb moves or updates, start
-  it once to refresh the launcher. Source checkouts (`pnpm start`, `pnpm dev`)
+  server and daemon ports as defaults. The server URL comes from managed
+  remote-server config first, then `BB_SERVER_URL`, then the port. Values saved
+  with `bb-app config` or `bb-app env` beat the caller's environment, and the
+  caller's `BB_SERVER_URL`, `BB_SERVER_PORT`, and `BB_HOST_DAEMON_PORT` beat the
+  launcher's defaults. Each start rewrites the launcher with that start's ports,
+  including a one-off `--server-port`; start bb without it to restore the
+  defaults, or save the port with `bb-app env set BB_SERVER_PORT <port>`. After
+  bb moves or updates, start it once to refresh the launcher. Source checkouts (`pnpm start`, `pnpm dev`)
   write no launcher and do not show the setting.
 - Install acts on the computer that runs the bb server. On macOS and Linux it
   links the launcher into the first usable folder of `/opt/homebrew/bin` and
